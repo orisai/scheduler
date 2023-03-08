@@ -3,6 +3,7 @@
 namespace Orisai\Scheduler;
 
 use Orisai\Scheduler\Job\Job;
+use Throwable;
 
 final class Scheduler
 {
@@ -18,7 +19,11 @@ final class Scheduler
 	public function run(): void
 	{
 		foreach ($this->jobs as $job) {
-			$job->run();
+			try {
+				$job->run();
+			} catch (Throwable $throwable) {
+				// Not handled yet
+			}
 		}
 	}
 
