@@ -6,6 +6,8 @@ Cron job scheduler - with locks, parallelism and more
 
 - [Why do you need it?](#why-do-you-need-it)
 - [Quick start](#quick-start)
+- [Events](#events)
+- [Logging errors](#logging-errors)
 
 ## Why do you need it?
 
@@ -61,3 +63,48 @@ Configure crontab to run your script each minute
 ```
 
 Got to go!
+
+## Events
+
+Run callbacks before and after job to collect statistics, log errors etc.
+
+```php
+use Orisai\Scheduler\Status\JobInfo;
+use Orisai\Scheduler\Status\JobResult;
+
+$scheduler->addBeforeJobCallback(
+	function(JobInfo $info): void {
+		// Executes before job start
+	},
+);
+
+$scheduler->addAfterJobCallback(
+	function(JobInfo $info, JobResult $result): void {
+		// Executes after job finish
+	},
+);
+```
+
+## Logging errors
+
+Because any exceptions and errors are suppressed to prevent one failing job from failing others, you have to handle
+logging exceptions yourself.
+
+Assuming you have a [PSR-3 logger](https://github.com/php-fig/log), e.g. [Monolog](https://github.com/Seldaek/monolog)
+installed, it would look like this:
+
+```php
+use Orisai\Scheduler\Status\JobInfo;
+use Orisai\Scheduler\Status\JobResult;
+
+$scheduler->addAfterJobCallback(
+	function(JobInfo $info, JobResult $result): void {
+		$throwable = $result->getThrowable();
+		if ($throwable !== null) {
+			$this->logger->error('Job failed', [
+				'exception' => $throwable,
+			]);
+		}
+	},
+);
+```
