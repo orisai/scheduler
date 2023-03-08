@@ -1,0 +1,232 @@
+name: "CI"
+
+on:
+  pull_request:
+    types: [ "opened", "synchronize", "edited", "reopened" ]
+    paths-ignore:
+      - "docs/**"
+  push:
+    branches:
+      - "**"
+    paths-ignore:
+      - "docs/**"
+  schedule:
+    - cron: "0 8 * * 1" # At 08:00 on Monday
+  workflow_dispatch:
+    inputs: {}
+
+concurrency:
+  group: "${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: true
+
+permissions:
+  contents: "read"
+
+jobs:
+  coding-standard:
+    name: "Coding standard"
+    runs-on: "${{ matrix.operating-system }}"
+
+    if: |
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name != github.event.pull_request.base.repo.full_name
+
+    strategy:
+      matrix:
+        include:
+          - operating-system: "ubuntu-latest"
+            php-version: "8.1"
+
+    steps:
+      - name: "Checkout"
+        uses: "actions/checkout@v3"
+
+      - name: "PHP"
+        uses: "orisai/github-workflows/.github/actions/setup-php@v1"
+        with:
+          version: "${{ matrix.php-version }}"
+          token: "${{ secrets.GITHUB_TOKEN }}"
+
+      - name: "Composer"
+        uses: "orisai/github-workflows/.github/actions/setup-composer@v1"
+
+      - name: "PHP_CodeSniffer"
+        uses: "orisai/github-workflows/.github/actions/php-codesniffer@v1"
+        with:
+          command: "make cs ARGS='--report=checkstyle -q | vendor/bin/cs2pr'"
+          cache-path: "var/tools/PHP_CodeSniffer"
+
+  static-analysis:
+    name: "Static analysis"
+    runs-on: "${{ matrix.operating-system }}"
+
+    if: |
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name != github.event.pull_request.base.repo.full_name
+
+    strategy:
+      matrix:
+        include:
+          - operating-system: "ubuntu-latest"
+            php-version: "8.1"
+
+    steps:
+      - name: "Checkout"
+        uses: "actions/checkout@v3"
+
+      - name: "PHP"
+        uses: "orisai/github-workflows/.github/actions/setup-php@v1"
+        with:
+          version: "${{ matrix.php-version }}"
+          token: "${{ secrets.GITHUB_TOKEN }}"
+
+      - name: "Composer"
+        uses: "orisai/github-workflows/.github/actions/setup-composer@v1"
+
+      - name: "PHPStan"
+        uses: "orisai/github-workflows/.github/actions/phpstan@v1"
+        with:
+          command: "make phpstan"
+          cache-path: "var/tools/PHPStan"
+
+  tests:
+    name: "Tests"
+    runs-on: "${{ matrix.operating-system }}"
+    continue-on-error: "${{ matrix.experimental }}"
+
+    if: |
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name != github.event.pull_request.base.repo.full_name
+
+    strategy:
+      matrix:
+        operating-system: [ "ubuntu-latest", "macos-latest", "windows-latest" ]
+        php-version: [ "7.4", "8.0", "8.1" ]
+        composer-flags: [ "" ]
+        experimental: [ false ]
+        include:
+          - operating-system: "ubuntu-latest"
+            php-version: "7.4"
+            composer-flags: "--prefer-lowest --prefer-stable"
+            experimental: false
+          - operating-system: "ubuntu-latest"
+            php-version: "8.2"
+            composer-flags: "--ignore-platform-req=php+"
+            experimental: false
+
+    steps:
+      - name: "Checkout"
+        uses: "actions/checkout@v3"
+
+      - name: "PHP"
+        uses: "orisai/github-workflows/.github/actions/setup-php@v1"
+        with:
+          version: "${{ matrix.php-version }}"
+          coverage: "pcov"
+          token: "${{ secrets.GITHUB_TOKEN }}"
+
+      - name: "Composer"
+        uses: "orisai/github-workflows/.github/actions/setup-composer@v1"
+        with:
+          command: "composer update --no-interaction --no-progress --prefer-dist ${{ matrix.composer-flags }}"
+
+      - name: "PHPUnit"
+        uses: "orisai/github-workflows/.github/actions/phpunit@v1"
+        with:
+          command: "make coverage-clover"
+          cache-path: "var/tools/PHPUnit"
+
+      - name: "Coveralls"
+        uses: "orisai/github-workflows/.github/actions/coveralls-php-upload@v1"
+        with:
+          config: "tools/.coveralls.yml"
+          token: "${{ secrets.GITHUB_TOKEN }}"
+
+      - name: "Upload logs"
+        uses: "actions/upload-artifact@v3"
+        with:
+          name: "Logs - Tests (${{ matrix.operating-system }}, ${{ matrix.php-version }}, ${{ matrix.composer-flags }})"
+          path: "var/log"
+          if-no-files-found: "ignore"
+
+  coverage-finish:
+    name: "Code coverage finish"
+    needs: "tests"
+    runs-on: "${{ matrix.operating-system }}"
+
+    if: |
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name != github.event.pull_request.base.repo.full_name
+
+    strategy:
+      matrix:
+        include:
+          - operating-system: "ubuntu-latest"
+            php-version: "8.1"
+
+    steps:
+      - name: "Coveralls"
+        uses: "orisai/github-workflows/.github/actions/coveralls-finish@v1"
+        with:
+          token: "${{ secrets.GITHUB_TOKEN }}"
+
+  tests-mutations:
+    name: "Test for mutants"
+    runs-on: "${{ matrix.operating-system }}"
+
+    if: |
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name != github.event.pull_request.base.repo.full_name
+
+    strategy:
+      matrix:
+        include:
+          - operating-system: "ubuntu-latest"
+            php-version: "8.1"
+
+    steps:
+      - name: "Checkout"
+        uses: "actions/checkout@v3"
+
+      - name: "PHP"
+        uses: "orisai/github-workflows/.github/actions/setup-php@v1"
+        with:
+          version: "${{ matrix.php-version }}"
+          coverage: "pcov"
+          token: "${{ secrets.GITHUB_TOKEN }}"
+
+      - name: "Composer"
+        uses: "orisai/github-workflows/.github/actions/setup-composer@v1"
+
+      - name: "PHPUnit"
+        uses: "orisai/github-workflows/.github/actions/phpunit@v1"
+        with:
+          command: "make mutations-tests"
+          cache-path: "var/tools/PHPUnit"
+
+      - name: "Infection PHP"
+        uses: "orisai/github-workflows/.github/actions/infection-php@v1"
+        with:
+          command: "make mutations-infection ARGS='--logger-github'"
+          cache-path: "var/tools/Infection"
+          stryker-token: "${{ secrets.STRYKER_DASHBOARD_API_KEY }}"
+
+      - name: "Upload logs"
+        uses: "actions/upload-artifact@v3"
+        with:
+          name: "Logs - Mutations"
+          path: "var/coverage/mutations/infection.log"
+          if-no-files-found: "ignore"
+
+  status-check:
+    name: "Status check - ${{ github.workflow }}"
+    runs-on: "ubuntu-latest"
+    needs: [ "coding-standard", "static-analysis", "tests", "tests-mutations" ]
+
+    if: "${{ always() }}"
+
+    steps:
+      - name: "Check required jobs are successful"
+        uses: "orisai/github-workflows/.github/actions/status-check@v1"
+        with:
+          needs: "${{ toJSON(needs) }}"

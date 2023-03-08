@@ -1,0 +1,21 @@
+includes:
+	- ../vendor/phpstan/phpstan/conf/bleedingEdge.neon
+	- phpstan.baseline.neon
+
+parameters:
+	phpVersion: 70400
+	level: 8
+	tmpDir: ../var/tools/PHPStan
+	resultCachePath: %currentWorkingDirectory%/var/tools/PHPStan/resultCache.php
+
+	checkBenevolentUnionTypes: true
+	checkMissingCallableSignature: true
+	checkInternalClassCaseSensitivity: true
+	checkTooWideReturnTypesInProtectedAndPublicMethods: true
+
+	exceptions:
+		check:
+			missingCheckedExceptionInThrows: true
+			tooWideThrowType: true
+		checkedExceptionClasses:
+			- Orisai\Exceptions\Check\CheckedException

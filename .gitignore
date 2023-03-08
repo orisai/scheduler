@@ -1,0 +1,9 @@
+# IDE
+/.idea
+
+# Composer
+/vendor
+/composer.lock
+
+# Generated
+/var

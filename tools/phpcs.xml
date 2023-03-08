@@ -1,0 +1,24 @@
+<ruleset
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:noNamespaceSchemaLocation="./../vendor/squizlabs/php_codesniffer/phpcs.xsd">
+
+	<!-- Show only relevant part of path -->
+	<arg name="basepath" value="./.."/>
+
+	<!-- Configure cache -->
+	<arg name="cache" value="./../var/tools/PHP_CodeSniffer/cache.dat"/>
+
+	<!-- Import coding-standard -->
+	<rule ref="./../vendor/orisai/coding-standard/src/ruleset-7.4.xml"/>
+
+	<!-- Configure PSR-4 rule -->
+	<rule ref="SlevomatCodingStandard.Files.TypeNameMatchesFileName">
+		<properties>
+			<property name="rootNamespaces" type="array">
+				<element key="src" value="Orisai\Scheduler"/>
+				<element key="tests" value="Tests\Orisai\Scheduler"/>
+			</property>
+		</properties>
+	</rule>
+
+</ruleset>

@@ -1,0 +1,38 @@
+name: "Dependency Review"
+
+on:
+  pull_request:
+    types: [ "opened", "synchronize", "edited", "reopened" ]
+    paths-ignore:
+      - "docs/**"
+  push:
+    branches:
+      - "**"
+    paths-ignore:
+      - "docs/**"
+
+concurrency:
+  group: "${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: true
+
+permissions:
+  contents: "read"
+
+jobs:
+  dependency-review:
+    name: "Dependency Review"
+    runs-on: "ubuntu-latest"
+
+    if: |
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name != github.event.pull_request.base.repo.full_name
+
+    steps:
+      - name: "Checkout"
+        uses: "actions/checkout@v3"
+
+      - name: "Dependency Review"
+        uses: "actions/dependency-review-action@v3"
+        with:
+          base-ref: "${{ github.event.before }}"
+          head-ref: "${{ github.sha }}"
