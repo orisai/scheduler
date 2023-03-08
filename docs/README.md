@@ -75,12 +75,17 @@ use Orisai\Scheduler\Status\JobResult;
 $scheduler->addBeforeJobCallback(
 	function(JobInfo $info): void {
 		// Executes before job start
+
+		$info->getStart(); // DateTimeImmutable
 	},
 );
 
 $scheduler->addAfterJobCallback(
 	function(JobInfo $info, JobResult $result): void {
 		// Executes after job finish
+
+		$end = $result->getEnd(); // DateTimeImmutable
+		$throwable = $result->getThrowable(); // Throwable|null
 	},
 );
 ```

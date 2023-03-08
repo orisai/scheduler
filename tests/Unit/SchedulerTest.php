@@ -2,8 +2,10 @@
 
 namespace Tests\Orisai\Scheduler\Unit;
 
+use DateTimeImmutable;
 use Error;
 use Exception;
+use Orisai\Clock\FrozenClock;
 use Orisai\Scheduler\Job\CallbackJob;
 use Orisai\Scheduler\Scheduler;
 use Orisai\Scheduler\Status\JobInfo;
@@ -64,7 +66,9 @@ final class SchedulerTest extends TestCase
 
 	public function testEvents(): void
 	{
-		$scheduler = new Scheduler();
+		$clock = new FrozenClock(1);
+		$now = $clock->now();
+		$scheduler = new Scheduler($clock);
 
 		$job1 = new CallbackJob(
 			static function (): void {
@@ -96,20 +100,67 @@ final class SchedulerTest extends TestCase
 
 		self::assertEquals(
 			[
-				new JobInfo(),
-				new JobInfo(),
+				new JobInfo($now),
+				new JobInfo($now),
 			],
 			$beforeCollected,
 		);
 		self::assertEquals(
 			[
 				[
-					new JobInfo(),
-					new JobResult(new Exception('test')),
+					new JobInfo($now),
+					new JobResult($now, new Exception('test')),
 				],
 				[
-					new JobInfo(),
-					new JobResult(null),
+					new JobInfo($now),
+					new JobResult($now, null),
+				],
+			],
+			$afterCollected,
+		);
+	}
+
+	public function testTimeMovement(): void
+	{
+		$clock = new FrozenClock(1);
+		$scheduler = new Scheduler($clock);
+
+		$job = new CallbackJob(
+			static function (): void {
+				// Noop
+			},
+		);
+		$scheduler->addJob($job);
+
+		$beforeCollected = [];
+		$beforeCb = static function (JobInfo $info) use (&$beforeCollected, $clock): void {
+			$beforeCollected[] = $info;
+			$clock->move(1);
+		};
+		$scheduler->addBeforeJobCallback($beforeCb);
+
+		$afterCollected = [];
+		$afterCb = static function (JobInfo $info, JobResult $result) use (&$afterCollected): void {
+			$afterCollected[] = [$info, $result];
+		};
+		$scheduler->addAfterJobCallback($afterCb);
+
+		$scheduler->run();
+
+		self::assertEquals(
+			[
+				new JobInfo(DateTimeImmutable::createFromFormat('U', '1')),
+			],
+			$beforeCollected,
+		);
+		self::assertEquals(
+			[
+				[
+					new JobInfo(DateTimeImmutable::createFromFormat('U', '1')),
+					new JobResult(
+						DateTimeImmutable::createFromFormat('U', '2'),
+						null,
+					),
 				],
 			],
 			$afterCollected,

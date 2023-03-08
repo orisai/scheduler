@@ -2,6 +2,7 @@
 
 namespace Tests\Orisai\Scheduler\Unit\Status;
 
+use DateTimeImmutable;
 use Error;
 use Orisai\Scheduler\Status\JobResult;
 use PHPUnit\Framework\TestCase;
@@ -11,7 +12,10 @@ final class JobResultTest extends TestCase
 
 	public function test(): void
 	{
-		$result = new JobResult(null);
+		$end = new DateTimeImmutable();
+
+		$result = new JobResult($end, null);
+		self::assertSame($end, $result->getEnd());
 		self::assertNull($result->getThrowable());
 	}
 
@@ -19,7 +23,7 @@ final class JobResultTest extends TestCase
 	{
 		$throwable = new Error();
 
-		$result = new JobResult($throwable);
+		$result = new JobResult(new DateTimeImmutable(), $throwable);
 		self::assertSame($throwable, $result->getThrowable());
 	}
 

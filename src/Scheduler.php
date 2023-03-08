@@ -3,13 +3,17 @@
 namespace Orisai\Scheduler;
 
 use Closure;
+use Orisai\Clock\SystemClock;
 use Orisai\Scheduler\Job\Job;
 use Orisai\Scheduler\Status\JobInfo;
 use Orisai\Scheduler\Status\JobResult;
+use Psr\Clock\ClockInterface;
 use Throwable;
 
 final class Scheduler
 {
+
+	private ClockInterface $clock;
 
 	/** @var list<Job> */
 	private array $jobs = [];
@@ -20,6 +24,11 @@ final class Scheduler
 	/** @var list<Closure(JobInfo, JobResult): void> */
 	private array $afterJob = [];
 
+	public function __construct(?ClockInterface $clock = null)
+	{
+		$this->clock = $clock ?? new SystemClock();
+	}
+
 	public function addJob(Job $job): void
 	{
 		$this->jobs[] = $job;
@@ -28,7 +37,7 @@ final class Scheduler
 	public function run(): void
 	{
 		foreach ($this->jobs as $job) {
-			$info = new JobInfo();
+			$info = new JobInfo($this->clock->now());
 
 			foreach ($this->beforeJob as $cb) {
 				$cb($info);
@@ -41,7 +50,7 @@ final class Scheduler
 				// Handled bellow
 			}
 
-			$result = new JobResult($throwable);
+			$result = new JobResult($this->clock->now(), $throwable);
 
 			foreach ($this->afterJob as $cb) {
 				$cb($info, $result);

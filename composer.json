@@ -27,6 +27,7 @@
 	],
 	"require": {
 		"php": ">=7.4.0 <8.3.0",
+		"orisai/clock": "^1.1.1",
 		"orisai/exceptions": "^1.0.0"
 	},
 	"require-dev": {
