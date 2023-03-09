@@ -1,12 +1,32 @@
 parameters:
 	ignoreErrors:
 		-
+			message: "#^Parameter \\#1 \\$expression of class Orisai\\\\Scheduler\\\\Status\\\\JobInfo constructor expects string, string\\|null given\\.$#"
+			count: 1
+			path: ../src/Scheduler.php
+
+		-
 			message: "#^Call to static method PHPUnit\\\\Framework\\\\Assert\\:\\:assertSame\\(\\) with 2 and 1 will always evaluate to false\\.$#"
 			count: 1
 			path: ../tests/Unit/Job/CallbackJobTest.php
 
 		-
+			message: "#^Call to static method PHPUnit\\\\Framework\\\\Assert\\:\\:assertSame\\(\\) with 1 and 1 will always evaluate to true\\.$#"
+			count: 1
+			path: ../tests/Unit/SchedulerTest.php
+
+		-
 			message: "#^Call to static method PHPUnit\\\\Framework\\\\Assert\\:\\:assertSame\\(\\) with 2 and 1 will always evaluate to false\\.$#"
+			count: 1
+			path: ../tests/Unit/SchedulerTest.php
+
+		-
+			message: "#^Call to static method PHPUnit\\\\Framework\\\\Assert\\:\\:assertSame\\(\\) with array\\{'\\* \\* \\* \\* \\*', '1 \\* \\* \\* \\*'\\} and array\\{\\} will always evaluate to false\\.$#"
+			count: 1
+			path: ../tests/Unit/SchedulerTest.php
+
+		-
+			message: "#^Call to static method PHPUnit\\\\Framework\\\\Assert\\:\\:assertSame\\(\\) with array\\{'\\* \\* \\* \\* \\*'\\} and array\\{\\} will always evaluate to false\\.$#"
 			count: 1
 			path: ../tests/Unit/SchedulerTest.php
 
@@ -16,6 +36,6 @@ parameters:
 			path: ../tests/Unit/SchedulerTest.php
 
 		-
-			message: "#^Parameter \\#1 \\$start of class Orisai\\\\Scheduler\\\\Status\\\\JobInfo constructor expects DateTimeImmutable, DateTimeImmutable\\|false given\\.$#"
+			message: "#^Parameter \\#2 \\$start of class Orisai\\\\Scheduler\\\\Status\\\\JobInfo constructor expects DateTimeImmutable, DateTimeImmutable\\|false given\\.$#"
 			count: 2
 			path: ../tests/Unit/SchedulerTest.php

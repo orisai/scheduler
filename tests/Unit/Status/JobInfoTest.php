@@ -11,9 +11,11 @@ final class JobInfoTest extends TestCase
 
 	public function test(): void
 	{
+		$expression = '* * * * *';
 		$start = new DateTimeImmutable();
 
-		$info = new JobInfo($start);
+		$info = new JobInfo($expression, $start);
+		self::assertSame($expression, $info->getExpression());
 		self::assertSame($start, $info->getStart());
 	}
 

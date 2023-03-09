@@ -6,6 +6,7 @@ Cron job scheduler - with locks, parallelism and more
 
 - [Why do you need it?](#why-do-you-need-it)
 - [Quick start](#quick-start)
+- [Execution time](#execution-time)
 - [Events](#events)
 - [Logging errors](#logging-errors)
 
@@ -46,23 +47,70 @@ composer require orisai/scheduler
 Create script with scheduler setup (e.g. `bin/scheduler.php`)
 
 ```php
+use Cron\CronExpression;
 use Orisai\Scheduler\Scheduler;
 
 $scheduler = new Scheduler();
 
 // Add jobs
-$scheduler->addJob(new CallbackJob(fn() => exampleTask()));
+$scheduler->addJob(
+	new CallbackJob(fn() => exampleTask()),
+	new CronExpression('* * * * *'),
+);
 
 $scheduler->run();
 ```
 
 Configure crontab to run your script each minute
 
-```txt
+```
 * * * * * path/to/bin/scheduler.php >> /dev/null 2>&1
 ```
 
 Got to go!
+
+## Execution time
+
+Cron execution time is expressed via `CronExpression`, using crontab syntax
+
+```php
+use Cron\CronExpression;
+
+$scheduler->addJob(
+	/* ... */,
+	new CronExpression('* * * * *'),
+);
+```
+
+It's important to use caution with cron syntax, so please refer to the example below.
+To validate your cron, you can also utilize [crontab.guru](https://crontab.guru).
+
+```
+*   *   *   *   *
+-   -   -   -   -
+|   |   |   |   |
+|   |   |   |   |
+|   |   |   |   +----- day of week (0-6) (or SUN-SAT) (0=Sunday)
+|   |   |   +--------- month (1-12) (or JAN-DEC)
+|   |   +------------- day of month (1-31)
+|   +----------------- hour (0-23)
++--------------------- minute (0-59)
+```
+
+Each part of expression can also use wildcard, lists, ranges and steps:
+
+- wildcard - `* * * * *` - At every minute.
+- lists - e.g. `15,30 * * * *` - At minute 15 and 30.
+- ranges - e.g. `1-9 * * * *` - At every minute from 1 through 9.
+- steps - e.g. `*/5 * * * *` - At every 5th minute.
+
+You can also use macro instead of an expression:
+
+- `@yearly`, `@annually` - Run once a year, midnight, Jan. 1 - `0 0 1 1 *`
+- `@monthly` - Run once a month, midnight, first of month - `0 0 1 * *`
+- `@weekly` - Run once a week, midnight on Sun - `0 0 * * 0`
+- `@daily`, `@midnight` - Run once a day, midnight - `0 0 * * *`
+- `@hourly` - Run once an hour, first minute - `0 * * * *`
 
 ## Events
 

@@ -3,6 +3,7 @@
 namespace Orisai\Scheduler;
 
 use Closure;
+use Cron\CronExpression;
 use Orisai\Clock\SystemClock;
 use Orisai\Scheduler\Job\Job;
 use Orisai\Scheduler\Status\JobInfo;
@@ -15,7 +16,7 @@ final class Scheduler
 
 	private ClockInterface $clock;
 
-	/** @var list<Job> */
+	/** @var list<array{Job, CronExpression}> */
 	private array $jobs = [];
 
 	/** @var list<Closure(JobInfo): void> */
@@ -29,15 +30,26 @@ final class Scheduler
 		$this->clock = $clock ?? new SystemClock();
 	}
 
-	public function addJob(Job $job): void
+	public function addJob(Job $job, CronExpression $expression): void
 	{
-		$this->jobs[] = $job;
+		$this->jobs[] = [$job, $expression];
 	}
 
 	public function run(): void
 	{
-		foreach ($this->jobs as $job) {
-			$info = new JobInfo($this->clock->now());
+		$runStart = $this->clock->now();
+		$jobs = [];
+		foreach ($this->jobs as [$job, $expression]) {
+			if ($expression->isDue($runStart)) {
+				$jobs[] = [$job, $expression];
+			}
+		}
+
+		foreach ($jobs as [$job, $expression]) {
+			$info = new JobInfo(
+				$expression->getExpression(),
+				$this->clock->now(),
+			);
 
 			foreach ($this->beforeJob as $cb) {
 				$cb($info);
