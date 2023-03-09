@@ -11,6 +11,7 @@ use Orisai\Scheduler\Job\CallbackJob;
 use Orisai\Scheduler\Scheduler;
 use Orisai\Scheduler\Status\JobInfo;
 use Orisai\Scheduler\Status\JobResult;
+use Orisai\Scheduler\Status\RunSummary;
 use PHPUnit\Framework\TestCase;
 
 final class SchedulerTest extends TestCase
@@ -33,6 +34,16 @@ final class SchedulerTest extends TestCase
 
 		$scheduler->run();
 		self::assertSame(2, $i);
+	}
+
+	public function testNoJobs(): void
+	{
+		$scheduler = new Scheduler();
+
+		self::assertEquals(
+			new RunSummary([]),
+			$scheduler->run(),
+		);
 	}
 
 	public function testFailingJob(): void
