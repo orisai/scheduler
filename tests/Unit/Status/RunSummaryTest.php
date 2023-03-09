@@ -2,6 +2,7 @@
 
 namespace Tests\Orisai\Scheduler\Unit\Status;
 
+use Cron\CronExpression;
 use DateTimeImmutable;
 use Orisai\Scheduler\Status\JobInfo;
 use Orisai\Scheduler\Status\JobResult;
@@ -16,11 +17,11 @@ final class RunSummaryTest extends TestCase
 		$jobs = [
 			[
 				new JobInfo('1', '* * * * *', new DateTimeImmutable()),
-				new JobResult(new DateTimeImmutable(), null),
+				new JobResult(new CronExpression('* * * * *'), new DateTimeImmutable(), null),
 			],
 			[
 				new JobInfo('2', '1 * * * *', new DateTimeImmutable()),
-				new JobResult(new DateTimeImmutable(), null),
+				new JobResult(new CronExpression('1 * * * *'), new DateTimeImmutable(), null),
 			],
 		];
 

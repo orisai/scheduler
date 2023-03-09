@@ -65,7 +65,7 @@ final class Scheduler
 				// Handled bellow
 			}
 
-			$result = new JobResult($this->clock->now(), $throwable);
+			$result = new JobResult($expression, $this->clock->now(), $throwable);
 
 			foreach ($this->afterJob as $cb) {
 				$cb($info, $result);

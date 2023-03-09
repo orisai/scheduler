@@ -238,6 +238,10 @@ Result:
 ```php
 $end = $result->getEnd(); // DateTimeImmutable
 $throwable = $result->getThrowable(); // Throwable|null
+
+// Next runs are computed from time when job was finished
+$nextRun = $info->getNextRunDate(); // DateTimeImmutable
+$threeNextRuns = $info->getNextRunDates(3); // list<DateTimeImmutable>
 ```
 
 ## Run summary

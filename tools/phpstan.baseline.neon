@@ -31,7 +31,7 @@ parameters:
 			path: ../tests/Unit/SchedulerTest.php
 
 		-
-			message: "#^Parameter \\#1 \\$end of class Orisai\\\\Scheduler\\\\Status\\\\JobResult constructor expects DateTimeImmutable, DateTimeImmutable\\|false given\\.$#"
+			message: "#^Parameter \\#2 \\$end of class Orisai\\\\Scheduler\\\\Status\\\\JobResult constructor expects DateTimeImmutable, DateTimeImmutable\\|false given\\.$#"
 			count: 1
 			path: ../tests/Unit/SchedulerTest.php
 
@@ -39,3 +39,8 @@ parameters:
 			message: "#^Parameter \\#3 \\$start of class Orisai\\\\Scheduler\\\\Status\\\\JobInfo constructor expects DateTimeImmutable, DateTimeImmutable\\|false given\\.$#"
 			count: 2
 			path: ../tests/Unit/SchedulerTest.php
+
+		-
+			message: "#^Parameter \\#2 \\$end of class Orisai\\\\Scheduler\\\\Status\\\\JobResult constructor expects DateTimeImmutable, DateTimeImmutable\\|false given\\.$#"
+			count: 1
+			path: ../tests/Unit/Status/JobResultTest.php

@@ -121,11 +121,11 @@ final class SchedulerTest extends TestCase
 			[
 				[
 					new JobInfo('Tests\Orisai\Scheduler\Unit\{closure}', '* * * * *', $now),
-					new JobResult($now, new Exception('test')),
+					new JobResult(new CronExpression('* * * * *'), $now, new Exception('test')),
 				],
 				[
 					new JobInfo('Tests\Orisai\Scheduler\Unit\{closure}', '* * * * *', $now),
-					new JobResult($now, null),
+					new JobResult(new CronExpression('* * * * *'), $now, null),
 				],
 			],
 			$afterCollected,
@@ -178,6 +178,7 @@ final class SchedulerTest extends TestCase
 						DateTimeImmutable::createFromFormat('U', '1'),
 					),
 					new JobResult(
+						new CronExpression('* * * * *'),
 						DateTimeImmutable::createFromFormat('U', '2'),
 						null,
 					),
@@ -289,7 +290,7 @@ final class SchedulerTest extends TestCase
 						'* * * * *',
 						$now,
 					),
-					new JobResult($now, null),
+					new JobResult(new CronExpression('* * * * *'), $now, null),
 				],
 				[
 					new JobInfo(
@@ -297,7 +298,7 @@ final class SchedulerTest extends TestCase
 						'* * * * *',
 						$now,
 					),
-					new JobResult($now, null),
+					new JobResult(new CronExpression('* * * * *'), $now, null),
 				],
 			],
 			$summary->getJobs(),
