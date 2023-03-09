@@ -7,14 +7,22 @@ use DateTimeImmutable;
 final class JobInfo
 {
 
+	private string $name;
+
 	private string $expression;
 
 	private DateTimeImmutable $start;
 
-	public function __construct(string $expression, DateTimeImmutable $start)
+	public function __construct(string $name, string $expression, DateTimeImmutable $start)
 	{
+		$this->name = $name;
 		$this->expression = $expression;
 		$this->start = $start;
+	}
+
+	public function getName(): string
+	{
+		return $this->name;
 	}
 
 	public function getExpression(): string

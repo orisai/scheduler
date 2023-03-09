@@ -127,7 +127,8 @@ $scheduler->addBeforeJobCallback(
 	function(JobInfo $info): void {
 		// Executes before job start
 
-		$info->getStart(); // DateTimeImmutable
+		$name = $info->getName(); // string
+		$start = $info->getStart(); // DateTimeImmutable
 	},
 );
 
@@ -195,6 +196,12 @@ use Orisai\Scheduler\Job\Job;
 
 final class CustomJob implements Job
 {
+
+	public function getName(): string
+	{
+		// Provide (preferably unique) name of the job. It will be used in jobs overview
+		return static::class;
+	}
 
 	public function run(): void
 	{

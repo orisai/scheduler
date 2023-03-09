@@ -101,19 +101,19 @@ final class SchedulerTest extends TestCase
 
 		self::assertEquals(
 			[
-				new JobInfo('* * * * *', $now),
-				new JobInfo('* * * * *', $now),
+				new JobInfo('Tests\Orisai\Scheduler\Unit\{closure}', '* * * * *', $now),
+				new JobInfo('Tests\Orisai\Scheduler\Unit\{closure}', '* * * * *', $now),
 			],
 			$beforeCollected,
 		);
 		self::assertEquals(
 			[
 				[
-					new JobInfo('* * * * *', $now),
+					new JobInfo('Tests\Orisai\Scheduler\Unit\{closure}', '* * * * *', $now),
 					new JobResult($now, new Exception('test')),
 				],
 				[
-					new JobInfo('* * * * *', $now),
+					new JobInfo('Tests\Orisai\Scheduler\Unit\{closure}', '* * * * *', $now),
 					new JobResult($now, null),
 				],
 			],
@@ -151,6 +151,7 @@ final class SchedulerTest extends TestCase
 		self::assertEquals(
 			[
 				new JobInfo(
+					'Tests\Orisai\Scheduler\Unit\{closure}',
 					'* * * * *',
 					DateTimeImmutable::createFromFormat('U', '1'),
 				),
@@ -161,6 +162,7 @@ final class SchedulerTest extends TestCase
 			[
 				[
 					new JobInfo(
+						'Tests\Orisai\Scheduler\Unit\{closure}',
 						'* * * * *',
 						DateTimeImmutable::createFromFormat('U', '1'),
 					),

@@ -47,6 +47,7 @@ final class Scheduler
 
 		foreach ($jobs as [$job, $expression]) {
 			$info = new JobInfo(
+				$job->getName(),
 				$expression->getExpression(),
 				$this->clock->now(),
 			);
