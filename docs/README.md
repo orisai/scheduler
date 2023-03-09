@@ -14,6 +14,8 @@ Cron job scheduler - with locks, parallelism and more
 	- [Custom job](#custom-job)
 - [Job info and result](#job-info-and-result)
 - [Run summary](#run-summary)
+- [CLI commands](#cli-commands)
+	- [Run command](#run-command)
 
 ## Why do you need it?
 
@@ -69,7 +71,7 @@ $scheduler->run();
 Configure crontab to run your script each minute
 
 ```
-* * * * * path/to/bin/scheduler.php >> /dev/null 2>&1
+* * * * * path/to/project/bin/scheduler.php >> /dev/null 2>&1
 ```
 
 Got to go!
@@ -252,3 +254,33 @@ foreach ($summary->getJobs() as [$info, $result]) {
 ```
 
 Check [job info and result](#job-info-and-result) for available jobs status info
+
+## CLI commands
+
+For symfony/console you may use our commands:
+
+- [Run](#run-command)
+
+> Examples assume you run console via executable php script `bin/console`
+
+Assuming you don't use some DI library for handling services, register commands like this:
+
+```php
+use Symfony\Component\Console\Application;
+use Orisai\Scheduler\Command\RunCommand;
+
+$app = new Application();
+$app->addCommands([new RunCommand($scheduler)])
+```
+
+### Run command
+
+Run scheduler once, executing jobs scheduled for the current minute
+
+`bin/console scheduler:run`
+
+You can also change crontab settings to use command instead:
+
+```
+* * * * * php path/to/project/bin/console scheduler:run >> /dev/null 2>&1
+```
