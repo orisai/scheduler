@@ -8,6 +8,7 @@ use Orisai\Clock\SystemClock;
 use Orisai\Scheduler\Job\Job;
 use Orisai\Scheduler\Status\JobInfo;
 use Orisai\Scheduler\Status\JobResult;
+use Orisai\Scheduler\Status\RunSummary;
 use Psr\Clock\ClockInterface;
 use Throwable;
 
@@ -35,7 +36,7 @@ final class Scheduler
 		$this->jobs[] = [$job, $expression];
 	}
 
-	public function run(): void
+	public function run(): RunSummary
 	{
 		$runStart = $this->clock->now();
 		$jobs = [];
@@ -45,6 +46,7 @@ final class Scheduler
 			}
 		}
 
+		$summaryJobs = [];
 		foreach ($jobs as [$job, $expression]) {
 			$info = new JobInfo(
 				$job->getName(),
@@ -68,7 +70,11 @@ final class Scheduler
 			foreach ($this->afterJob as $cb) {
 				$cb($info, $result);
 			}
+
+			$summaryJobs[] = [$info, $result];
 		}
+
+		return new RunSummary($summaryJobs);
 	}
 
 	/**

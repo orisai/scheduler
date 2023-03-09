@@ -254,4 +254,43 @@ final class SchedulerTest extends TestCase
 		self::assertSame(1, $i);
 	}
 
+	public function testRunSummary(): void
+	{
+		$clock = new FrozenClock(1);
+		$scheduler = new Scheduler($clock);
+
+		$job = new CallbackJob(
+			static function (): void {
+				// Noop
+			},
+		);
+		$scheduler->addJob($job, new CronExpression('* * * * *'));
+		$scheduler->addJob($job, new CronExpression('* * * * *'));
+
+		$summary = $scheduler->run();
+
+		$now = $clock->now();
+		self::assertEquals(
+			[
+				[
+					new JobInfo(
+						'Tests\Orisai\Scheduler\Unit\{closure}',
+						'* * * * *',
+						$now,
+					),
+					new JobResult($now, null),
+				],
+				[
+					new JobInfo(
+						'Tests\Orisai\Scheduler\Unit\{closure}',
+						'* * * * *',
+						$now,
+					),
+					new JobResult($now, null),
+				],
+			],
+			$summary->getJobs(),
+		);
+	}
+
 }

@@ -12,6 +12,8 @@ Cron job scheduler - with locks, parallelism and more
 - [Job types](#job-types)
 	- [Callback job](#callback-job)
 	- [Custom job](#custom-job)
+- [Job info and result](#job-info-and-result)
+- [Run summary](#run-summary)
 
 ## Why do you need it?
 
@@ -135,12 +137,11 @@ $scheduler->addBeforeJobCallback(
 $scheduler->addAfterJobCallback(
 	function(JobInfo $info, JobResult $result): void {
 		// Executes after job finish
-
-		$end = $result->getEnd(); // DateTimeImmutable
-		$throwable = $result->getThrowable(); // Throwable|null
 	},
 );
 ```
+
+Check [job info and result](#job-info-and-result) for available status info
 
 ## Logging errors
 
@@ -217,3 +218,37 @@ $scheduler->addJob(
 	/* ... */,
 );
 ```
+
+## Job info and result
+
+Status information available via [events](#events) and [run summary](#run-summary)
+
+Info:
+
+```php
+$name = $info->getName(); // string
+$expression = $info->getExpression(); // string, e.g. '* * * * *'
+$start = $info->getStart(); // DateTimeImmutable
+```
+
+Result:
+
+```php
+$end = $result->getEnd(); // DateTimeImmutable
+$throwable = $result->getThrowable(); // Throwable|null
+```
+
+## Run summary
+
+Scheduler run returns summary for inspection
+
+```php
+$summary = $scheduler->run(); // RunSummary
+
+foreach ($summary->getJobs() as [$info, $result]) {
+	// $info instanceof JobInfo
+	// $result instanceof JobResult
+}
+```
+
+Check [job info and result](#job-info-and-result) for available jobs status info
