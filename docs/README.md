@@ -9,6 +9,9 @@ Cron job scheduler - with locks, parallelism and more
 - [Execution time](#execution-time)
 - [Events](#events)
 - [Logging errors](#logging-errors)
+- [Job types](#job-types)
+	- [Callback job](#callback-job)
+	- [Custom job](#custom-job)
 
 ## Why do you need it?
 
@@ -159,5 +162,51 @@ $scheduler->addAfterJobCallback(
 			]);
 		}
 	},
+);
+```
+
+## Job types
+
+### Callback job
+
+Calls given Closure, when job is run
+
+```php
+use Closure;
+use Orisai\Scheduler\Job\CallbackJob;
+
+$scheduler->addJob(
+	new CallbackJob(Closure::fromCallable([$object, 'method'])),
+	/* ... */,
+);
+
+$scheduler->addJob(
+	new CallbackJob(fn() => exampleTask()),
+	/* ... */,
+);
+```
+
+### Custom job
+
+Create own job implementation
+
+```php
+use Orisai\Scheduler\Job\Job;
+
+final class CustomJob implements Job
+{
+
+	public function run(): void
+	{
+ 		// Do whatever you need to
+	}
+
+}
+```
+
+```php
+$scheduler->addJob(
+	new CustomJob(),
+	/* ... */,
 );
 ```
