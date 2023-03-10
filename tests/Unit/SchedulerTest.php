@@ -17,7 +17,7 @@ use PHPUnit\Framework\TestCase;
 final class SchedulerTest extends TestCase
 {
 
-	public function testRun(): void
+	public function testBasic(): void
 	{
 		$scheduler = new Scheduler();
 
@@ -27,7 +27,12 @@ final class SchedulerTest extends TestCase
 				$i++;
 			},
 		);
-		$scheduler->addJob($job, new CronExpression('* * * * *'));
+		$expression = new CronExpression('* * * * *');
+		$scheduler->addJob($job, $expression);
+
+		self::assertSame([
+			[$job, $expression],
+		], $scheduler->getJobs());
 
 		$scheduler->run();
 		self::assertSame(1, $i);
@@ -39,6 +44,8 @@ final class SchedulerTest extends TestCase
 	public function testNoJobs(): void
 	{
 		$scheduler = new Scheduler();
+
+		self::assertSame([], $scheduler->getJobs());
 
 		self::assertEquals(
 			new RunSummary([]),

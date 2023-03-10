@@ -31,6 +31,14 @@ final class Scheduler
 		$this->clock = $clock ?? new SystemClock();
 	}
 
+	/**
+	 * @return list<array{Job, CronExpression}>
+	 */
+	public function getJobs(): array
+	{
+		return $this->jobs;
+	}
+
 	public function addJob(Job $job, CronExpression $expression): void
 	{
 		$this->jobs[] = [$job, $expression];

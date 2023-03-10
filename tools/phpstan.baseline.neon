@@ -1,6 +1,16 @@
 parameters:
 	ignoreErrors:
 		-
+			message: "#^Parameter \\#1 \\$input of function str_pad expects string, string\\|null given\\.$#"
+			count: 1
+			path: ../src/Command/ListCommand.php
+
+		-
+			message: "#^Parameter \\#1 \\$str of function mb_strlen expects string, string\\|null given\\.$#"
+			count: 1
+			path: ../src/Command/ListCommand.php
+
+		-
 			message: "#^Parameter \\#2 \\$expression of class Orisai\\\\Scheduler\\\\Status\\\\JobInfo constructor expects string, string\\|null given\\.$#"
 			count: 1
 			path: ../src/Scheduler.php
