@@ -11,6 +11,16 @@ parameters:
 			path: ../src/Command/ListCommand.php
 
 		-
+			message: "#^Loose comparison via \"\\!\\=\" is not allowed\\.$#"
+			count: 1
+			path: ../src/Command/WorkerCommand.php
+
+		-
+			message: "#^While loop condition is always true\\.$#"
+			count: 1
+			path: ../src/Command/WorkerCommand.php
+
+		-
 			message: "#^Parameter \\#2 \\$expression of class Orisai\\\\Scheduler\\\\Status\\\\JobInfo constructor expects string, string\\|null given\\.$#"
 			count: 1
 			path: ../src/Scheduler.php

@@ -17,6 +17,7 @@ Cron job scheduler - with locks, parallelism and more
 - [CLI commands](#cli-commands)
 	- [Run command](#run-command)
 	- [List command](#list-command)
+	- [Worker command](#worker-command)
 
 ## Why do you need it?
 
@@ -266,6 +267,7 @@ For symfony/console you may use our commands:
 
 - [Run](#run-command)
 - [List](#list-command)
+- [Worker](#worker-command)
 
 > Examples assume you run console via executable php script `bin/console`
 
@@ -275,10 +277,12 @@ Assuming you don't use some DI library for handling services, register commands 
 use Symfony\Component\Console\Application;
 use Orisai\Scheduler\Command\ListCommand;
 use Orisai\Scheduler\Command\RunCommand;
+use Orisai\Scheduler\Command\WorkerCommand;
 
 $app = new Application();
 $app->addCommands([new ListCommand($scheduler)])
 $app->addCommands([new RunCommand($scheduler)])
+$app->addCommands([new WorkerCommand()])
 ```
 
 ### Run command
@@ -298,3 +302,12 @@ You can also change crontab settings to use command instead:
 List all scheduled jobs
 
 `bin/console scheduler:list`
+
+### Worker command
+
+Run scheduler repeatedly, once every minute
+
+`bin/console scheduler:worker`
+
+- requires `pcntl_*` function to be enabled
+- if your executable script is not `bin/console`, specify it - `your/console scheduler:worker -e=your/console`
