@@ -9,6 +9,7 @@ use Orisai\Scheduler\Command\ListCommand;
 use Orisai\Scheduler\Job\CallbackJob;
 use Orisai\Scheduler\Scheduler;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Tester\CommandTester;
 use function array_map;
 use function explode;
@@ -88,6 +89,29 @@ MSG,
   */30 7-15 * * 1-5  Tests\Orisai\Scheduler\Unit\Command\{closure}............... Next Due: 5 hours
           * * * 4 *  Tests\Orisai\Scheduler\Unit\Command\{closure}.............. Next Due: 2 months
        30 * 12 10 *  Tests\Orisai\Scheduler\Unit\Command\{closure}.............. Next Due: 9 months
+
+MSG,
+			implode(
+				PHP_EOL,
+				array_map(
+					static fn (string $s): string => rtrim($s),
+					explode(PHP_EOL, $tester->getDisplay()),
+				),
+			),
+		);
+		self::assertSame($command::SUCCESS, $code);
+
+		putenv('COLUMNS=80');
+		$code = $tester->execute([], [
+			'verbosity' => OutputInterface::VERBOSITY_VERBOSE,
+		]);
+
+		self::assertSame(
+			<<<'MSG'
+          * * * * *  Tests\Orisai\Scheduler\Unit\Command\{closure} Next Due: 1970-01-01 01:01:00 +01:00
+  */30 7-15 * * 1-5  Tests\Orisai\Scheduler\Unit\Command\{closure} Next Due: 1970-01-01 07:00:00 +01:00
+          * * * 4 *  Tests\Orisai\Scheduler\Unit\Command\{closure} Next Due: 1970-04-01 00:00:00 +01:00
+       30 * 12 10 *  Tests\Orisai\Scheduler\Unit\Command\{closure} Next Due: 1970-10-12 00:30:00 +01:00
 
 MSG,
 			implode(

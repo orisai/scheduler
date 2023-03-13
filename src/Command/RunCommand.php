@@ -54,6 +54,7 @@ final class RunCommand extends Command
 			$runStart = $info->getStart()->format('Y-m-d H:i:s');
 			$running = ' Running ';
 			$jobName = $info->getName();
+			/* @infection-ignore-all */
 			$diff = (int) $result->getEnd()->format('Uv') - (int) $info->getStart()->format('Uv');
 			$runTime = number_format($diff) . 'ms';
 			$status = $result->getThrowable() === null ? '<fg=#16A34A>DONE</>' : '<fg=#EF4444>FAIL</>';
@@ -61,6 +62,7 @@ final class RunCommand extends Command
 			$dots = str_repeat(
 				'.',
 				max(
+				/* @infection-ignore-all */
 					$terminalWidth - mb_strlen($runStart . $running . $jobName . $runTime . strip_tags($status)) - 2,
 					0,
 				),

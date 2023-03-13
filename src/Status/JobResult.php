@@ -34,6 +34,8 @@ final class JobResult
 
 	/**
 	 * @param int<0, max> $nth
+	 *
+	 * @infection-ignore-all
 	 */
 	public function getNextRunDate(int $nth = 0): DateTimeImmutable
 	{

@@ -71,6 +71,7 @@ final class ListCommand extends Command
 			$dots = str_repeat(
 				'.',
 				max(
+				/* @infection-ignore-all */
 					$terminalWidth - mb_strlen($expressionString . $command . $nextDueDateLabel . $nextDueDate) - 6,
 					0,
 				),
@@ -96,6 +97,9 @@ final class ListCommand extends Command
 		);
 	}
 
+	/**
+	 * @infection-ignore-all
+	 */
 	private function getRelativeTime(DateTimeImmutable $time): string
 	{
 		$d = [
@@ -130,6 +134,8 @@ final class ListCommand extends Command
 
 	/**
 	 * @param list<array{Job, CronExpression}> $jobs
+	 *
+	 * @infection-ignore-all
 	 */
 	private function getCronExpressionSpacing(array $jobs): int
 	{

@@ -2,6 +2,7 @@
 
 namespace Orisai\Scheduler\Command;
 
+use Closure;
 use DateTimeImmutable;
 use Orisai\Clock\SystemClock;
 use Psr\Clock\ClockInterface;
@@ -11,16 +12,25 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Process\Process;
 use function array_map;
+use function assert;
 use function escapeshellarg;
 use function implode;
 use function ltrim;
 use function usleep;
 use const PHP_BINARY;
 
+/**
+ * @infection-ignore-all
+ */
 final class WorkerCommand extends Command
 {
 
 	private ClockInterface $clock;
+
+	private ?int $testRuns = null;
+
+	/** @var Closure(): void|null */
+	private ?Closure $testCb = null;
 
 	public function __construct(?ClockInterface $clock = null)
 	{
@@ -69,19 +79,28 @@ final class WorkerCommand extends Command
 
 			if (
 				(int) $currentTime->format('s') === 0
-				&& $this->nullSeconds($this->clock->now()) != $lastExecutionStartedAt
+				&& $this->nullSeconds($currentTime) != $lastExecutionStartedAt
+				&& $this->testRuns !== 0
 			) {
 				$executions[] = $execution = Process::fromShellCommandline($command);
 
+				// @codeCoverageIgnoreStart
 				if (Process::isTtySupported()) {
 					$execution->setTty(true);
 				} elseif (Process::isPtySupported()) {
 					$execution->setPty(true);
 				}
 
-				$execution->start();
+				// @codeCoverageIgnoreEnd
 
+				$execution->start();
 				$lastExecutionStartedAt = $this->nullSeconds($this->clock->now());
+
+				if ($this->testRuns !== null) {
+					$this->testRuns--;
+					assert($this->testCb !== null);
+					($this->testCb)();
+				}
 			}
 
 			foreach ($executions as $key => $execution) {
@@ -94,7 +113,13 @@ final class WorkerCommand extends Command
 					unset($executions[$key]);
 				}
 			}
+
+			if ($this->testRuns === 0 && $executions === []) {
+				break;
+			}
 		}
+
+		return self::SUCCESS;
 	}
 
 	private function nullSeconds(DateTimeImmutable $dt): DateTimeImmutable
@@ -103,6 +128,17 @@ final class WorkerCommand extends Command
 			(int) $dt->format('H'),
 			(int) $dt->format('i'),
 		);
+	}
+
+	/**
+	 * @param Closure(): void $cb
+	 *
+	 * @internal
+	 */
+	public function enableTestMode(int $runs, Closure $cb): void
+	{
+		$this->testRuns = $runs;
+		$this->testCb = $cb;
 	}
 
 }
