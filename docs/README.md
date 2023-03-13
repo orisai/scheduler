@@ -303,6 +303,9 @@ List all scheduled jobs
 
 `bin/console scheduler:list`
 
+- use `--next` to sort jobs by their next execution time
+- `--next=N` lists only *N* next jobs (e.g. `--next=3` prints maximally 3)
+
 ### Worker command
 
 Run scheduler repeatedly, once every minute

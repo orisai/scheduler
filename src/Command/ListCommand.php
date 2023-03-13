@@ -4,20 +4,28 @@ namespace Orisai\Scheduler\Command;
 
 use Cron\CronExpression;
 use DateTimeImmutable;
+use DateTimeInterface;
+use DateTimeZone;
 use Orisai\Clock\SystemClock;
+use Orisai\Exceptions\Logic\InvalidArgument;
 use Orisai\Scheduler\Job\Job;
 use Orisai\Scheduler\Scheduler;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Terminal;
 use function abs;
+use function array_splice;
 use function max;
 use function mb_strlen;
+use function preg_match;
 use function sprintf;
 use function str_pad;
 use function str_repeat;
+use function strnatcmp;
+use function uasort;
 use const STR_PAD_LEFT;
 
 final class ListCommand extends Command
@@ -44,8 +52,17 @@ final class ListCommand extends Command
 		return 'List all scheduled jobs';
 	}
 
+	protected function configure(): void
+	{
+		/** @infection-ignore-all */
+		parent::configure();
+		$this->addOption('next', null, InputOption::VALUE_OPTIONAL, 'Sort jobs by their next execution time', false);
+	}
+
 	protected function execute(InputInterface $input, OutputInterface $output): int
 	{
+		$nextOption = $this->validateOptionNext($input);
+
 		$jobs = $this->scheduler->getJobs();
 
 		if ($jobs === []) {
@@ -57,7 +74,7 @@ final class ListCommand extends Command
 		$terminalWidth = $this->getTerminalWidth();
 		$expressionSpacing = $this->getCronExpressionSpacing($jobs);
 
-		foreach ($jobs as [$job, $expression]) {
+		foreach ($this->sortJobs($jobs, $nextOption) as [$job, $expression]) {
 			$expressionString = $this->formatCronExpression($expression, $expressionSpacing);
 
 			$command = $job->getName();
@@ -88,6 +105,80 @@ final class ListCommand extends Command
 		}
 
 		return self::SUCCESS;
+	}
+
+	/**
+	 * @return bool|int<1, max>
+	 */
+	private function validateOptionNext(InputInterface $input)
+	{
+		$next = $input->getOption('next');
+
+		if ($next === false) {
+			return false;
+		}
+
+		if ($next === null) {
+			return true;
+		}
+
+		if (
+			/** @infection-ignore-all */
+			preg_match('#^[+-]?[0-9]+$#D', $next) !== 1
+			|| ($nextInt = (int) $next) <= 0
+		) {
+			throw InvalidArgument::create()
+				->withMessage(
+					"Command '{$this->getName()}' option --next expects an int value larger than 0, '$next' given.",
+				);
+		}
+
+		return $nextInt;
+	}
+
+	/**
+	 * @param list<array{Job, CronExpression}> $jobs
+	 * @param bool|int<1, max>                 $next
+	 * @return list<array{Job, CronExpression}>
+	 */
+	private function sortJobs(array $jobs, $next): array
+	{
+		if ($next !== false) {
+			/** @infection-ignore-all */
+			uasort($jobs, function ($a, $b): int {
+				$nextDueDateA = $this->getNextDueDateForEvent($a[1])
+					->setTimezone(new DateTimeZone('UTC'));
+				$nextDueDateB = $this->getNextDueDateForEvent($b[1])
+					->setTimezone(new DateTimeZone('UTC'));
+
+				if (
+					$nextDueDateA->format(DateTimeInterface::ATOM)
+					=== $nextDueDateB->format(DateTimeInterface::ATOM)
+				) {
+					return 0;
+				}
+
+				return $nextDueDateA < $nextDueDateB ? -1 : 1;
+			});
+
+			if ($next !== true) {
+				array_splice($jobs, $next);
+			}
+		} else {
+			/** @infection-ignore-all */
+			uasort($jobs, static function ($a, $b): int {
+				$nameA = $a[0]->getName();
+				$nameB = $b[0]->getName();
+
+				if ($nameA === $nameB) {
+					return 0;
+				}
+
+				return strnatcmp($nameA, $nameB);
+			});
+		}
+
+		return $jobs;
 	}
 
 	private function getNextDueDateForEvent(CronExpression $expression): DateTimeImmutable

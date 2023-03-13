@@ -1,6 +1,11 @@
 parameters:
 	ignoreErrors:
 		-
+			message: "#^Method Orisai\\\\Scheduler\\\\Command\\\\ListCommand\\:\\:sortJobs\\(\\) should return list\\<array\\{Orisai\\\\Scheduler\\\\Job\\\\Job, Cron\\\\CronExpression\\}\\> but returns array\\<int\\<0, max\\>, array\\{Orisai\\\\Scheduler\\\\Job\\\\Job, Cron\\\\CronExpression\\}\\>\\.$#"
+			count: 1
+			path: ../src/Command/ListCommand.php
+
+		-
 			message: "#^Parameter \\#1 \\$input of function str_pad expects string, string\\|null given\\.$#"
 			count: 1
 			path: ../src/Command/ListCommand.php
