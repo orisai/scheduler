@@ -310,4 +310,6 @@ Run scheduler repeatedly, once every minute
 `bin/console scheduler:worker`
 
 - requires `pcntl_*` function to be enabled
-- if your executable script is not `bin/console`, specify it - `your/console scheduler:worker -e=your/console`
+- if your executable script is not `bin/console`, specify it:
+	- via `your/console scheduler:worker -e=your/console`
+	- or via constructor parameter `new WorkerCommand(executable: 'your/console')`

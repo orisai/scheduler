@@ -62,6 +62,21 @@ MSG,
 		self::assertCount(4, explode(PHP_EOL, $tester->getDisplay()));
 	}
 
+	public function testExecutableSetter(): void
+	{
+		$clock = new FrozenClock(1_020, new DateTimeZone('Europe/Prague'));
+
+		$command = new WorkerCommand($clock, 'tests/Unit/Command/worker-binary.php');
+		$command->enableTestMode(1, static fn () => $clock->move(60));
+		$tester = new CommandTester($command);
+
+		putenv('COLUMNS=80');
+		$code = $tester->execute([]);
+
+		self::assertSame($command::SUCCESS, $code);
+		self::assertCount(4, explode(PHP_EOL, $tester->getDisplay()));
+	}
+
 	public function testMultipleRuns(): void
 	{
 		$clock = new FrozenClock(1_020, new DateTimeZone('Europe/Prague'));

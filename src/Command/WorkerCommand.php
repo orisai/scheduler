@@ -27,13 +27,16 @@ final class WorkerCommand extends Command
 
 	private ClockInterface $clock;
 
+	private string $executable;
+
 	private ?int $testRuns = null;
 
 	/** @var Closure(): void|null */
 	private ?Closure $testCb = null;
 
-	public function __construct(?ClockInterface $clock = null)
+	public function __construct(?ClockInterface $clock = null, string $executable = 'bin/console')
 	{
+		$this->executable = $executable; // Order matters
 		parent::__construct();
 		$this->clock = $clock ?? new SystemClock();
 	}
@@ -56,7 +59,7 @@ final class WorkerCommand extends Command
 			'e',
 			InputOption::VALUE_REQUIRED,
 			'Executable file for executing console commands',
-			'bin/console',
+			$this->executable,
 		);
 	}
 
