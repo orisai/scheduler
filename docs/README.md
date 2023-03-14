@@ -57,9 +57,9 @@ Create script with scheduler setup (e.g. `bin/scheduler.php`)
 
 ```php
 use Cron\CronExpression;
-use Orisai\Scheduler\Scheduler;
+use Orisai\Scheduler\SimpleScheduler;
 
-$scheduler = new Scheduler();
+$scheduler = new SimpleScheduler();
 
 // Add jobs
 $scheduler->addJob(

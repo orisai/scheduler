@@ -10,7 +10,7 @@ use Orisai\Clock\FrozenClock;
 use Orisai\Exceptions\Logic\InvalidArgument;
 use Orisai\Scheduler\Command\ListCommand;
 use Orisai\Scheduler\Job\CallbackJob;
-use Orisai\Scheduler\Scheduler;
+use Orisai\Scheduler\SimpleScheduler;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Tester\CommandTester;
@@ -30,7 +30,7 @@ final class ListCommandTest extends TestCase
 
 	public function testNoJobs(): void
 	{
-		$scheduler = new Scheduler();
+		$scheduler = new SimpleScheduler();
 
 		$command = new ListCommand($scheduler);
 		$tester = new CommandTester($command);
@@ -50,7 +50,7 @@ MSG,
 	public function testList(): void
 	{
 		$clock = new FrozenClock(1, new DateTimeZone('Europe/Prague'));
-		$scheduler = new Scheduler($clock);
+		$scheduler = new SimpleScheduler($clock);
 
 		$cbs = new CallbackList();
 		$scheduler->addJob(
@@ -142,7 +142,7 @@ MSG,
 	public function testNext(): void
 	{
 		$clock = new FrozenClock(1, new DateTimeZone('Europe/Prague'));
-		$scheduler = new Scheduler($clock);
+		$scheduler = new SimpleScheduler($clock);
 
 		$cbs = new CallbackList();
 		$job = new CallbackJob(Closure::fromCallable([$cbs, 'job1']));
@@ -207,7 +207,7 @@ MSG,
 	 */
 	public function testInvalidNext(string $next): void
 	{
-		$scheduler = new Scheduler();
+		$scheduler = new SimpleScheduler();
 
 		$command = new ListCommand($scheduler);
 		$tester = new CommandTester($command);

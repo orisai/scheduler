@@ -8,19 +8,19 @@ use DateTimeImmutable;
 use Exception;
 use Orisai\Clock\FrozenClock;
 use Orisai\Scheduler\Job\CallbackJob;
-use Orisai\Scheduler\Scheduler;
+use Orisai\Scheduler\SimpleScheduler;
 use Orisai\Scheduler\Status\JobInfo;
 use Orisai\Scheduler\Status\JobResult;
 use Orisai\Scheduler\Status\RunSummary;
 use PHPUnit\Framework\TestCase;
 use Tests\Orisai\Scheduler\Doubles\CallbackList;
 
-final class SchedulerTest extends TestCase
+final class SimpleSchedulerTest extends TestCase
 {
 
 	public function testBasic(): void
 	{
-		$scheduler = new Scheduler();
+		$scheduler = new SimpleScheduler();
 
 		$i = 0;
 		$job = new CallbackJob(
@@ -44,7 +44,7 @@ final class SchedulerTest extends TestCase
 
 	public function testNoJobs(): void
 	{
-		$scheduler = new Scheduler();
+		$scheduler = new SimpleScheduler();
 
 		self::assertSame([], $scheduler->getJobs());
 
@@ -56,7 +56,7 @@ final class SchedulerTest extends TestCase
 
 	public function testFailingJob(): void
 	{
-		$scheduler = new Scheduler();
+		$scheduler = new SimpleScheduler();
 		$cbs = new CallbackList();
 
 		$job1 = new CallbackJob(Closure::fromCallable([$cbs, 'exceptionJob']));
@@ -81,7 +81,7 @@ final class SchedulerTest extends TestCase
 	{
 		$clock = new FrozenClock(1);
 		$now = $clock->now();
-		$scheduler = new Scheduler($clock);
+		$scheduler = new SimpleScheduler($clock);
 		$cbs = new CallbackList();
 
 		$job1 = new CallbackJob(Closure::fromCallable([$cbs, 'exceptionJob']));
@@ -129,7 +129,7 @@ final class SchedulerTest extends TestCase
 	public function testTimeMovement(): void
 	{
 		$clock = new FrozenClock(1);
-		$scheduler = new Scheduler($clock);
+		$scheduler = new SimpleScheduler($clock);
 
 		$job = new CallbackJob(
 			static function (): void {
@@ -156,7 +156,7 @@ final class SchedulerTest extends TestCase
 		self::assertEquals(
 			[
 				new JobInfo(
-					'tests/Unit/SchedulerTest.php:135',
+					'tests/Unit/SimpleSchedulerTest.php:135',
 					'* * * * *',
 					DateTimeImmutable::createFromFormat('U', '1'),
 				),
@@ -167,7 +167,7 @@ final class SchedulerTest extends TestCase
 			[
 				[
 					new JobInfo(
-						'tests/Unit/SchedulerTest.php:135',
+						'tests/Unit/SimpleSchedulerTest.php:135',
 						'* * * * *',
 						DateTimeImmutable::createFromFormat('U', '1'),
 					),
@@ -185,7 +185,7 @@ final class SchedulerTest extends TestCase
 	public function testDueTime(): void
 	{
 		$clock = new FrozenClock(1);
-		$scheduler = new Scheduler($clock);
+		$scheduler = new SimpleScheduler($clock);
 
 		$expressions = [];
 		$scheduler->addAfterJobCallback(static function (JobInfo $info) use (&$expressions): void {
@@ -235,7 +235,7 @@ final class SchedulerTest extends TestCase
 	public function testLongRunningJobDoesNotPreventNextJobToStart(): void
 	{
 		$clock = new FrozenClock(1);
-		$scheduler = new Scheduler($clock);
+		$scheduler = new SimpleScheduler($clock);
 
 		$job1 = new CallbackJob(
 			static function () use ($clock): void {
@@ -263,7 +263,7 @@ final class SchedulerTest extends TestCase
 	public function testRunSummary(): void
 	{
 		$clock = new FrozenClock(1);
-		$scheduler = new Scheduler($clock);
+		$scheduler = new SimpleScheduler($clock);
 
 		$cbs = new CallbackList();
 		$job = new CallbackJob(Closure::fromCallable([$cbs, 'job1']));

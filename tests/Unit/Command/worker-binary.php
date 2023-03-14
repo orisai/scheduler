@@ -6,11 +6,11 @@ use Cron\CronExpression;
 use Orisai\Clock\FrozenClock;
 use Orisai\Scheduler\Command\RunCommand;
 use Orisai\Scheduler\Job\CallbackJob;
-use Orisai\Scheduler\Scheduler;
+use Orisai\Scheduler\SimpleScheduler;
 use Symfony\Component\Console\Application;
 
 $clock = new FrozenClock(1_020, new DateTimeZone('Europe/Prague'));
-$scheduler = new Scheduler($clock);
+$scheduler = new SimpleScheduler($clock);
 $scheduler->addJob(
 	new CallbackJob(static function (): void {
 		// Noop

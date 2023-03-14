@@ -8,7 +8,7 @@ use DateTimeZone;
 use Orisai\Clock\FrozenClock;
 use Orisai\Scheduler\Command\RunCommand;
 use Orisai\Scheduler\Job\CallbackJob;
-use Orisai\Scheduler\Scheduler;
+use Orisai\Scheduler\SimpleScheduler;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Tester\CommandTester;
 use Tests\Orisai\Scheduler\Doubles\CallbackList;
@@ -27,7 +27,7 @@ final class RunCommandTest extends TestCase
 
 	public function testNoJobs(): void
 	{
-		$scheduler = new Scheduler();
+		$scheduler = new SimpleScheduler();
 
 		$command = new RunCommand($scheduler);
 		$tester = new CommandTester($command);
@@ -46,7 +46,7 @@ MSG,
 	public function testSuccess(): void
 	{
 		$clock = new FrozenClock(1, new DateTimeZone('Europe/Prague'));
-		$scheduler = new Scheduler($clock);
+		$scheduler = new SimpleScheduler($clock);
 
 		$cbs = new CallbackList();
 		$scheduler->addJob(
@@ -103,7 +103,7 @@ MSG,
 	public function testFailure(): void
 	{
 		$clock = new FrozenClock(1, new DateTimeZone('Europe/Prague'));
-		$scheduler = new Scheduler($clock);
+		$scheduler = new SimpleScheduler($clock);
 
 		$cbs = new CallbackList();
 		$scheduler->addJob(
