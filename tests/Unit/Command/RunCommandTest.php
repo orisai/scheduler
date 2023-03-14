@@ -2,15 +2,16 @@
 
 namespace Tests\Orisai\Scheduler\Unit\Command;
 
+use Closure;
 use Cron\CronExpression;
 use DateTimeZone;
-use Exception;
 use Orisai\Clock\FrozenClock;
 use Orisai\Scheduler\Command\RunCommand;
 use Orisai\Scheduler\Job\CallbackJob;
 use Orisai\Scheduler\Scheduler;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Tester\CommandTester;
+use Tests\Orisai\Scheduler\Doubles\CallbackList;
 use function array_map;
 use function explode;
 use function implode;
@@ -46,16 +47,14 @@ MSG,
 	{
 		$clock = new FrozenClock(1, new DateTimeZone('Europe/Prague'));
 		$scheduler = new Scheduler($clock);
+
+		$cbs = new CallbackList();
 		$scheduler->addJob(
-			new CallbackJob(static function (): void {
-				// Noop
-			}),
+			new CallbackJob(Closure::fromCallable([$cbs, 'job1'])),
 			new CronExpression('* * * * *'),
 		);
 		$scheduler->addJob(
-			new CallbackJob(static function (): void {
-				// Noop
-			}),
+			new CallbackJob(Closure::fromCallable([$cbs, 'job2'])),
 			new CronExpression('* * * * *'),
 		);
 
@@ -67,8 +66,8 @@ MSG,
 
 		self::assertSame(
 			<<<'MSG'
-1970-01-01 01:00:01 Running Tests\Orisai\Scheduler\Unit\Command\{closure} 0ms DONE
-1970-01-01 01:00:01 Running Tests\Orisai\Scheduler\Unit\Command\{closure} 0ms DONE
+1970-01-01 01:00:01 Running Tests\Orisai\Scheduler\Doubles\CallbackList::job1() 0ms DONE
+1970-01-01 01:00:01 Running Tests\Orisai\Scheduler\Doubles\CallbackList::job2() 0ms DONE
 
 MSG,
 			implode(
@@ -86,8 +85,8 @@ MSG,
 
 		self::assertSame(
 			<<<'MSG'
-1970-01-01 01:00:01 Running Tests\Orisai\Scheduler\Unit\Command\{closure}.................. 0ms DONE
-1970-01-01 01:00:01 Running Tests\Orisai\Scheduler\Unit\Command\{closure}.................. 0ms DONE
+1970-01-01 01:00:01 Running Tests\Orisai\Scheduler\Doubles\CallbackList::job1()............ 0ms DONE
+1970-01-01 01:00:01 Running Tests\Orisai\Scheduler\Doubles\CallbackList::job2()............ 0ms DONE
 
 MSG,
 			implode(
@@ -105,16 +104,14 @@ MSG,
 	{
 		$clock = new FrozenClock(1, new DateTimeZone('Europe/Prague'));
 		$scheduler = new Scheduler($clock);
+
+		$cbs = new CallbackList();
 		$scheduler->addJob(
-			new CallbackJob(static function (): void {
-				// Noop
-			}),
+			new CallbackJob(Closure::fromCallable([$cbs, 'job1'])),
 			new CronExpression('* * * * *'),
 		);
 		$scheduler->addJob(
-			new CallbackJob(static function (): void {
-				throw new Exception();
-			}),
+			new CallbackJob(Closure::fromCallable([$cbs, 'exceptionJob'])),
 			new CronExpression('* * * * *'),
 		);
 
@@ -126,8 +123,8 @@ MSG,
 
 		self::assertSame(
 			<<<'MSG'
-1970-01-01 01:00:01 Running Tests\Orisai\Scheduler\Unit\Command\{closure} 0ms DONE
-1970-01-01 01:00:01 Running Tests\Orisai\Scheduler\Unit\Command\{closure} 0ms FAIL
+1970-01-01 01:00:01 Running Tests\Orisai\Scheduler\Doubles\CallbackList::job1() 0ms DONE
+1970-01-01 01:00:01 Running Tests\Orisai\Scheduler\Doubles\CallbackList::exceptionJob() 0ms FAIL
 
 MSG,
 			implode(

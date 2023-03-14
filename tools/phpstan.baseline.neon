@@ -21,6 +21,11 @@ parameters:
 			path: ../src/Command/WorkerCommand.php
 
 		-
+			message: "#^Parameter \\#3 \\$subject of function str_replace expects array\\|string, string\\|false given\\.$#"
+			count: 1
+			path: ../src/Job/CallbackJob.php
+
+		-
 			message: "#^Parameter \\#2 \\$expression of class Orisai\\\\Scheduler\\\\Status\\\\JobInfo constructor expects string, string\\|null given\\.$#"
 			count: 1
 			path: ../src/Scheduler.php

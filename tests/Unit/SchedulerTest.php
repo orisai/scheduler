@@ -2,9 +2,9 @@
 
 namespace Tests\Orisai\Scheduler\Unit;
 
+use Closure;
 use Cron\CronExpression;
 use DateTimeImmutable;
-use Error;
 use Exception;
 use Orisai\Clock\FrozenClock;
 use Orisai\Scheduler\Job\CallbackJob;
@@ -13,6 +13,7 @@ use Orisai\Scheduler\Status\JobInfo;
 use Orisai\Scheduler\Status\JobResult;
 use Orisai\Scheduler\Status\RunSummary;
 use PHPUnit\Framework\TestCase;
+use Tests\Orisai\Scheduler\Doubles\CallbackList;
 
 final class SchedulerTest extends TestCase
 {
@@ -56,19 +57,12 @@ final class SchedulerTest extends TestCase
 	public function testFailingJob(): void
 	{
 		$scheduler = new Scheduler();
+		$cbs = new CallbackList();
 
-		$job1 = new CallbackJob(
-			static function (): void {
-				throw new Exception('test');
-			},
-		);
+		$job1 = new CallbackJob(Closure::fromCallable([$cbs, 'exceptionJob']));
 		$scheduler->addJob($job1, new CronExpression('* * * * *'));
 
-		$job2 = new CallbackJob(
-			static function (): void {
-				throw new Error('test');
-			},
-		);
+		$job2 = new CallbackJob(Closure::fromCallable([$cbs, 'errorJob']));
 		$scheduler->addJob($job2, new CronExpression('* * * * *'));
 
 		$i = 0;
@@ -88,19 +82,12 @@ final class SchedulerTest extends TestCase
 		$clock = new FrozenClock(1);
 		$now = $clock->now();
 		$scheduler = new Scheduler($clock);
+		$cbs = new CallbackList();
 
-		$job1 = new CallbackJob(
-			static function (): void {
-				throw new Exception('test');
-			},
-		);
+		$job1 = new CallbackJob(Closure::fromCallable([$cbs, 'exceptionJob']));
 		$scheduler->addJob($job1, new CronExpression('* * * * *'));
 
-		$job2 = new CallbackJob(
-			static function (): void {
-				// Noop
-			},
-		);
+		$job2 = new CallbackJob(Closure::fromCallable([$cbs, 'job1']));
 		$scheduler->addJob($job2, new CronExpression('* * * * *'));
 
 		$beforeCollected = [];
@@ -119,19 +106,19 @@ final class SchedulerTest extends TestCase
 
 		self::assertEquals(
 			[
-				new JobInfo('Tests\Orisai\Scheduler\Unit\{closure}', '* * * * *', $now),
-				new JobInfo('Tests\Orisai\Scheduler\Unit\{closure}', '* * * * *', $now),
+				new JobInfo('Tests\Orisai\Scheduler\Doubles\CallbackList::exceptionJob()', '* * * * *', $now),
+				new JobInfo('Tests\Orisai\Scheduler\Doubles\CallbackList::job1()', '* * * * *', $now),
 			],
 			$beforeCollected,
 		);
 		self::assertEquals(
 			[
 				[
-					new JobInfo('Tests\Orisai\Scheduler\Unit\{closure}', '* * * * *', $now),
+					new JobInfo('Tests\Orisai\Scheduler\Doubles\CallbackList::exceptionJob()', '* * * * *', $now),
 					new JobResult(new CronExpression('* * * * *'), $now, new Exception('test')),
 				],
 				[
-					new JobInfo('Tests\Orisai\Scheduler\Unit\{closure}', '* * * * *', $now),
+					new JobInfo('Tests\Orisai\Scheduler\Doubles\CallbackList::job1()', '* * * * *', $now),
 					new JobResult(new CronExpression('* * * * *'), $now, null),
 				],
 			],
@@ -169,7 +156,7 @@ final class SchedulerTest extends TestCase
 		self::assertEquals(
 			[
 				new JobInfo(
-					'Tests\Orisai\Scheduler\Unit\{closure}',
+					'tests/Unit/SchedulerTest.php:135',
 					'* * * * *',
 					DateTimeImmutable::createFromFormat('U', '1'),
 				),
@@ -180,7 +167,7 @@ final class SchedulerTest extends TestCase
 			[
 				[
 					new JobInfo(
-						'Tests\Orisai\Scheduler\Unit\{closure}',
+						'tests/Unit/SchedulerTest.php:135',
 						'* * * * *',
 						DateTimeImmutable::createFromFormat('U', '1'),
 					),
@@ -278,11 +265,8 @@ final class SchedulerTest extends TestCase
 		$clock = new FrozenClock(1);
 		$scheduler = new Scheduler($clock);
 
-		$job = new CallbackJob(
-			static function (): void {
-				// Noop
-			},
-		);
+		$cbs = new CallbackList();
+		$job = new CallbackJob(Closure::fromCallable([$cbs, 'job1']));
 		$scheduler->addJob($job, new CronExpression('* * * * *'));
 		$scheduler->addJob($job, new CronExpression('* * * * *'));
 
@@ -293,7 +277,7 @@ final class SchedulerTest extends TestCase
 			[
 				[
 					new JobInfo(
-						'Tests\Orisai\Scheduler\Unit\{closure}',
+						'Tests\Orisai\Scheduler\Doubles\CallbackList::job1()',
 						'* * * * *',
 						$now,
 					),
@@ -301,7 +285,7 @@ final class SchedulerTest extends TestCase
 				],
 				[
 					new JobInfo(
-						'Tests\Orisai\Scheduler\Unit\{closure}',
+						'Tests\Orisai\Scheduler\Doubles\CallbackList::job1()',
 						'* * * * *',
 						$now,
 					),
