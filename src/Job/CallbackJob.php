@@ -13,11 +13,11 @@ use const DIRECTORY_SEPARATOR;
 final class CallbackJob implements Job
 {
 
-	/** @var Closure(): void */
+	/** @var Closure(JobLock): void */
 	private Closure $callback;
 
 	/**
-	 * @param Closure(): void $callback
+	 * @param Closure(JobLock): void $callback
 	 */
 	public function __construct(Closure $callback)
 	{
@@ -52,9 +52,9 @@ final class CallbackJob implements Job
 		return $refName;
 	}
 
-	public function run(): void
+	public function run(JobLock $lock): void
 	{
-		($this->callback)();
+		($this->callback)($lock);
 	}
 
 }

@@ -4,7 +4,6 @@ namespace Orisai\Scheduler\Status;
 
 use Cron\CronExpression;
 use DateTimeImmutable;
-use Throwable;
 
 final class JobResult
 {
@@ -13,13 +12,13 @@ final class JobResult
 
 	private DateTimeImmutable $end;
 
-	private ?Throwable $throwable;
+	private JobResultState $state;
 
-	public function __construct(CronExpression $expression, DateTimeImmutable $end, ?Throwable $throwable)
+	public function __construct(CronExpression $expression, DateTimeImmutable $end, JobResultState $state)
 	{
 		$this->expression = $expression;
 		$this->end = $end;
-		$this->throwable = $throwable;
+		$this->state = $state;
 	}
 
 	public function getEnd(): DateTimeImmutable
@@ -27,9 +26,9 @@ final class JobResult
 		return $this->end;
 	}
 
-	public function getThrowable(): ?Throwable
+	public function getState(): JobResultState
 	{
-		return $this->throwable;
+		return $this->state;
 	}
 
 	/**

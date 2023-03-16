@@ -2,7 +2,9 @@
 
 namespace Orisai\Scheduler\Command;
 
+use Orisai\Exceptions\Logic\ShouldNotHappen;
 use Orisai\Scheduler\Scheduler;
+use Orisai\Scheduler\Status\JobResultState;
 use Orisai\Scheduler\Status\RunSummary;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -57,7 +59,26 @@ final class RunCommand extends Command
 			/* @infection-ignore-all */
 			$diff = (int) $result->getEnd()->format('Uv') - (int) $info->getStart()->format('Uv');
 			$runTime = number_format($diff) . 'ms';
-			$status = $result->getThrowable() === null ? '<fg=#16A34A>DONE</>' : '<fg=#EF4444>FAIL</>';
+
+			switch ($result->getState()) {
+				case JobResultState::done():
+					$status = '<fg=#16a34a>DONE</>';
+
+					break;
+				case JobResultState::fail():
+					$status = '<fg=#ef4444>FAIL</>';
+
+					break;
+				case JobResultState::skip():
+					$status = '<fg=#ca8a04>SKIP</>';
+
+					break;
+				default:
+					// @codeCoverageIgnoreStart
+					/* @infection-ignore-all */
+					throw ShouldNotHappen::create();
+					// @codeCoverageIgnoreEnd
+			}
 
 			$dots = str_repeat(
 				'.',
@@ -83,7 +104,7 @@ final class RunCommand extends Command
 	private function getExitCode(RunSummary $summary): int
 	{
 		foreach ($summary->getJobs() as [$info, $result]) {
-			if ($result->getThrowable() !== null) {
+			if ($result->getState() === JobResultState::fail()) {
 				return self::FAILURE;
 			}
 		}

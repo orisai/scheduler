@@ -7,6 +7,6 @@ interface Job
 
 	public function getName(): string;
 
-	public function run(): void;
+	public function run(JobLock $lock): void;
 
 }

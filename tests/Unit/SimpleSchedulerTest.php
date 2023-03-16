@@ -5,15 +5,19 @@ namespace Tests\Orisai\Scheduler\Unit;
 use Closure;
 use Cron\CronExpression;
 use DateTimeImmutable;
-use Exception;
 use Orisai\Clock\FrozenClock;
 use Orisai\Scheduler\Job\CallbackJob;
 use Orisai\Scheduler\SimpleScheduler;
 use Orisai\Scheduler\Status\JobInfo;
 use Orisai\Scheduler\Status\JobResult;
+use Orisai\Scheduler\Status\JobResultState;
 use Orisai\Scheduler\Status\RunSummary;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Lock\Store\InMemoryStore;
 use Tests\Orisai\Scheduler\Doubles\CallbackList;
+use Tests\Orisai\Scheduler\Doubles\CustomNameJob;
+use Tests\Orisai\Scheduler\Doubles\JobFailure;
+use Tests\Orisai\Scheduler\Doubles\TestLockFactory;
 
 final class SimpleSchedulerTest extends TestCase
 {
@@ -81,7 +85,7 @@ final class SimpleSchedulerTest extends TestCase
 	{
 		$clock = new FrozenClock(1);
 		$now = $clock->now();
-		$scheduler = new SimpleScheduler($clock);
+		$scheduler = new SimpleScheduler(null, $clock);
 		$cbs = new CallbackList();
 
 		$job1 = new CallbackJob(Closure::fromCallable([$cbs, 'exceptionJob']));
@@ -115,11 +119,11 @@ final class SimpleSchedulerTest extends TestCase
 			[
 				[
 					new JobInfo('Tests\Orisai\Scheduler\Doubles\CallbackList::exceptionJob()', '* * * * *', $now),
-					new JobResult(new CronExpression('* * * * *'), $now, new Exception('test')),
+					new JobResult(new CronExpression('* * * * *'), $now, JobResultState::fail()),
 				],
 				[
 					new JobInfo('Tests\Orisai\Scheduler\Doubles\CallbackList::job1()', '* * * * *', $now),
-					new JobResult(new CronExpression('* * * * *'), $now, null),
+					new JobResult(new CronExpression('* * * * *'), $now, JobResultState::done()),
 				],
 			],
 			$afterCollected,
@@ -129,8 +133,9 @@ final class SimpleSchedulerTest extends TestCase
 	public function testTimeMovement(): void
 	{
 		$clock = new FrozenClock(1);
-		$scheduler = new SimpleScheduler($clock);
+		$scheduler = new SimpleScheduler(null, $clock);
 
+		$jobLine = __LINE__ + 2;
 		$job = new CallbackJob(
 			static function (): void {
 				// Noop
@@ -156,7 +161,7 @@ final class SimpleSchedulerTest extends TestCase
 		self::assertEquals(
 			[
 				new JobInfo(
-					'tests/Unit/SimpleSchedulerTest.php:135',
+					"tests/Unit/SimpleSchedulerTest.php:$jobLine",
 					'* * * * *',
 					DateTimeImmutable::createFromFormat('U', '1'),
 				),
@@ -167,14 +172,14 @@ final class SimpleSchedulerTest extends TestCase
 			[
 				[
 					new JobInfo(
-						'tests/Unit/SimpleSchedulerTest.php:135',
+						"tests/Unit/SimpleSchedulerTest.php:$jobLine",
 						'* * * * *',
 						DateTimeImmutable::createFromFormat('U', '1'),
 					),
 					new JobResult(
 						new CronExpression('* * * * *'),
 						DateTimeImmutable::createFromFormat('U', '2'),
-						null,
+						JobResultState::done(),
 					),
 				],
 			],
@@ -185,7 +190,7 @@ final class SimpleSchedulerTest extends TestCase
 	public function testDueTime(): void
 	{
 		$clock = new FrozenClock(1);
-		$scheduler = new SimpleScheduler($clock);
+		$scheduler = new SimpleScheduler(null, $clock);
 
 		$expressions = [];
 		$scheduler->addAfterJobCallback(static function (JobInfo $info) use (&$expressions): void {
@@ -235,7 +240,7 @@ final class SimpleSchedulerTest extends TestCase
 	public function testLongRunningJobDoesNotPreventNextJobToStart(): void
 	{
 		$clock = new FrozenClock(1);
-		$scheduler = new SimpleScheduler($clock);
+		$scheduler = new SimpleScheduler(null, $clock);
 
 		$job1 = new CallbackJob(
 			static function () use ($clock): void {
@@ -263,7 +268,7 @@ final class SimpleSchedulerTest extends TestCase
 	public function testRunSummary(): void
 	{
 		$clock = new FrozenClock(1);
-		$scheduler = new SimpleScheduler($clock);
+		$scheduler = new SimpleScheduler(null, $clock);
 
 		$cbs = new CallbackList();
 		$job = new CallbackJob(Closure::fromCallable([$cbs, 'job1']));
@@ -281,7 +286,7 @@ final class SimpleSchedulerTest extends TestCase
 						'* * * * *',
 						$now,
 					),
-					new JobResult(new CronExpression('* * * * *'), $now, null),
+					new JobResult(new CronExpression('* * * * *'), $now, JobResultState::done()),
 				],
 				[
 					new JobInfo(
@@ -289,11 +294,202 @@ final class SimpleSchedulerTest extends TestCase
 						'* * * * *',
 						$now,
 					),
-					new JobResult(new CronExpression('* * * * *'), $now, null),
+					new JobResult(new CronExpression('* * * * *'), $now, JobResultState::done()),
 				],
 			],
 			$summary->getJobs(),
 		);
+	}
+
+	public function testLockAlreadyAcquired(): void
+	{
+		$lockFactory = new TestLockFactory(new InMemoryStore(), false);
+		$clock = new FrozenClock(1);
+		$scheduler = new SimpleScheduler($lockFactory, $clock);
+
+		$i1 = 0;
+		$job1 = new CallbackJob(
+			static function () use (&$i1): void {
+				$i1++;
+			},
+		);
+		$scheduler->addJob(
+			new CustomNameJob($job1, 'job1'),
+			new CronExpression('* * * * *'),
+		);
+
+		$i2 = 0;
+		$job2 = new CallbackJob(
+			static function () use (&$i2): void {
+				$i2++;
+			},
+		);
+		$scheduler->addJob(
+			new CustomNameJob($job2, 'job2'),
+			new CronExpression('* * * * *'),
+		);
+
+		$lock = $lockFactory->createLock('Orisai.Scheduler.Job/* * * * *-job1-0');
+		$lock->acquire();
+
+		// Lock is active, job is not executed (but the other one is)
+		$result = $scheduler->run();
+		self::assertSame(0, $i1);
+		self::assertSame(1, $i2);
+		self::assertEquals(
+			[
+				[
+					new JobInfo('job1', '* * * * *', $clock->now()),
+					new JobResult(new CronExpression('* * * * *'), $clock->now(), JobResultState::skip()),
+				],
+				[
+					new JobInfo('job2', '* * * * *', $clock->now()),
+					new JobResult(new CronExpression('* * * * *'), $clock->now(), JobResultState::done()),
+				],
+			],
+			$result->getJobs(),
+		);
+		self::assertSame(
+			$result->getJobs()[0][0]->getStart(),
+			$result->getJobs()[0][1]->getEnd(),
+		);
+		self::assertNotSame(
+			$result->getJobs()[1][0]->getStart(),
+			$result->getJobs()[1][1]->getEnd(),
+		);
+
+		$lock->release();
+
+		// Lock was released, job is executed
+		$result = $scheduler->run();
+		self::assertSame(1, $i1);
+		self::assertSame(2, $i2);
+		self::assertEquals(
+			[
+				[
+					new JobInfo('job1', '* * * * *', $clock->now()),
+					new JobResult(new CronExpression('* * * * *'), $clock->now(), JobResultState::done()),
+				],
+				[
+					new JobInfo('job2', '* * * * *', $clock->now()),
+					new JobResult(new CronExpression('* * * * *'), $clock->now(), JobResultState::done()),
+				],
+			],
+			$result->getJobs(),
+		);
+
+		$scheduler->run();
+		self::assertSame(2, $i1);
+		self::assertSame(3, $i2);
+	}
+
+	public function testLockIsReleasedAfterAnExceptionInJob(): void
+	{
+		$lockFactory = new TestLockFactory(new InMemoryStore(), false);
+		$clock = new FrozenClock(1);
+		$scheduler = new SimpleScheduler($lockFactory, $clock);
+
+		$throw = true;
+		$i = 0;
+		$job = new CallbackJob(
+			static function () use (&$i, &$throw): void {
+				$i++;
+				if ($throw) {
+					throw new JobFailure('');
+				}
+
+				$i++;
+			},
+		);
+		$scheduler->addJob($job, new CronExpression('* * * * *'));
+
+		$scheduler->run();
+		self::assertSame(1, $i);
+
+		// phpcs:ignore SlevomatCodingStandard.Variables.UnusedVariable.UnusedVariable
+		$throw = false;
+		$scheduler->run();
+		self::assertSame(3, $i);
+	}
+
+	public function testLockIsReleasedAfterAnExceptionInBeforeCallback(): void
+	{
+		$lockFactory = new TestLockFactory(new InMemoryStore(), false);
+		$clock = new FrozenClock(1);
+		$scheduler = new SimpleScheduler($lockFactory, $clock);
+
+		$i = 0;
+		$job = new CallbackJob(
+			static function () use (&$i): void {
+				$i++;
+			},
+		);
+		$scheduler->addJob($job, new CronExpression('* * * * *'));
+
+		$throw = true;
+		$scheduler->addBeforeJobCallback(static function () use (&$throw): void {
+			if ($throw) {
+				throw new JobFailure('');
+			}
+		});
+
+		$e = null;
+		try {
+			$scheduler->run();
+		} catch (JobFailure $e) {
+			// Handled bellow
+		}
+
+		self::assertInstanceOf(JobFailure::class, $e);
+		self::assertSame(0, $i);
+
+		// phpcs:ignore SlevomatCodingStandard.Variables.UnusedVariable.UnusedVariable
+		$throw = false;
+		$scheduler->run();
+		self::assertSame(1, $i);
+
+		$scheduler->run();
+		self::assertSame(2, $i);
+	}
+
+	public function testLockIsReleasedAfterAnExceptionInAfterCallback(): void
+	{
+		$lockFactory = new TestLockFactory(new InMemoryStore(), false);
+		$clock = new FrozenClock(1);
+		$scheduler = new SimpleScheduler($lockFactory, $clock);
+
+		$i = 0;
+		$job = new CallbackJob(
+			static function () use (&$i): void {
+				$i++;
+			},
+		);
+		$scheduler->addJob($job, new CronExpression('* * * * *'));
+
+		$throw = true;
+		$scheduler->addAfterJobCallback(static function () use (&$throw): void {
+			if ($throw) {
+				throw new JobFailure('');
+			}
+		});
+
+		$e = null;
+		try {
+			$scheduler->run();
+		} catch (JobFailure $e) {
+			// Handled bellow
+		}
+
+		self::assertInstanceOf(JobFailure::class, $e);
+		self::assertSame(1, $i);
+
+		// phpcs:ignore SlevomatCodingStandard.Variables.UnusedVariable.UnusedVariable
+		$throw = false;
+		$scheduler->run();
+		self::assertSame(2, $i);
+
+		$scheduler->run();
+		self::assertSame(3, $i);
 	}
 
 }

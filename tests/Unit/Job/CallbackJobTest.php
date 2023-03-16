@@ -5,7 +5,9 @@ namespace Tests\Orisai\Scheduler\Unit\Job;
 use Closure;
 use Generator;
 use Orisai\Scheduler\Job\CallbackJob;
+use Orisai\Scheduler\Job\JobLock;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Lock\NoLock;
 use Tests\Orisai\Scheduler\Doubles\CallbackList;
 
 final class CallbackJobTest extends TestCase
@@ -13,23 +15,25 @@ final class CallbackJobTest extends TestCase
 
 	public function test(): void
 	{
+		$lock = new JobLock(new NoLock());
 		$i = 0;
 
 		$job = new CallbackJob(
-			static function () use (&$i): void {
+			static function (JobLock $receivedLock) use (&$i, $lock): void {
 				$i++;
+				self::assertSame($lock, $receivedLock);
 			},
 		);
 
 		self::assertSame(
-			'tests/Unit/Job/CallbackJobTest.php:19',
+			'tests/Unit/Job/CallbackJobTest.php:22',
 			$job->getName(),
 		);
 
-		$job->run();
+		$job->run($lock);
 		self::assertSame(1, $i);
 
-		$job->run();
+		$job->run($lock);
 		self::assertSame(2, $i);
 	}
 

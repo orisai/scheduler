@@ -4,8 +4,8 @@ namespace Tests\Orisai\Scheduler\Unit\Status;
 
 use Cron\CronExpression;
 use DateTimeImmutable;
-use Error;
 use Orisai\Scheduler\Status\JobResult;
+use Orisai\Scheduler\Status\JobResultState;
 use PHPUnit\Framework\TestCase;
 
 final class JobResultTest extends TestCase
@@ -15,21 +15,9 @@ final class JobResultTest extends TestCase
 	{
 		$end = new DateTimeImmutable();
 
-		$result = new JobResult(new CronExpression('* * * * *'), $end, null);
+		$result = new JobResult(new CronExpression('* * * * *'), $end, JobResultState::done());
 		self::assertSame($end, $result->getEnd());
-		self::assertNull($result->getThrowable());
-	}
-
-	public function testThrowable(): void
-	{
-		$throwable = new Error();
-
-		$result = new JobResult(
-			new CronExpression('* * * * *'),
-			new DateTimeImmutable(),
-			$throwable,
-		);
-		self::assertSame($throwable, $result->getThrowable());
+		self::assertSame(JobResultState::done(), $result->getState());
 	}
 
 	public function testDatesComputing(): void
@@ -38,7 +26,7 @@ final class JobResultTest extends TestCase
 		$result = new JobResult(
 			new CronExpression('* * * * *'),
 			$end,
-			null,
+			JobResultState::done(),
 		);
 
 		self::assertEquals(

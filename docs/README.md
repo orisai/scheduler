@@ -8,16 +8,17 @@ Cron job scheduler - with locks, parallelism and more
 - [Quick start](#quick-start)
 - [Execution time](#execution-time)
 - [Events](#events)
-- [Logging errors](#logging-errors)
+- [Handling errors](#handling-errors)
+- [Locks and job overlapping](#locks-and-job-overlapping)
 - [Job types](#job-types)
 	- [Callback job](#callback-job)
 	- [Custom job](#custom-job)
 - [Job info and result](#job-info-and-result)
 - [Run summary](#run-summary)
 - [CLI commands](#cli-commands)
-	- [Run command](#run-command)
-	- [List command](#list-command)
-	- [Worker command](#worker-command)
+	- [Run command - run jobs once](#run-command)
+	- [List command - show all jobs](#list-command)
+	- [Worker command - run jobs periodically](#worker-command)
 
 ## Why do you need it?
 
@@ -32,18 +33,20 @@ With this library you can manage all cron jobs in application and setup them in 
 Well, you are right. But do they manage everything needed? By not using crontab directly you loose several features that
 library has to replicate:
 
-- locking - each job should run only once at a time
 - parallelism - jobs should run in parallel and start in time even if one or more run for a long time
-- failure protection - if one job fails, the failure should be logged and the other jobs should still be executed
-- cron expressions - library has to parse and properly evaluate cron expression to determine whether job should be run
+- [failure protection](#handling-errors) - if one job fails, the failure should be logged and the other jobs should
+  still be executed
+- [cron expressions](#execution-time) - library has to parse and properly evaluate cron expression to determine whether
+  job should be run
 
 Orisai Scheduler solves all of these problems.
 
 On top of that you get:
 
-- overview of all jobs, including estimated times of previous and next runs and whether job is currently running
-- heatmap for load-balancing your jobs
-- before/after job events for customizations
+- [locking](#locks-and-job-overlapping) - each job should run only once at a time, without overlapping
+- [before/after job events](#events) for accessing job status
+- [overview of all jobs](#list-command), including estimated time of next run and whether job is currently running
+- running jobs either [once](#run-command) or [periodically](#worker-command) during development
 
 ## Quick start
 
@@ -132,9 +135,6 @@ use Orisai\Scheduler\Status\JobResult;
 $scheduler->addBeforeJobCallback(
 	function(JobInfo $info): void {
 		// Executes before job start
-
-		$name = $info->getName(); // string
-		$start = $info->getStart(); // DateTimeImmutable
 	},
 );
 
@@ -147,10 +147,10 @@ $scheduler->addAfterJobCallback(
 
 Check [job info and result](#job-info-and-result) for available status info
 
-## Logging errors
+## Handling errors
 
-Because any exceptions and errors are suppressed to prevent one failing job from failing others, you have to handle
-logging exceptions yourself.
+If job throws an error or exception, other jobs are not affected because throws are suppressed. Due to this, you have to
+log errors yourself.
 
 Assuming you have a [PSR-3 logger](https://github.com/php-fig/log), e.g. [Monolog](https://github.com/Seldaek/monolog)
 installed, it would look like this:
@@ -158,10 +158,10 @@ installed, it would look like this:
 ```php
 use Orisai\Scheduler\Status\JobInfo;
 use Orisai\Scheduler\Status\JobResult;
+use Throwable;
 
 $scheduler->addAfterJobCallback(
-	function(JobInfo $info, JobResult $result): void {
-		$throwable = $result->getThrowable();
+	function(JobInfo $info, JobResult $result, ?Throwable $throwable): void {
 		if ($throwable !== null) {
 			$this->logger->error('Job failed', [
 				'exception' => $throwable,
@@ -169,6 +169,45 @@ $scheduler->addAfterJobCallback(
 		}
 	},
 );
+```
+
+## Locks and job overlapping
+
+Crontab jobs are time-based and simply run at specified intervals. If they take too long, they may overlap and run
+simultaneously. This may cause issues if the jobs access the same resources, such as files or databases, leading to
+conflicts or data corruption.
+
+To avoid such issues, we provide locking mechanism which ensures that only one instance of a job is running at any given
+time.
+
+```php
+use Orisai\Scheduler\SimpleScheduler;
+use Symfony\Component\Lock\LockFactory;
+use Symfony\Component\Lock\Store\FlockStore;
+
+$lockFactory = new LockFactory(new FlockStore());
+$scheduler = new SimpleScheduler($lockFactory);
+```
+
+To choose the right lock store for your use case, please refer
+to [symfony/lock](https://symfony.com/doc/current/components/lock.html) documentation. There are several available
+stores with various levels of reliability, affecting when lock is released.
+
+Lock is automatically acquired and released by scheduler even if a (recoverable) error occurred during job or its
+events. Yet you still have to handle lock expiring in case your jobs take more than 5 minutes, and you are using an
+expiring store.
+
+```php
+use Orisai\Scheduler\Job\CallbackJob;
+use Orisai\Scheduler\Job\JobLock;
+
+new CallbackJob(function (JobLock $lock): void {
+	// Lock methods are the same as symfony/lock provides
+	$lock->isAcquiredByCurrentProcess(); // bool (same is symfony isAcquired(), but with more accurate name)
+	$lock->getRemainingLifetime(); // float|null
+	$lock->isExpired(); // bool
+	$lock->refresh(); // void
+});
 ```
 
 ## Job types
@@ -180,6 +219,7 @@ Calls given Closure, when job is run
 ```php
 use Closure;
 use Orisai\Scheduler\Job\CallbackJob;
+use Orisai\Scheduler\Job\JobLock;
 
 $scheduler->addJob(
 	new CallbackJob(Closure::fromCallable([$object, 'method'])),
@@ -187,7 +227,7 @@ $scheduler->addJob(
 );
 
 $scheduler->addJob(
-	new CallbackJob(fn() => exampleTask()),
+	new CallbackJob(fn(JobLock $lock) => exampleTask()),
 	/* ... */,
 );
 ```
@@ -198,17 +238,18 @@ Create own job implementation
 
 ```php
 use Orisai\Scheduler\Job\Job;
+use Orisai\Scheduler\Job\JobLock;
 
 final class CustomJob implements Job
 {
 
 	public function getName(): string
 	{
-		// Provide (preferably unique) name of the job. It will be used in jobs overview
+		// Provide (preferably unique) name of the job. It will be used in jobs list
 		return static::class;
 	}
 
-	public function run(): void
+	public function run(JobLock $lock): void
 	{
  		// Do whatever you need to
 	}
@@ -239,7 +280,7 @@ Result:
 
 ```php
 $end = $result->getEnd(); // DateTimeImmutable
-$throwable = $result->getThrowable(); // Throwable|null
+$state = $result->getState(); // JobResultState
 
 // Next runs are computed from time when job was finished
 $nextRun = $info->getNextRunDate(); // DateTimeImmutable
