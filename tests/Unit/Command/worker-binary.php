@@ -9,8 +9,11 @@ use Orisai\Scheduler\Job\CallbackJob;
 use Orisai\Scheduler\SimpleScheduler;
 use Symfony\Component\Console\Application;
 
+$errorHandler = static function (): void {
+	// Noop
+};
 $clock = new FrozenClock(1_020, new DateTimeZone('Europe/Prague'));
-$scheduler = new SimpleScheduler(null, $clock);
+$scheduler = new SimpleScheduler($errorHandler, null, $clock);
 $scheduler->addJob(
 	new CallbackJob(static function (): void {
 		// Noop

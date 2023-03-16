@@ -49,7 +49,7 @@ MSG,
 	public function testSuccess(): void
 	{
 		$clock = new FrozenClock(1, new DateTimeZone('Europe/Prague'));
-		$scheduler = new SimpleScheduler(null, $clock);
+		$scheduler = new SimpleScheduler(null, null, $clock);
 
 		$cbs = new CallbackList();
 		$scheduler->addJob(
@@ -105,8 +105,11 @@ MSG,
 
 	public function testFailure(): void
 	{
+		$errorHandler = static function (): void {
+			// Noop
+		};
 		$clock = new FrozenClock(1, new DateTimeZone('Europe/Prague'));
-		$scheduler = new SimpleScheduler(null, $clock);
+		$scheduler = new SimpleScheduler($errorHandler, null, $clock);
 
 		$cbs = new CallbackList();
 		$scheduler->addJob(
@@ -145,7 +148,7 @@ MSG,
 	{
 		$lockFactory = new TestLockFactory(new InMemoryStore(), false);
 		$clock = new FrozenClock(1, new DateTimeZone('Europe/Prague'));
-		$scheduler = new SimpleScheduler($lockFactory, $clock);
+		$scheduler = new SimpleScheduler(null, $lockFactory, $clock);
 
 		$cbs = new CallbackList();
 		$scheduler->addJob(

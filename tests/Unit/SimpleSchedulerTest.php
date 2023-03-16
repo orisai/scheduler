@@ -6,6 +6,7 @@ use Closure;
 use Cron\CronExpression;
 use DateTimeImmutable;
 use Orisai\Clock\FrozenClock;
+use Orisai\Scheduler\Exception\JobsExecutionFailure;
 use Orisai\Scheduler\Job\CallbackJob;
 use Orisai\Scheduler\SimpleScheduler;
 use Orisai\Scheduler\Status\JobInfo;
@@ -18,6 +19,7 @@ use Tests\Orisai\Scheduler\Doubles\CallbackList;
 use Tests\Orisai\Scheduler\Doubles\CustomNameJob;
 use Tests\Orisai\Scheduler\Doubles\JobFailure;
 use Tests\Orisai\Scheduler\Doubles\TestLockFactory;
+use Throwable;
 
 final class SimpleSchedulerTest extends TestCase
 {
@@ -77,15 +79,55 @@ final class SimpleSchedulerTest extends TestCase
 		);
 		$scheduler->addJob($job3, new CronExpression('* * * * *'));
 
-		$scheduler->run();
+		$e = null;
+		try {
+			$scheduler->run();
+		} catch (JobsExecutionFailure $e) {
+			// Handled bellow
+		}
+
 		self::assertSame(1, $i);
+		self::assertInstanceOf(JobsExecutionFailure::class, $e);
+		self::assertCount(2, $e->getSuppressed());
+	}
+
+	public function testFailingJobWithoutThrow(): void
+	{
+		$errors = [];
+		$errorHandler = static function (Throwable $throwable) use (&$errors): void {
+			$errors[] = $throwable;
+		};
+		$scheduler = new SimpleScheduler($errorHandler);
+		$cbs = new CallbackList();
+
+		$job1 = new CallbackJob(Closure::fromCallable([$cbs, 'exceptionJob']));
+		$scheduler->addJob($job1, new CronExpression('* * * * *'));
+
+		$job2 = new CallbackJob(Closure::fromCallable([$cbs, 'errorJob']));
+		$scheduler->addJob($job2, new CronExpression('* * * * *'));
+
+		$i = 0;
+		$job3 = new CallbackJob(
+			static function () use (&$i): void {
+				$i++;
+			},
+		);
+		$scheduler->addJob($job3, new CronExpression('* * * * *'));
+
+		$scheduler->run();
+
+		self::assertSame(1, $i);
+		self::assertCount(2, $errors);
 	}
 
 	public function testEvents(): void
 	{
+		$errorHandler = static function (): void {
+			// Noop
+		};
 		$clock = new FrozenClock(1);
 		$now = $clock->now();
-		$scheduler = new SimpleScheduler(null, $clock);
+		$scheduler = new SimpleScheduler($errorHandler, null, $clock);
 		$cbs = new CallbackList();
 
 		$job1 = new CallbackJob(Closure::fromCallable([$cbs, 'exceptionJob']));
@@ -133,7 +175,7 @@ final class SimpleSchedulerTest extends TestCase
 	public function testTimeMovement(): void
 	{
 		$clock = new FrozenClock(1);
-		$scheduler = new SimpleScheduler(null, $clock);
+		$scheduler = new SimpleScheduler(null, null, $clock);
 
 		$jobLine = __LINE__ + 2;
 		$job = new CallbackJob(
@@ -190,7 +232,7 @@ final class SimpleSchedulerTest extends TestCase
 	public function testDueTime(): void
 	{
 		$clock = new FrozenClock(1);
-		$scheduler = new SimpleScheduler(null, $clock);
+		$scheduler = new SimpleScheduler(null, null, $clock);
 
 		$expressions = [];
 		$scheduler->addAfterJobCallback(static function (JobInfo $info) use (&$expressions): void {
@@ -240,7 +282,7 @@ final class SimpleSchedulerTest extends TestCase
 	public function testLongRunningJobDoesNotPreventNextJobToStart(): void
 	{
 		$clock = new FrozenClock(1);
-		$scheduler = new SimpleScheduler(null, $clock);
+		$scheduler = new SimpleScheduler(null, null, $clock);
 
 		$job1 = new CallbackJob(
 			static function () use ($clock): void {
@@ -268,7 +310,7 @@ final class SimpleSchedulerTest extends TestCase
 	public function testRunSummary(): void
 	{
 		$clock = new FrozenClock(1);
-		$scheduler = new SimpleScheduler(null, $clock);
+		$scheduler = new SimpleScheduler(null, null, $clock);
 
 		$cbs = new CallbackList();
 		$job = new CallbackJob(Closure::fromCallable([$cbs, 'job1']));
@@ -305,7 +347,7 @@ final class SimpleSchedulerTest extends TestCase
 	{
 		$lockFactory = new TestLockFactory(new InMemoryStore(), false);
 		$clock = new FrozenClock(1);
-		$scheduler = new SimpleScheduler($lockFactory, $clock);
+		$scheduler = new SimpleScheduler(null, $lockFactory, $clock);
 
 		$i1 = 0;
 		$job1 = new CallbackJob(
@@ -385,9 +427,12 @@ final class SimpleSchedulerTest extends TestCase
 
 	public function testLockIsReleasedAfterAnExceptionInJob(): void
 	{
+		$errorHandler = static function (): void {
+			// Noop
+		};
 		$lockFactory = new TestLockFactory(new InMemoryStore(), false);
 		$clock = new FrozenClock(1);
-		$scheduler = new SimpleScheduler($lockFactory, $clock);
+		$scheduler = new SimpleScheduler($errorHandler, $lockFactory, $clock);
 
 		$throw = true;
 		$i = 0;
@@ -416,7 +461,7 @@ final class SimpleSchedulerTest extends TestCase
 	{
 		$lockFactory = new TestLockFactory(new InMemoryStore(), false);
 		$clock = new FrozenClock(1);
-		$scheduler = new SimpleScheduler($lockFactory, $clock);
+		$scheduler = new SimpleScheduler(null, $lockFactory, $clock);
 
 		$i = 0;
 		$job = new CallbackJob(
@@ -456,7 +501,7 @@ final class SimpleSchedulerTest extends TestCase
 	{
 		$lockFactory = new TestLockFactory(new InMemoryStore(), false);
 		$clock = new FrozenClock(1);
-		$scheduler = new SimpleScheduler($lockFactory, $clock);
+		$scheduler = new SimpleScheduler(null, $lockFactory, $clock);
 
 		$i = 0;
 		$job = new CallbackJob(

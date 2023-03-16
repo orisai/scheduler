@@ -126,7 +126,7 @@ You can also use macro instead of an expression:
 
 ## Events
 
-Run callbacks before and after job to collect statistics, log errors etc.
+Run callbacks before and after job to collect statistics, etc.
 
 ```php
 use Orisai\Scheduler\Status\JobInfo;
@@ -149,26 +149,33 @@ Check [job info and result](#job-info-and-result) for available status info
 
 ## Handling errors
 
-If job throws an error or exception, other jobs are not affected because throws are suppressed. Due to this, you have to
-log errors yourself.
+After all jobs finish, an exception `JobsExecutionFailure` composing exceptions thrown by all jobs is thrown. This
+exception will inform you about which exceptions were thrown, including their messages and source. But this still makes
+exceptions hard to access by application error handler and causes [CLI commands](#cli-commands) to hard fail.
+
+To overcome this limitation, add minimal error handler into scheduler. When an error handler is
+set, `JobsExecutionFailure` is *not thrown*.
 
 Assuming you have a [PSR-3 logger](https://github.com/php-fig/log), e.g. [Monolog](https://github.com/Seldaek/monolog)
 installed, it would look like this:
 
 ```php
+use DateTimeInterface;
+use Orisai\Scheduler\SimpleScheduler;
 use Orisai\Scheduler\Status\JobInfo;
 use Orisai\Scheduler\Status\JobResult;
 use Throwable;
 
-$scheduler->addAfterJobCallback(
-	function(JobInfo $info, JobResult $result, ?Throwable $throwable): void {
-		if ($throwable !== null) {
-			$this->logger->error('Job failed', [
-				'exception' => $throwable,
-			]);
-		}
-	},
-);
+$errorHandler = function(Throwable $throwable, JobInfo $info, JobResult $result): void {
+	$this->logger->error("Job {$info->getName()} failed", [
+		'exception' => $throwable,
+		'name' => $info->getName(),
+		'expression' => $info->getExpression(),
+		'start' => $info->getStart()->format(DateTimeInterface::ATOM),
+		'end' => $result->getEnd()->format(DateTimeInterface::ATOM),
+	]);
+},
+$scheduler = new SimpleScheduler($errorHandler);
 ```
 
 ## Locks and job overlapping
@@ -186,7 +193,7 @@ use Symfony\Component\Lock\LockFactory;
 use Symfony\Component\Lock\Store\FlockStore;
 
 $lockFactory = new LockFactory(new FlockStore());
-$scheduler = new SimpleScheduler($lockFactory);
+$scheduler = new SimpleScheduler(null, $lockFactory);
 ```
 
 To choose the right lock store for your use case, please refer

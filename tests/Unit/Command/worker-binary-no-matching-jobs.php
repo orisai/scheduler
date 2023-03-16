@@ -10,7 +10,7 @@ use Orisai\Scheduler\SimpleScheduler;
 use Symfony\Component\Console\Application;
 
 $clock = new FrozenClock(1_020, new DateTimeZone('Europe/Prague'));
-$scheduler = new SimpleScheduler(null, $clock);
+$scheduler = new SimpleScheduler(null, null, $clock);
 $scheduler->addJob(
 	new CallbackJob(static function (): void {
 		// Noop

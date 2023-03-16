@@ -5,6 +5,7 @@ namespace Orisai\Scheduler;
 use Closure;
 use Cron\CronExpression;
 use Orisai\Clock\SystemClock;
+use Orisai\Scheduler\Exception\JobsExecutionFailure;
 use Orisai\Scheduler\Job\Job;
 use Orisai\Scheduler\Job\JobLock;
 use Orisai\Scheduler\Status\JobInfo;
@@ -19,6 +20,9 @@ use Throwable;
 final class SimpleScheduler implements Scheduler
 {
 
+	/** @var Closure(Throwable, JobInfo, JobResult): (void)|null */
+	private ?Closure $errorHandler;
+
 	private LockFactory $lockFactory;
 
 	private ClockInterface $clock;
@@ -29,11 +33,19 @@ final class SimpleScheduler implements Scheduler
 	/** @var list<Closure(JobInfo): void> */
 	private array $beforeJob = [];
 
-	/** @var list<Closure(JobInfo, JobResult, Throwable|null): void> */
+	/** @var list<Closure(JobInfo, JobResult): void> */
 	private array $afterJob = [];
 
-	public function __construct(?LockFactory $lockFactory = null, ?ClockInterface $clock = null)
+	/**
+	 * @param Closure(Throwable, JobInfo, JobResult): (void)|null $errorHandler
+	 */
+	public function __construct(
+		?Closure $errorHandler = null,
+		?LockFactory $lockFactory = null,
+		?ClockInterface $clock = null
+	)
 	{
+		$this->errorHandler = $errorHandler;
 		$this->lockFactory = $lockFactory ?? new LockFactory(new InMemoryStore());
 		$this->clock = $clock ?? new SystemClock();
 	}
@@ -59,6 +71,7 @@ final class SimpleScheduler implements Scheduler
 		}
 
 		$summaryJobs = [];
+		$suppressed = [];
 		foreach ($jobs as $i => [$job, $expression]) {
 			$info = new JobInfo(
 				$job->getName(),
@@ -98,7 +111,15 @@ final class SimpleScheduler implements Scheduler
 				);
 
 				foreach ($this->afterJob as $cb) {
-					$cb($info, $result, $throwable);
+					$cb($info, $result);
+				}
+
+				if ($throwable !== null) {
+					if ($this->errorHandler !== null) {
+						($this->errorHandler)($throwable, $info, $result);
+					} else {
+						$suppressed[] = $throwable;
+					}
 				}
 			} finally {
 				$lock->release();
@@ -107,7 +128,13 @@ final class SimpleScheduler implements Scheduler
 			$summaryJobs[] = [$info, $result];
 		}
 
-		return new RunSummary($summaryJobs);
+		$summary = new RunSummary($summaryJobs);
+
+		if ($suppressed !== []) {
+			throw JobsExecutionFailure::create($summary, $suppressed);
+		}
+
+		return $summary;
 	}
 
 	/**
@@ -119,7 +146,7 @@ final class SimpleScheduler implements Scheduler
 	}
 
 	/**
-	 * @param Closure(JobInfo, JobResult, Throwable|null): void $callback
+	 * @param Closure(JobInfo, JobResult): void $callback
 	 */
 	public function addAfterJobCallback(Closure $callback): void
 	{
