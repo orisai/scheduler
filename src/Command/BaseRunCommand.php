@@ -3,9 +3,8 @@
 namespace Orisai\Scheduler\Command;
 
 use Orisai\Exceptions\Logic\ShouldNotHappen;
-use Orisai\Scheduler\Status\JobInfo;
-use Orisai\Scheduler\Status\JobResult;
 use Orisai\Scheduler\Status\JobResultState;
+use Orisai\Scheduler\Status\JobSummary;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Terminal;
@@ -24,8 +23,11 @@ abstract class BaseRunCommand extends Command
 		return (new Terminal())->getWidth();
 	}
 
-	protected function renderJob(JobInfo $info, JobResult $result, int $terminalWidth, OutputInterface $output): void
+	protected function renderJob(JobSummary $summary, int $terminalWidth, OutputInterface $output): void
 	{
+		$info = $summary->getInfo();
+		$result = $summary->getResult();
+
 		$runStart = $info->getStart()->format('Y-m-d H:i:s');
 		$running = ' Running ';
 		$jobName = $info->getName();

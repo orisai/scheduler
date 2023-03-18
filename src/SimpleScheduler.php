@@ -14,6 +14,7 @@ use Orisai\Scheduler\Job\JobLock;
 use Orisai\Scheduler\Status\JobInfo;
 use Orisai\Scheduler\Status\JobResult;
 use Orisai\Scheduler\Status\JobResultState;
+use Orisai\Scheduler\Status\JobSummary;
 use Orisai\Scheduler\Status\RunSummary;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Lock\LockFactory;
@@ -65,7 +66,7 @@ final class SimpleScheduler implements Scheduler
 			: $this->jobs[$key] = [$job, $expression];
 	}
 
-	public function runJob($id, bool $force = true): ?array
+	public function runJob($id, bool $force = true): ?JobSummary
 	{
 		$jobSet = $this->jobs[$id] ?? null;
 
@@ -92,7 +93,7 @@ final class SimpleScheduler implements Scheduler
 			throw JobFailure::create($info, $result, $throwable);
 		}
 
-		return [$info, $result];
+		return new JobSummary($info, $result);
 	}
 
 	public function run(): RunSummary
@@ -111,8 +112,7 @@ final class SimpleScheduler implements Scheduler
 			$jobSummary = $this->runInternal($i, $job, $expression);
 
 			$throwable = $jobSummary[2];
-			unset($jobSummary[2]);
-			$summaryJobs[] = $jobSummary;
+			$summaryJobs[] = new JobSummary($jobSummary[0], $jobSummary[1]);
 
 			if ($throwable !== null) {
 				$suppressed[] = $throwable;

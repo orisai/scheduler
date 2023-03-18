@@ -41,6 +41,11 @@ parameters:
 			path: ../tests/Unit/Job/CallbackJobTest.php
 
 		-
+			message: "#^Call to static method PHPUnit\\\\Framework\\\\Assert\\:\\:assertInstanceOf\\(\\) with 'Orisai\\\\\\\\Scheduler\\\\\\\\Status\\\\\\\\JobSummary' and Orisai\\\\Scheduler\\\\Status\\\\JobSummary will always evaluate to true\\.$#"
+			count: 1
+			path: ../tests/Unit/SimpleSchedulerTest.php
+
+		-
 			message: "#^Call to static method PHPUnit\\\\Framework\\\\Assert\\:\\:assertInstanceOf\\(\\) with 'Tests\\\\\\\\Orisai\\\\\\\\Scheduler\\\\\\\\Doubles\\\\\\\\JobInnerFailure' and null will always evaluate to false\\.$#"
 			count: 2
 			path: ../tests/Unit/SimpleSchedulerTest.php
@@ -51,7 +56,7 @@ parameters:
 			path: ../tests/Unit/SimpleSchedulerTest.php
 
 		-
-			message: "#^Call to static method PHPUnit\\\\Framework\\\\Assert\\:\\:assertNotNull\\(\\) with array\\{Orisai\\\\Scheduler\\\\Status\\\\JobInfo, Orisai\\\\Scheduler\\\\Status\\\\JobResult\\} will always evaluate to true\\.$#"
+			message: "#^Call to static method PHPUnit\\\\Framework\\\\Assert\\:\\:assertNotNull\\(\\) with Orisai\\\\Scheduler\\\\Status\\\\JobSummary will always evaluate to true\\.$#"
 			count: 3
 			path: ../tests/Unit/SimpleSchedulerTest.php
 

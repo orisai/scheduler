@@ -43,22 +43,20 @@ final class RunJobCommand extends BaseRunCommand
 
 	protected function execute(InputInterface $input, OutputInterface $output): int
 	{
-		$jobSummary = $this->scheduler->runJob(
+		$summary = $this->scheduler->runJob(
 			$input->getArgument('id'),
 			!$input->getOption('no-force'),
 		);
 
-		if ($jobSummary === null) {
+		if ($summary === null) {
 			$output->writeln('<info>Command was not executed because it is not its due time</info>');
 
 			return self::SUCCESS;
 		}
 
-		[$info, $result] = $jobSummary;
+		$this->renderJob($summary, $this->getTerminalWidth(), $output);
 
-		$this->renderJob($info, $result, $this->getTerminalWidth(), $output);
-
-		return $result->getState() === JobResultState::fail()
+		return $summary->getResult()->getState() === JobResultState::fail()
 			? self::FAILURE
 			: self::SUCCESS;
 	}

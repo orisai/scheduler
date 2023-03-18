@@ -304,9 +304,9 @@ Scheduler run returns summary for inspection
 ```php
 $summary = $scheduler->run(); // RunSummary
 
-foreach ($summary->getJobs() as [$info, $result]) {
-	// $info instanceof JobInfo
-	// $result instanceof JobResult
+foreach ($summary->getJobs() as $jobSummary) {
+	$jobSummary->getInfo(); // JobInfo
+	$jobSummary->getResult(); // JobResult
 }
 ```
 
@@ -321,13 +321,13 @@ in [list command](#list-command) but that's not recommended because it depends j
 
 ```php
 $scheduler->addJob($job, $expression, 'id');
-$scheduler->runJob('id'); // array{JobInfo, JobResult}
+$scheduler->runJob('id'); // JobSummary
 ```
 
 If you still want to respect job schedule and run it only if it is due, set 2nd parameter to false
 
 ```php
-$scheduler->runJob('id', false); // array{JobInfo, JobResult}|null
+$scheduler->runJob('id', false); // JobSummary|null
 ```
 
 [Handling errors](#handling-errors) is the same as for `run()` method, except instead of `RunFailure` is

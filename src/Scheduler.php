@@ -6,8 +6,7 @@ use Cron\CronExpression;
 use Orisai\Scheduler\Exception\JobFailure;
 use Orisai\Scheduler\Exception\RunFailure;
 use Orisai\Scheduler\Job\Job;
-use Orisai\Scheduler\Status\JobInfo;
-use Orisai\Scheduler\Status\JobResult;
+use Orisai\Scheduler\Status\JobSummary;
 use Orisai\Scheduler\Status\RunSummary;
 
 interface Scheduler
@@ -25,10 +24,9 @@ interface Scheduler
 
 	/**
 	 * @param string|int $id
-	 * @return array{JobInfo, JobResult}|null
-	 * @phpstan-return ($force is true ? array{JobInfo, JobResult} : array{JobInfo, JobResult}|null)
+	 * @phpstan-return ($force is true ? JobSummary : JobSummary|null)
 	 * @throws JobFailure When job failed and no error handler was set
 	 */
-	public function runJob($id, bool $force = true): ?array;
+	public function runJob($id, bool $force = true): ?JobSummary;
 
 }

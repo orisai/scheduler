@@ -14,6 +14,7 @@ use Orisai\Scheduler\SimpleScheduler;
 use Orisai\Scheduler\Status\JobInfo;
 use Orisai\Scheduler\Status\JobResult;
 use Orisai\Scheduler\Status\JobResultState;
+use Orisai\Scheduler\Status\JobSummary;
 use Orisai\Scheduler\Status\RunSummary;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Lock\Store\InMemoryStore;
@@ -395,22 +396,22 @@ MSG,
 		$now = $clock->now();
 		self::assertEquals(
 			[
-				[
+				new JobSummary(
 					new JobInfo(
 						'Tests\Orisai\Scheduler\Doubles\CallbackList::job1()',
 						'* * * * *',
 						$now,
 					),
 					new JobResult(new CronExpression('* * * * *'), $now, JobResultState::done()),
-				],
-				[
+				),
+				new JobSummary(
 					new JobInfo(
 						'Tests\Orisai\Scheduler\Doubles\CallbackList::job1()',
 						'* * * * *',
 						$now,
 					),
 					new JobResult(new CronExpression('* * * * *'), $now, JobResultState::done()),
-				],
+				),
 			],
 			$summary->getJobs(),
 		);
@@ -426,18 +427,20 @@ MSG,
 		$scheduler->addJob($job, new CronExpression('* * * * *'));
 
 		$summary = $scheduler->runJob(0);
+		self::assertInstanceOf(JobSummary::class, $summary);
 
 		$now = $clock->now();
 		self::assertEquals(
-			[
-				new JobInfo(
-					'Tests\Orisai\Scheduler\Doubles\CallbackList::job1()',
-					'* * * * *',
-					$now,
-				),
-				new JobResult(new CronExpression('* * * * *'), $now, JobResultState::done()),
-			],
-			$summary,
+			new JobInfo(
+				'Tests\Orisai\Scheduler\Doubles\CallbackList::job1()',
+				'* * * * *',
+				$now,
+			),
+			$summary->getInfo(),
+		);
+		self::assertEquals(
+			new JobResult(new CronExpression('* * * * *'), $now, JobResultState::done()),
+			$summary->getResult(),
 		);
 	}
 
@@ -478,24 +481,24 @@ MSG,
 		self::assertSame(1, $i2);
 		self::assertEquals(
 			[
-				[
+				new JobSummary(
 					new JobInfo('job1', '* * * * *', $clock->now()),
 					new JobResult(new CronExpression('* * * * *'), $clock->now(), JobResultState::skip()),
-				],
-				[
+				),
+				new JobSummary(
 					new JobInfo('job2', '* * * * *', $clock->now()),
 					new JobResult(new CronExpression('* * * * *'), $clock->now(), JobResultState::done()),
-				],
+				),
 			],
 			$result->getJobs(),
 		);
 		self::assertSame(
-			$result->getJobs()[0][0]->getStart(),
-			$result->getJobs()[0][1]->getEnd(),
+			$result->getJobs()[0]->getInfo()->getStart(),
+			$result->getJobs()[0]->getResult()->getEnd(),
 		);
 		self::assertNotSame(
-			$result->getJobs()[1][0]->getStart(),
-			$result->getJobs()[1][1]->getEnd(),
+			$result->getJobs()[1]->getInfo()->getStart(),
+			$result->getJobs()[1]->getResult()->getEnd(),
 		);
 
 		$scheduler->runJob(0);
@@ -511,14 +514,14 @@ MSG,
 		self::assertSame(3, $i2);
 		self::assertEquals(
 			[
-				[
+				new JobSummary(
 					new JobInfo('job1', '* * * * *', $clock->now()),
 					new JobResult(new CronExpression('* * * * *'), $clock->now(), JobResultState::done()),
-				],
-				[
+				),
+				new JobSummary(
 					new JobInfo('job2', '* * * * *', $clock->now()),
 					new JobResult(new CronExpression('* * * * *'), $clock->now(), JobResultState::done()),
-				],
+				),
 			],
 			$result->getJobs(),
 		);

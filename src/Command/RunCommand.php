@@ -40,18 +40,17 @@ final class RunCommand extends BaseRunCommand
 
 	private function renderJobs(OutputInterface $output, RunSummary $summary): void
 	{
-		$jobs = $summary->getJobs();
 		$terminalWidth = $this->getTerminalWidth();
 
-		foreach ($jobs as [$info, $result]) {
-			$this->renderJob($info, $result, $terminalWidth, $output);
+		foreach ($summary->getJobs() as $jobSummary) {
+			$this->renderJob($jobSummary, $terminalWidth, $output);
 		}
 	}
 
 	private function getExitCode(RunSummary $summary): int
 	{
-		foreach ($summary->getJobs() as [$info, $result]) {
-			if ($result->getState() === JobResultState::fail()) {
+		foreach ($summary->getJobs() as $jobSummary) {
+			if ($jobSummary->getResult()->getState() === JobResultState::fail()) {
 				return self::FAILURE;
 			}
 		}

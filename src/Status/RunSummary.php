@@ -5,11 +5,11 @@ namespace Orisai\Scheduler\Status;
 final class RunSummary
 {
 
-	/** @var list<array{JobInfo, JobResult}> */
+	/** @var list<JobSummary> */
 	private array $jobs;
 
 	/**
-	 * @param list<array{JobInfo, JobResult}> $jobs
+	 * @param list<JobSummary> $jobs
 	 */
 	public function __construct(array $jobs)
 	{
@@ -17,7 +17,7 @@ final class RunSummary
 	}
 
 	/**
-	 * @return list<array{JobInfo, JobResult}>
+	 * @return list<JobSummary>
 	 */
 	public function getJobs(): array
 	{
