@@ -6,7 +6,7 @@ use Orisai\Exceptions\LogicalException;
 use Orisai\Scheduler\Status\RunSummary;
 use Throwable;
 
-final class JobsExecutionFailure extends LogicalException
+final class RunFailure extends LogicalException
 {
 
 	private RunSummary $summary;
@@ -18,7 +18,7 @@ final class JobsExecutionFailure extends LogicalException
 	{
 		$self = new self();
 		$self->summary = $summary;
-		$self->withMessage('Executed jobs failed');
+		$self->withMessage('Run failed');
 		$self->withSuppressed($suppressed);
 
 		return $self;

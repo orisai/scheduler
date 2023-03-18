@@ -74,10 +74,10 @@ final class ListCommand extends Command
 		$terminalWidth = $this->getTerminalWidth();
 		$expressionSpacing = $this->getCronExpressionSpacing($jobs);
 
-		foreach ($this->sortJobs($jobs, $nextOption) as [$job, $expression]) {
+		foreach ($this->sortJobs($jobs, $nextOption) as $key => [$job, $expression]) {
 			$expressionString = $this->formatCronExpression($expression, $expressionSpacing);
 
-			$command = $job->getName();
+			$name = $job->getName();
 
 			$nextDueDateLabel = 'Next Due:';
 			$nextDueDate = $this->getNextDueDateForEvent($expression);
@@ -89,15 +89,16 @@ final class ListCommand extends Command
 				'.',
 				max(
 				/* @infection-ignore-all */
-					$terminalWidth - mb_strlen($expressionString . $command . $nextDueDateLabel . $nextDueDate) - 6,
+					$terminalWidth - mb_strlen($expressionString . $key . $name . $nextDueDateLabel . $nextDueDate) - 9,
 					0,
 				),
 			);
 
 			$output->writeln(sprintf(
-				'  <fg=yellow>%s</>  %s<fg=#6C7280>%s %s %s</>',
+				'  <fg=yellow>%s</>  [%s] %s<fg=#6C7280>%s %s %s</>',
 				$expressionString,
-				$command,
+				$key,
+				$name,
 				$dots,
 				$nextDueDateLabel,
 				$nextDueDate,
@@ -137,9 +138,9 @@ final class ListCommand extends Command
 	}
 
 	/**
-	 * @param list<array{Job, CronExpression}> $jobs
-	 * @param bool|int<1, max>                 $next
-	 * @return list<array{Job, CronExpression}>
+	 * @param array<int|string, array{Job, CronExpression}> $jobs
+	 * @param bool|int<1, max>                              $next
+	 * @return array<int|string, array{Job, CronExpression}>
 	 */
 	private function sortJobs(array $jobs, $next): array
 	{
@@ -224,7 +225,7 @@ final class ListCommand extends Command
 	}
 
 	/**
-	 * @param list<array{Job, CronExpression}> $jobs
+	 * @param array<int|string, array{Job, CronExpression}> $jobs
 	 *
 	 * @infection-ignore-all
 	 */

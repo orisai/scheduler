@@ -78,10 +78,10 @@ MSG,
 
 		self::assertSame(
 			<<<'MSG'
-          * * * 4 *  Tests\Orisai\Scheduler\Doubles\CallbackList::__invoke() Next Due: 2 months
-          * * * * *  Tests\Orisai\Scheduler\Doubles\CallbackList::job1() Next Due: 59 seconds
-  */30 7-15 * * 1-5  Tests\Orisai\Scheduler\Doubles\CallbackList::job1() Next Due: 5 hours
-       30 * 12 10 *  tests/Doubles/CallbackList.php:32...... Next Due: 9 months
+          * * * 4 *  [2] Tests\Orisai\Scheduler\Doubles\CallbackList::__invoke() Next Due: 2 months
+          * * * * *  [0] Tests\Orisai\Scheduler\Doubles\CallbackList::job1() Next Due: 59 seconds
+  */30 7-15 * * 1-5  [1] Tests\Orisai\Scheduler\Doubles\CallbackList::job1() Next Due: 5 hours
+       30 * 12 10 *  [3] tests/Doubles/CallbackList.php:32.. Next Due: 9 months
 
 MSG,
 			implode(
@@ -99,10 +99,10 @@ MSG,
 
 		self::assertSame(
 			<<<'MSG'
-          * * * 4 *  Tests\Orisai\Scheduler\Doubles\CallbackList::__invoke().............. Next Due: 2 months
-          * * * * *  Tests\Orisai\Scheduler\Doubles\CallbackList::job1()................ Next Due: 59 seconds
-  */30 7-15 * * 1-5  Tests\Orisai\Scheduler\Doubles\CallbackList::job1()................... Next Due: 5 hours
-       30 * 12 10 *  tests/Doubles/CallbackList.php:32.................................... Next Due: 9 months
+          * * * 4 *  [2] Tests\Orisai\Scheduler\Doubles\CallbackList::__invoke().......... Next Due: 2 months
+          * * * * *  [0] Tests\Orisai\Scheduler\Doubles\CallbackList::job1()............ Next Due: 59 seconds
+  */30 7-15 * * 1-5  [1] Tests\Orisai\Scheduler\Doubles\CallbackList::job1()............... Next Due: 5 hours
+       30 * 12 10 *  [3] tests/Doubles/CallbackList.php:32................................ Next Due: 9 months
 
 MSG,
 			implode(
@@ -122,10 +122,10 @@ MSG,
 
 		self::assertSame(
 			<<<'MSG'
-          * * * 4 *  Tests\Orisai\Scheduler\Doubles\CallbackList::__invoke()....... Next Due: 1970-04-01 00:00:00 +01:00
-          * * * * *  Tests\Orisai\Scheduler\Doubles\CallbackList::job1()........... Next Due: 1970-01-01 01:01:00 +01:00
-  */30 7-15 * * 1-5  Tests\Orisai\Scheduler\Doubles\CallbackList::job1()........... Next Due: 1970-01-01 07:00:00 +01:00
-       30 * 12 10 *  tests/Doubles/CallbackList.php:32............................. Next Due: 1970-10-12 00:30:00 +01:00
+          * * * 4 *  [2] Tests\Orisai\Scheduler\Doubles\CallbackList::__invoke()... Next Due: 1970-04-01 00:00:00 +01:00
+          * * * * *  [0] Tests\Orisai\Scheduler\Doubles\CallbackList::job1()....... Next Due: 1970-01-01 01:01:00 +01:00
+  */30 7-15 * * 1-5  [1] Tests\Orisai\Scheduler\Doubles\CallbackList::job1()....... Next Due: 1970-01-01 07:00:00 +01:00
+       30 * 12 10 *  [3] tests/Doubles/CallbackList.php:32......................... Next Due: 1970-10-12 00:30:00 +01:00
 
 MSG,
 			implode(
@@ -163,12 +163,12 @@ MSG,
 
 		self::assertSame(
 			<<<'MSG'
-  * * * 1 *  Tests\Orisai\Scheduler\Doubles\CallbackList::job1().............. Next Due: 59 seconds
-  * * * 2 *  Tests\Orisai\Scheduler\Doubles\CallbackList::job1()................. Next Due: 1 month
-  * * * 4 *  Tests\Orisai\Scheduler\Doubles\CallbackList::job1()................ Next Due: 2 months
-  * * * 4 *  Tests\Orisai\Scheduler\Doubles\CallbackList::job1()................ Next Due: 2 months
-  * * * 6 *  Tests\Orisai\Scheduler\Doubles\CallbackList::job1()................ Next Due: 5 months
-  * * * 7 *  Tests\Orisai\Scheduler\Doubles\CallbackList::job1()................ Next Due: 6 months
+  * * * 1 *  [4] Tests\Orisai\Scheduler\Doubles\CallbackList::job1().......... Next Due: 59 seconds
+  * * * 2 *  [2] Tests\Orisai\Scheduler\Doubles\CallbackList::job1()............. Next Due: 1 month
+  * * * 4 *  [0] Tests\Orisai\Scheduler\Doubles\CallbackList::job1()............ Next Due: 2 months
+  * * * 4 *  [1] Tests\Orisai\Scheduler\Doubles\CallbackList::job1()............ Next Due: 2 months
+  * * * 6 *  [5] Tests\Orisai\Scheduler\Doubles\CallbackList::job1()............ Next Due: 5 months
+  * * * 7 *  [3] Tests\Orisai\Scheduler\Doubles\CallbackList::job1()............ Next Due: 6 months
 
 MSG,
 			implode(
@@ -187,8 +187,8 @@ MSG,
 
 		self::assertSame(
 			<<<'MSG'
-  * * * 1 *  Tests\Orisai\Scheduler\Doubles\CallbackList::job1().............. Next Due: 59 seconds
-  * * * 2 *  Tests\Orisai\Scheduler\Doubles\CallbackList::job1()................. Next Due: 1 month
+  * * * 1 *  [0] Tests\Orisai\Scheduler\Doubles\CallbackList::job1().......... Next Due: 59 seconds
+  * * * 2 *  [1] Tests\Orisai\Scheduler\Doubles\CallbackList::job1()............. Next Due: 1 month
 
 MSG,
 			implode(

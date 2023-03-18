@@ -6,7 +6,9 @@ use Closure;
 use Cron\CronExpression;
 use DateTimeImmutable;
 use Orisai\Clock\FrozenClock;
-use Orisai\Scheduler\Exception\JobsExecutionFailure;
+use Orisai\Exceptions\Logic\InvalidArgument;
+use Orisai\Scheduler\Exception\JobFailure;
+use Orisai\Scheduler\Exception\RunFailure;
 use Orisai\Scheduler\Job\CallbackJob;
 use Orisai\Scheduler\SimpleScheduler;
 use Orisai\Scheduler\Status\JobInfo;
@@ -17,7 +19,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Lock\Store\InMemoryStore;
 use Tests\Orisai\Scheduler\Doubles\CallbackList;
 use Tests\Orisai\Scheduler\Doubles\CustomNameJob;
-use Tests\Orisai\Scheduler\Doubles\JobFailure;
+use Tests\Orisai\Scheduler\Doubles\JobInnerFailure;
 use Tests\Orisai\Scheduler\Doubles\TestLockFactory;
 use Throwable;
 
@@ -46,6 +48,34 @@ final class SimpleSchedulerTest extends TestCase
 
 		$scheduler->run();
 		self::assertSame(2, $i);
+
+		$scheduler->runJob(0);
+		self::assertSame(3, $i);
+
+		$scheduler->runJob(0, false);
+		self::assertSame(4, $i);
+	}
+
+	public function testJobKey(): void
+	{
+		$scheduler = new SimpleScheduler();
+
+		$i = 0;
+		$job = new CallbackJob(
+			static function () use (&$i): void {
+				$i++;
+			},
+		);
+		$expression = new CronExpression('* * * * *');
+		$key = 'key';
+		$scheduler->addJob($job, $expression, $key);
+
+		self::assertSame([
+			$key => [$job, $expression],
+		], $scheduler->getJobs());
+
+		$scheduler->runJob($key);
+		self::assertSame(1, $i);
 	}
 
 	public function testNoJobs(): void
@@ -58,6 +88,17 @@ final class SimpleSchedulerTest extends TestCase
 			new RunSummary([]),
 			$scheduler->run(),
 		);
+
+		$this->expectException(InvalidArgument::class);
+		$this->expectExceptionMessage(
+			<<<'MSG'
+Context: Running job with ID '0'
+Problem: Job is not registered by scheduler.
+Tip: Inspect keys in 'Scheduler->getJobs()' or run command 'scheduler:list' to
+     find correct job ID.
+MSG,
+		);
+		$scheduler->runJob(0);
 	}
 
 	public function testFailingJob(): void
@@ -82,13 +123,23 @@ final class SimpleSchedulerTest extends TestCase
 		$e = null;
 		try {
 			$scheduler->run();
-		} catch (JobsExecutionFailure $e) {
+		} catch (RunFailure $e) {
 			// Handled bellow
 		}
 
 		self::assertSame(1, $i);
-		self::assertInstanceOf(JobsExecutionFailure::class, $e);
+		self::assertInstanceOf(RunFailure::class, $e);
 		self::assertCount(2, $e->getSuppressed());
+
+		$e = null;
+		try {
+			$scheduler->runJob(0);
+		} catch (JobFailure $e) {
+			// Handled bellow
+		}
+
+		self::assertInstanceOf(JobFailure::class, $e);
+		self::assertInstanceOf(Throwable::class, $e->getPrevious());
 	}
 
 	public function testFailingJobWithoutThrow(): void
@@ -118,6 +169,9 @@ final class SimpleSchedulerTest extends TestCase
 
 		self::assertSame(1, $i);
 		self::assertCount(2, $errors);
+
+		$scheduler->runJob(0);
+		self::assertCount(3, $errors);
 	}
 
 	public function testEvents(): void
@@ -157,6 +211,7 @@ final class SimpleSchedulerTest extends TestCase
 			],
 			$beforeCollected,
 		);
+		self::assertCount(2, $beforeCollected);
 		self::assertEquals(
 			[
 				[
@@ -170,6 +225,11 @@ final class SimpleSchedulerTest extends TestCase
 			],
 			$afterCollected,
 		);
+		self::assertCount(2, $afterCollected);
+
+		$scheduler->runJob(0);
+		self::assertCount(3, $beforeCollected);
+		self::assertCount(3, $afterCollected);
 	}
 
 	public function testTimeMovement(): void
@@ -256,6 +316,13 @@ final class SimpleSchedulerTest extends TestCase
 			],
 			$expressions,
 		);
+		self::assertNotNull($scheduler->runJob(0, false));
+		self::assertNotNull($scheduler->runJob(1, false));
+		self::assertNull($scheduler->runJob(2, false));
+
+		self::assertNotNull($scheduler->runJob(0));
+		self::assertNotNull($scheduler->runJob(1));
+		self::assertNotNull($scheduler->runJob(2));
 
 		$expressions = [];
 		$clock->move(60);
@@ -267,6 +334,9 @@ final class SimpleSchedulerTest extends TestCase
 			],
 			$expressions,
 		);
+		self::assertNotNull($scheduler->runJob(0, false));
+		self::assertNull($scheduler->runJob(1, false));
+		self::assertNotNull($scheduler->runJob(2, false));
 
 		$expressions = [];
 		$clock->move(60);
@@ -277,6 +347,9 @@ final class SimpleSchedulerTest extends TestCase
 			],
 			$expressions,
 		);
+		self::assertNotNull($scheduler->runJob(0, false));
+		self::assertNull($scheduler->runJob(1, false));
+		self::assertNull($scheduler->runJob(2, false));
 	}
 
 	public function testLongRunningJobDoesNotPreventNextJobToStart(): void
@@ -343,6 +416,31 @@ final class SimpleSchedulerTest extends TestCase
 		);
 	}
 
+	public function testJobSummary(): void
+	{
+		$clock = new FrozenClock(1);
+		$scheduler = new SimpleScheduler(null, null, $clock);
+
+		$cbs = new CallbackList();
+		$job = new CallbackJob(Closure::fromCallable([$cbs, 'job1']));
+		$scheduler->addJob($job, new CronExpression('* * * * *'));
+
+		$summary = $scheduler->runJob(0);
+
+		$now = $clock->now();
+		self::assertEquals(
+			[
+				new JobInfo(
+					'Tests\Orisai\Scheduler\Doubles\CallbackList::job1()',
+					'* * * * *',
+					$now,
+				),
+				new JobResult(new CronExpression('* * * * *'), $now, JobResultState::done()),
+			],
+			$summary,
+		);
+	}
+
 	public function testLockAlreadyAcquired(): void
 	{
 		$lockFactory = new TestLockFactory(new InMemoryStore(), false);
@@ -400,12 +498,17 @@ final class SimpleSchedulerTest extends TestCase
 			$result->getJobs()[1][1]->getEnd(),
 		);
 
+		$scheduler->runJob(0);
+		$scheduler->runJob(1);
+		self::assertSame(0, $i1);
+		self::assertSame(2, $i2);
+
 		$lock->release();
 
 		// Lock was released, job is executed
 		$result = $scheduler->run();
 		self::assertSame(1, $i1);
-		self::assertSame(2, $i2);
+		self::assertSame(3, $i2);
 		self::assertEquals(
 			[
 				[
@@ -420,9 +523,19 @@ final class SimpleSchedulerTest extends TestCase
 			$result->getJobs(),
 		);
 
-		$scheduler->run();
+		$scheduler->runJob(0);
+		$scheduler->runJob(1);
 		self::assertSame(2, $i1);
-		self::assertSame(3, $i2);
+		self::assertSame(4, $i2);
+
+		$scheduler->run();
+		self::assertSame(3, $i1);
+		self::assertSame(5, $i2);
+
+		$scheduler->runJob(0);
+		$scheduler->runJob(1);
+		self::assertSame(4, $i1);
+		self::assertSame(6, $i2);
 	}
 
 	public function testLockIsReleasedAfterAnExceptionInJob(): void
@@ -440,7 +553,7 @@ final class SimpleSchedulerTest extends TestCase
 			static function () use (&$i, &$throw): void {
 				$i++;
 				if ($throw) {
-					throw new JobFailure('');
+					throw new JobInnerFailure('');
 				}
 
 				$i++;
@@ -474,18 +587,18 @@ final class SimpleSchedulerTest extends TestCase
 		$throw = true;
 		$scheduler->addBeforeJobCallback(static function () use (&$throw): void {
 			if ($throw) {
-				throw new JobFailure('');
+				throw new JobInnerFailure('');
 			}
 		});
 
 		$e = null;
 		try {
 			$scheduler->run();
-		} catch (JobFailure $e) {
+		} catch (JobInnerFailure $e) {
 			// Handled bellow
 		}
 
-		self::assertInstanceOf(JobFailure::class, $e);
+		self::assertInstanceOf(JobInnerFailure::class, $e);
 		self::assertSame(0, $i);
 
 		// phpcs:ignore SlevomatCodingStandard.Variables.UnusedVariable.UnusedVariable
@@ -514,18 +627,18 @@ final class SimpleSchedulerTest extends TestCase
 		$throw = true;
 		$scheduler->addAfterJobCallback(static function () use (&$throw): void {
 			if ($throw) {
-				throw new JobFailure('');
+				throw new JobInnerFailure('');
 			}
 		});
 
 		$e = null;
 		try {
 			$scheduler->run();
-		} catch (JobFailure $e) {
+		} catch (JobInnerFailure $e) {
 			// Handled bellow
 		}
 
-		self::assertInstanceOf(JobFailure::class, $e);
+		self::assertInstanceOf(JobInnerFailure::class, $e);
 		self::assertSame(1, $i);
 
 		// phpcs:ignore SlevomatCodingStandard.Variables.UnusedVariable.UnusedVariable

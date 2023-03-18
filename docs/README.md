@@ -15,8 +15,10 @@ Cron job scheduler - with locks, parallelism and more
 	- [Custom job](#custom-job)
 - [Job info and result](#job-info-and-result)
 - [Run summary](#run-summary)
+- [Run single job](#run-single-job)
 - [CLI commands](#cli-commands)
 	- [Run command - run jobs once](#run-command)
+	- [Run job command - run single job](#run-job-command)
 	- [List command - show all jobs](#list-command)
 	- [Worker command - run jobs periodically](#worker-command)
 
@@ -47,6 +49,7 @@ On top of that you get:
 - [before/after job events](#events) for accessing job status
 - [overview of all jobs](#list-command), including estimated time of next run and whether job is currently running
 - running jobs either [once](#run-command) or [periodically](#worker-command) during development
+- running just a [single](#run-single-job) job, either ignoring or respecting due times
 
 ## Quick start
 
@@ -149,12 +152,12 @@ Check [job info and result](#job-info-and-result) for available status info
 
 ## Handling errors
 
-After all jobs finish, an exception `JobsExecutionFailure` composing exceptions thrown by all jobs is thrown. This
+After all jobs finish, an exception `RunFailure` composing exceptions thrown by all jobs is thrown. This
 exception will inform you about which exceptions were thrown, including their messages and source. But this still makes
 exceptions hard to access by application error handler and causes [CLI commands](#cli-commands) to hard fail.
 
 To overcome this limitation, add minimal error handler into scheduler. When an error handler is
-set, `JobsExecutionFailure` is *not thrown*.
+set, `RunFailure` is *not thrown*.
 
 Assuming you have a [PSR-3 logger](https://github.com/php-fig/log), e.g. [Monolog](https://github.com/Seldaek/monolog)
 installed, it would look like this:
@@ -309,6 +312,27 @@ foreach ($summary->getJobs() as [$info, $result]) {
 
 Check [job info and result](#job-info-and-result) for available jobs status info
 
+## Run single job
+
+For testing purposes it may be useful to run single job
+
+To do so, assign an ID to job when adding it to scheduler. You may also use an auto-assigned ID visible
+in [list command](#list-command) but that's not recommended because it depends just on order in which jobs were added.
+
+```php
+$scheduler->addJob($job, $expression, 'id');
+$scheduler->runJob('id'); // array{JobInfo, JobResult}
+```
+
+If you still want to respect job schedule and run it only if it is due, set 2nd parameter to false
+
+```php
+$scheduler->runJob('id', false); // array{JobInfo, JobResult}|null
+```
+
+[Handling errors](#handling-errors) is the same as for `run()` method, except instead of `RunFailure` is
+thrown `JobFailure`.
+
 ## CLI commands
 
 For symfony/console you may use our commands:
@@ -325,12 +349,16 @@ Assuming you don't use some DI library for handling services, register commands 
 use Symfony\Component\Console\Application;
 use Orisai\Scheduler\Command\ListCommand;
 use Orisai\Scheduler\Command\RunCommand;
+use Orisai\Scheduler\Command\RunJobCommand;
 use Orisai\Scheduler\Command\WorkerCommand;
 
 $app = new Application();
-$app->addCommands([new ListCommand($scheduler)])
-$app->addCommands([new RunCommand($scheduler)])
-$app->addCommands([new WorkerCommand()])
+$app->addCommands([
+	new ListCommand($scheduler),
+	new RunCommand($scheduler),
+	new RunJobCommand($scheduler),
+	new WorkerCommand(),
+])
 ```
 
 ### Run command
@@ -345,14 +373,23 @@ You can also change crontab settings to use command instead:
 * * * * * php path/to/project/bin/console scheduler:run >> /dev/null 2>&1
 ```
 
+### Run job command
+
+Run single job, ignoring scheduled time
+
+`bin/console scheduler:run-job <id>`
+
+- use `--no-force` to respect due time and only run job if it is due
+
 ### List command
 
-List all scheduled jobs
+List all scheduled jobs (in `expression [id] name... next-due` format)
 
 `bin/console scheduler:list`
 
 - use `--next` to sort jobs by their next execution time
 - `--next=N` lists only *N* next jobs (e.g. `--next=3` prints maximally 3)
+- use `-v` to display absolute times
 
 ### Worker command
 

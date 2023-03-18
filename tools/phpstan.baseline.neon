@@ -1,11 +1,6 @@
 parameters:
 	ignoreErrors:
 		-
-			message: "#^Method Orisai\\\\Scheduler\\\\Command\\\\ListCommand\\:\\:sortJobs\\(\\) should return list\\<array\\{Orisai\\\\Scheduler\\\\Job\\\\Job, Cron\\\\CronExpression\\}\\> but returns array\\<int\\<0, max\\>, array\\{Orisai\\\\Scheduler\\\\Job\\\\Job, Cron\\\\CronExpression\\}\\>\\.$#"
-			count: 1
-			path: ../src/Command/ListCommand.php
-
-		-
 			message: "#^Parameter \\#1 \\$input of function str_pad expects string, string\\|null given\\.$#"
 			count: 1
 			path: ../src/Command/ListCommand.php
@@ -14,6 +9,11 @@ parameters:
 			message: "#^Parameter \\#1 \\$str of function mb_strlen expects string, string\\|null given\\.$#"
 			count: 1
 			path: ../src/Command/ListCommand.php
+
+		-
+			message: "#^Only booleans are allowed in a negated boolean, mixed given\\.$#"
+			count: 1
+			path: ../src/Command/RunJobCommand.php
 
 		-
 			message: "#^Loose comparison via \"\\!\\=\" is not allowed\\.$#"
@@ -41,8 +41,23 @@ parameters:
 			path: ../tests/Unit/Job/CallbackJobTest.php
 
 		-
-			message: "#^Call to static method PHPUnit\\\\Framework\\\\Assert\\:\\:assertInstanceOf\\(\\) with 'Tests\\\\\\\\Orisai\\\\\\\\Scheduler\\\\\\\\Doubles\\\\\\\\JobFailure' and null will always evaluate to false\\.$#"
+			message: "#^Call to static method PHPUnit\\\\Framework\\\\Assert\\:\\:assertInstanceOf\\(\\) with 'Tests\\\\\\\\Orisai\\\\\\\\Scheduler\\\\\\\\Doubles\\\\\\\\JobInnerFailure' and null will always evaluate to false\\.$#"
 			count: 2
+			path: ../tests/Unit/SimpleSchedulerTest.php
+
+		-
+			message: "#^Call to static method PHPUnit\\\\Framework\\\\Assert\\:\\:assertInstanceOf\\(\\) with 'Throwable' and Throwable will always evaluate to true\\.$#"
+			count: 1
+			path: ../tests/Unit/SimpleSchedulerTest.php
+
+		-
+			message: "#^Call to static method PHPUnit\\\\Framework\\\\Assert\\:\\:assertNotNull\\(\\) with array\\{Orisai\\\\Scheduler\\\\Status\\\\JobInfo, Orisai\\\\Scheduler\\\\Status\\\\JobResult\\} will always evaluate to true\\.$#"
+			count: 3
+			path: ../tests/Unit/SimpleSchedulerTest.php
+
+		-
+			message: "#^Call to static method PHPUnit\\\\Framework\\\\Assert\\:\\:assertSame\\(\\) with 0 and 0 will always evaluate to true\\.$#"
+			count: 1
 			path: ../tests/Unit/SimpleSchedulerTest.php
 
 		-
@@ -76,7 +91,7 @@ parameters:
 			path: ../tests/Unit/SimpleSchedulerTest.php
 
 		-
-			message: "#^Dead catch \\- Tests\\\\Orisai\\\\Scheduler\\\\Doubles\\\\JobFailure is never thrown in the try block\\.$#"
+			message: "#^Dead catch \\- Tests\\\\Orisai\\\\Scheduler\\\\Doubles\\\\JobInnerFailure is never thrown in the try block\\.$#"
 			count: 2
 			path: ../tests/Unit/SimpleSchedulerTest.php
 
