@@ -47,7 +47,7 @@ On top of that you get:
 
 - [locking](#locks-and-job-overlapping) - each job should run only once at a time, without overlapping
 - [before/after job events](#events) for accessing job status
-- [overview of all jobs](#list-command), including estimated time of next run and whether job is currently running
+- [overview of all jobs](#list-command), including estimated time of next run
 - running jobs either [once](#run-command) or [periodically](#worker-command) during development
 - running just a [single](#run-single-job) job, either ignoring or respecting due times
 
