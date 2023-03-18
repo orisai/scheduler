@@ -81,12 +81,13 @@ final class SimpleSchedulerTest extends TestCase
 
 	public function testNoJobs(): void
 	{
-		$scheduler = new SimpleScheduler();
+		$clock = new FrozenClock(1);
+		$scheduler = new SimpleScheduler(null, null, $clock);
 
 		self::assertSame([], $scheduler->getJobs());
 
 		self::assertEquals(
-			new RunSummary([]),
+			new RunSummary($clock->now(), $clock->now(), []),
 			$scheduler->run(),
 		);
 
@@ -384,36 +385,52 @@ MSG,
 	public function testRunSummary(): void
 	{
 		$clock = new FrozenClock(1);
+		$before = $clock->now();
 		$scheduler = new SimpleScheduler(null, null, $clock);
 
 		$cbs = new CallbackList();
-		$job = new CallbackJob(Closure::fromCallable([$cbs, 'job1']));
-		$scheduler->addJob($job, new CronExpression('* * * * *'));
-		$scheduler->addJob($job, new CronExpression('* * * * *'));
+		$scheduler->addJob(
+			new CallbackJob(Closure::fromCallable([$cbs, 'job1'])),
+			new CronExpression('* * * * *'),
+		);
+		$scheduler->addJob(
+			new CustomNameJob(
+				new CallbackJob(static function () use ($clock): void {
+					$clock->move(60);
+				}),
+				'job1',
+			),
+			new CronExpression('* * * * *'),
+		);
 
 		$summary = $scheduler->run();
 
-		$now = $clock->now();
+		$after = $clock->now();
+		self::assertNotEquals($before, $after);
 		self::assertEquals(
-			[
-				new JobSummary(
-					new JobInfo(
-						'Tests\Orisai\Scheduler\Doubles\CallbackList::job1()',
-						'* * * * *',
-						$now,
+			new RunSummary(
+				$before,
+				$after,
+				[
+					new JobSummary(
+						new JobInfo(
+							'Tests\Orisai\Scheduler\Doubles\CallbackList::job1()',
+							'* * * * *',
+							$before,
+						),
+						new JobResult(new CronExpression('* * * * *'), $before, JobResultState::done()),
 					),
-					new JobResult(new CronExpression('* * * * *'), $now, JobResultState::done()),
-				),
-				new JobSummary(
-					new JobInfo(
-						'Tests\Orisai\Scheduler\Doubles\CallbackList::job1()',
-						'* * * * *',
-						$now,
+					new JobSummary(
+						new JobInfo(
+							'job1',
+							'* * * * *',
+							$before,
+						),
+						new JobResult(new CronExpression('* * * * *'), $after, JobResultState::done()),
 					),
-					new JobResult(new CronExpression('* * * * *'), $now, JobResultState::done()),
-				),
-			],
-			$summary->getJobs(),
+				],
+			),
+			$summary,
 		);
 	}
 

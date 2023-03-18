@@ -304,6 +304,9 @@ Scheduler run returns summary for inspection
 ```php
 $summary = $scheduler->run(); // RunSummary
 
+$summary->getStart(); // DateTimeImmutable
+$summary->getEnd(); // DateTimeImmutable
+
 foreach ($summary->getJobs() as $jobSummary) {
 	$jobSummary->getInfo(); // JobInfo
 	$jobSummary->getResult(); // JobResult

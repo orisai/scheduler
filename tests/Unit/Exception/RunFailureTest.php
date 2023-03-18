@@ -2,6 +2,7 @@
 
 namespace Tests\Orisai\Scheduler\Unit\Exception;
 
+use DateTimeImmutable;
 use Error;
 use Exception;
 use Orisai\Scheduler\Exception\RunFailure;
@@ -13,7 +14,11 @@ final class RunFailureTest extends TestCase
 
 	public function test(): void
 	{
-		$summary = new RunSummary([]);
+		$summary = new RunSummary(
+			new DateTimeImmutable(),
+			new DateTimeImmutable(),
+			[],
+		);
 		$suppressed = [
 			new Exception(),
 			new Error(),

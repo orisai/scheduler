@@ -16,6 +16,8 @@ final class RunSummaryTest extends TestCase
 
 	public function test(): void
 	{
+		$start = new DateTimeImmutable();
+		$end = new DateTimeImmutable();
 		$jobs = [
 			new JobSummary(
 				new JobInfo('1', '* * * * *', new DateTimeImmutable()),
@@ -27,7 +29,9 @@ final class RunSummaryTest extends TestCase
 			),
 		];
 
-		$summary = new RunSummary($jobs);
+		$summary = new RunSummary($start, $end, $jobs);
+		self::assertSame($start, $summary->getStart());
+		self::assertSame($end, $summary->getEnd());
 		self::assertSame(
 			$jobs,
 			$summary->getJobs(),

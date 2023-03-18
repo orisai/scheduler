@@ -2,8 +2,14 @@
 
 namespace Orisai\Scheduler\Status;
 
+use DateTimeImmutable;
+
 final class RunSummary
 {
+
+	private DateTimeImmutable $start;
+
+	private DateTimeImmutable $end;
 
 	/** @var list<JobSummary> */
 	private array $jobs;
@@ -11,9 +17,21 @@ final class RunSummary
 	/**
 	 * @param list<JobSummary> $jobs
 	 */
-	public function __construct(array $jobs)
+	public function __construct(DateTimeImmutable $start, DateTimeImmutable $end, array $jobs)
 	{
+		$this->start = $start;
+		$this->end = $end;
 		$this->jobs = $jobs;
+	}
+
+	public function getStart(): DateTimeImmutable
+	{
+		return $this->start;
+	}
+
+	public function getEnd(): DateTimeImmutable
+	{
+		return $this->end;
 	}
 
 	/**

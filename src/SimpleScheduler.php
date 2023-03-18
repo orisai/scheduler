@@ -119,7 +119,7 @@ final class SimpleScheduler implements Scheduler
 			}
 		}
 
-		$summary = new RunSummary($summaryJobs);
+		$summary = new RunSummary($runStart, $this->clock->now(), $summaryJobs);
 
 		if ($suppressed !== []) {
 			throw RunFailure::create($summary, $suppressed);
