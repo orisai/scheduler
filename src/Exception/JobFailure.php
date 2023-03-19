@@ -3,8 +3,7 @@
 namespace Orisai\Scheduler\Exception;
 
 use Orisai\Exceptions\LogicalException;
-use Orisai\Scheduler\Status\JobInfo;
-use Orisai\Scheduler\Status\JobResult;
+use Orisai\Scheduler\Status\JobSummary;
 use Throwable;
 
 /**
@@ -13,15 +12,12 @@ use Throwable;
 final class JobFailure extends LogicalException
 {
 
-	private JobInfo $info;
+	private JobSummary $summary;
 
-	private JobResult $result;
-
-	public static function create(JobInfo $info, JobResult $result, Throwable $throwable): self
+	public static function create(JobSummary $summary, Throwable $throwable): self
 	{
 		$self = new self();
-		$self->info = $info;
-		$self->result = $result;
+		$self->summary = $summary;
 		$self->withMessage('Job failed');
 		$self->withPrevious($throwable);
 		$self->withSuppressed([$throwable]);
@@ -29,14 +25,9 @@ final class JobFailure extends LogicalException
 		return $self;
 	}
 
-	public function getInfo(): JobInfo
+	public function getSummary(): JobSummary
 	{
-		return $this->info;
-	}
-
-	public function getResult(): JobResult
-	{
-		return $this->result;
+		return $this->summary;
 	}
 
 }

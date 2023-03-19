@@ -8,7 +8,8 @@ use Orisai\Clock\SystemClock;
 use Orisai\Exceptions\Logic\InvalidArgument;
 use Orisai\Exceptions\Message;
 use Orisai\Scheduler\Exception\JobFailure;
-use Orisai\Scheduler\Exception\RunFailure;
+use Orisai\Scheduler\Executor\BasicJobExecutor;
+use Orisai\Scheduler\Executor\JobExecutor;
 use Orisai\Scheduler\Job\Job;
 use Orisai\Scheduler\Job\JobLock;
 use Orisai\Scheduler\Status\JobInfo;
@@ -28,6 +29,8 @@ final class SimpleScheduler implements Scheduler
 	private ?Closure $errorHandler;
 
 	private LockFactory $lockFactory;
+
+	private JobExecutor $executor;
 
 	private ClockInterface $clock;
 
@@ -52,6 +55,12 @@ final class SimpleScheduler implements Scheduler
 		$this->errorHandler = $errorHandler;
 		$this->lockFactory = $lockFactory ?? new LockFactory(new InMemoryStore());
 		$this->clock = $clock ?? new SystemClock();
+
+		$this->executor = new BasicJobExecutor(
+			$this->clock,
+			fn ($id): array => $this->jobs[$id],
+			fn ($id, Job $job, CronExpression $expression): array => $this->runInternal($id, $job, $expression),
+		);
 	}
 
 	public function getJobs(): array
@@ -87,50 +96,31 @@ final class SimpleScheduler implements Scheduler
 			return null;
 		}
 
-		[$info, $result, $throwable] = $this->runInternal($id, $jobSet[0], $jobSet[1]);
+		[$summary, $throwable] = $this->runInternal($id, $jobSet[0], $jobSet[1]);
 
 		if ($throwable !== null) {
-			throw JobFailure::create($info, $result, $throwable);
-		}
-
-		return new JobSummary($info, $result);
-	}
-
-	public function run(): RunSummary
-	{
-		$runStart = $this->clock->now();
-		$jobs = [];
-		foreach ($this->jobs as [$job, $expression]) {
-			if ($expression->isDue($runStart)) {
-				$jobs[] = [$job, $expression];
-			}
-		}
-
-		$summaryJobs = [];
-		$suppressed = [];
-		foreach ($jobs as $i => [$job, $expression]) {
-			$jobSummary = $this->runInternal($i, $job, $expression);
-
-			$throwable = $jobSummary[2];
-			$summaryJobs[] = new JobSummary($jobSummary[0], $jobSummary[1]);
-
-			if ($throwable !== null) {
-				$suppressed[] = $throwable;
-			}
-		}
-
-		$summary = new RunSummary($runStart, $this->clock->now(), $summaryJobs);
-
-		if ($suppressed !== []) {
-			throw RunFailure::create($summary, $suppressed);
+			throw JobFailure::create($summary, $throwable);
 		}
 
 		return $summary;
 	}
 
+	public function run(): RunSummary
+	{
+		$runStart = $this->clock->now();
+		$ids = [];
+		foreach ($this->jobs as $id => [$job, $expression]) {
+			if ($expression->isDue($runStart)) {
+				$ids[] = $id;
+			}
+		}
+
+		return $this->executor->runJobs($ids, $runStart);
+	}
+
 	/**
 	 * @param string|int $id
-	 * @return array{JobInfo, JobResult, Throwable|null}
+	 * @return array{JobSummary, Throwable|null}
 	 */
 	private function runInternal($id, Job $job, CronExpression $expression): array
 	{
@@ -146,8 +136,10 @@ final class SimpleScheduler implements Scheduler
 
 		if (!$lock->acquire()) {
 			return [
-				$info,
-				new JobResult($expression, $info->getStart(), JobResultState::skip()),
+				new JobSummary(
+					$info,
+					new JobResult($expression, $info->getStart(), JobResultState::skip()),
+				),
 				null,
 			];
 		}
@@ -182,7 +174,10 @@ final class SimpleScheduler implements Scheduler
 			$lock->release();
 		}
 
-		return [$info, $result, $throwable];
+		return [
+			new JobSummary($info, $result),
+			$throwable,
+		];
 	}
 
 	/**

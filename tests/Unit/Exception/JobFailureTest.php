@@ -9,6 +9,7 @@ use Orisai\Scheduler\Exception\JobFailure;
 use Orisai\Scheduler\Status\JobInfo;
 use Orisai\Scheduler\Status\JobResult;
 use Orisai\Scheduler\Status\JobResultState;
+use Orisai\Scheduler\Status\JobSummary;
 use PHPUnit\Framework\TestCase;
 
 final class JobFailureTest extends TestCase
@@ -22,11 +23,11 @@ final class JobFailureTest extends TestCase
 			new DateTimeImmutable(),
 			JobResultState::fail(),
 		);
+		$summary = new JobSummary($info, $result);
 		$exception = new Exception('test');
 
-		$failure = JobFailure::create($info, $result, $exception);
-		self::assertSame($info, $failure->getInfo());
-		self::assertSame($result, $failure->getResult());
+		$failure = JobFailure::create($summary, $exception);
+		self::assertSame($summary, $failure->getSummary());
 		self::assertSame($exception, $failure->getPrevious());
 		self::assertSame([$exception], $failure->getSuppressed());
 		self::assertStringStartsWith('Job failed', $failure->getMessage());
