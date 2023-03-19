@@ -19,6 +19,7 @@ use Tests\Orisai\Scheduler\Doubles\TestLockFactory;
 use function array_map;
 use function explode;
 use function implode;
+use function preg_replace;
 use function putenv;
 use function rtrim;
 use const PHP_EOL;
@@ -237,6 +238,74 @@ MSG,
 				array_map(
 					static fn (string $s): string => rtrim($s),
 					explode(PHP_EOL, $tester->getDisplay()),
+				),
+			),
+		);
+		self::assertSame($command::SUCCESS, $code);
+	}
+
+	public function testJson(): void
+	{
+		$clock = new FrozenClock(1, new DateTimeZone('Europe/Prague'));
+		$scheduler = new SimpleScheduler(null, null, $clock);
+
+		$cbs = new CallbackList();
+		$scheduler->addJob(
+			new CallbackJob(Closure::fromCallable([$cbs, 'job1'])),
+			new CronExpression('1 * * * *'),
+		);
+
+		$command = new RunJobCommand($scheduler);
+		$tester = new CommandTester($command);
+
+		putenv('COLUMNS=80');
+		$code = $tester->execute([
+			'id' => 0,
+			'--no-force' => true,
+			'--json' => true,
+		]);
+
+		self::assertSame(
+			<<<'MSG'
+null
+
+MSG,
+			implode(
+				PHP_EOL,
+				array_map(
+					static fn (string $s): string => rtrim($s),
+					explode(PHP_EOL, preg_replace('~\R~u', PHP_EOL, $tester->getDisplay())),
+				),
+			),
+		);
+		self::assertSame($command::SUCCESS, $code);
+
+		$clock->move(60);
+		$code = $tester->execute([
+			'id' => 0,
+			'--json' => true,
+		]);
+
+		self::assertSame(
+			<<<'MSG'
+{
+    "info": {
+        "name": "Tests\\Orisai\\Scheduler\\Doubles\\CallbackList::job1()",
+        "expression": "1 * * * *",
+        "start": "1970-01-01T01:01:01+01:00"
+    },
+    "result": {
+        "end": "1970-01-01T01:01:01+01:00",
+        "state": "done"
+    }
+}
+
+MSG,
+			implode(
+				PHP_EOL,
+				array_map(
+					static fn (string $s): string => rtrim($s),
+					explode(PHP_EOL, preg_replace('~\R~u', PHP_EOL, $tester->getDisplay())),
 				),
 			),
 		);

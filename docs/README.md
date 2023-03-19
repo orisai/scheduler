@@ -383,6 +383,7 @@ Run single job, ignoring scheduled time
 `bin/console scheduler:run-job <id>`
 
 - use `--no-force` to respect due time and only run job if it is due
+- use `--json` to output json with job info and result
 
 ### List command
 

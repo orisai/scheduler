@@ -7,9 +7,9 @@ use ValueError;
 final class JobResultState
 {
 
-	private const Done = 1,
-		Fail = 2,
-		Skip = 3;
+	private const Done = 'done',
+		Fail = 'fail',
+		Skip = 'skip';
 
 	private const ValuesAndNames = [
 		self::Done => 'Done',
@@ -21,12 +21,12 @@ final class JobResultState
 	public string $name;
 
 	/** @readonly */
-	public int $value;
+	public string $value;
 
 	/** @var array<string, self> */
 	private static array $instances = [];
 
-	private function __construct(string $name, int $value)
+	private function __construct(string $name, string $value)
 	{
 		$this->name = $name;
 		$this->value = $value;
@@ -47,7 +47,7 @@ final class JobResultState
 		return self::from(self::Skip);
 	}
 
-	public static function tryFrom(int $value): ?self
+	public static function tryFrom(string $value): ?self
 	{
 		$key = self::ValuesAndNames[$value] ?? null;
 
@@ -58,7 +58,7 @@ final class JobResultState
 		return self::$instances[$key] ??= new self($key, $value);
 	}
 
-	public static function from(int $value): self
+	public static function from(string $value): self
 	{
 		$self = self::tryFrom($value);
 
