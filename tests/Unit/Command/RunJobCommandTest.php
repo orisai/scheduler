@@ -55,7 +55,7 @@ MSG,
 	public function testSuccess(): void
 	{
 		$clock = new FrozenClock(1, new DateTimeZone('Europe/Prague'));
-		$scheduler = new SimpleScheduler(null, null, $clock);
+		$scheduler = new SimpleScheduler(null, null, null, $clock);
 
 		$cbs = new CallbackList();
 		$scheduler->addJob(
@@ -113,7 +113,7 @@ MSG,
 			// Noop
 		};
 		$clock = new FrozenClock(1, new DateTimeZone('Europe/Prague'));
-		$scheduler = new SimpleScheduler($errorHandler, null, $clock);
+		$scheduler = new SimpleScheduler($errorHandler, null, null, $clock);
 
 		$cbs = new CallbackList();
 		$scheduler->addJob(
@@ -149,7 +149,7 @@ MSG,
 	{
 		$lockFactory = new TestLockFactory(new InMemoryStore(), false);
 		$clock = new FrozenClock(1, new DateTimeZone('Europe/Prague'));
-		$scheduler = new SimpleScheduler(null, $lockFactory, $clock);
+		$scheduler = new SimpleScheduler(null, $lockFactory, null, $clock);
 
 		$cbs = new CallbackList();
 		$scheduler->addJob(
@@ -190,7 +190,7 @@ MSG,
 	public function testNoForce(): void
 	{
 		$clock = new FrozenClock(1, new DateTimeZone('Europe/Prague'));
-		$scheduler = new SimpleScheduler(null, null, $clock);
+		$scheduler = new SimpleScheduler(null, null, null, $clock);
 
 		$cbs = new CallbackList();
 		$scheduler->addJob(
@@ -247,7 +247,7 @@ MSG,
 	public function testJson(): void
 	{
 		$clock = new FrozenClock(1, new DateTimeZone('Europe/Prague'));
-		$scheduler = new SimpleScheduler(null, null, $clock);
+		$scheduler = new SimpleScheduler(null, null, null, $clock);
 
 		$cbs = new CallbackList();
 		$scheduler->addJob(
@@ -292,10 +292,10 @@ MSG,
     "info": {
         "name": "Tests\\Orisai\\Scheduler\\Doubles\\CallbackList::job1()",
         "expression": "1 * * * *",
-        "start": "1970-01-01T01:01:01+01:00"
+        "start": "61.000"
     },
     "result": {
-        "end": "1970-01-01T01:01:01+01:00",
+        "end": "61.000",
         "state": "done"
     }
 }

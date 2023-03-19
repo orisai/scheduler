@@ -2,7 +2,6 @@
 
 namespace Orisai\Scheduler\Command;
 
-use DateTimeInterface;
 use Orisai\Scheduler\Scheduler;
 use Orisai\Scheduler\Status\JobResultState;
 use Orisai\Scheduler\Status\JobSummary;
@@ -85,10 +84,10 @@ final class RunJobCommand extends BaseRunCommand
 			'info' => [
 				'name' => $info->getName(),
 				'expression' => $info->getExpression(),
-				'start' => $info->getStart()->format(DateTimeInterface::ATOM),
+				'start' => $info->getStart()->format('U.v'),
 			],
 			'result' => [
-				'end' => $result->getEnd()->format(DateTimeInterface::ATOM),
+				'end' => $result->getEnd()->format('U.v'),
 				'state' => $result->getState()->value,
 			],
 		], JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT));

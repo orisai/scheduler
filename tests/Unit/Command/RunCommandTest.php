@@ -15,11 +15,13 @@ use Symfony\Component\Lock\Store\InMemoryStore;
 use Tests\Orisai\Scheduler\Doubles\CallbackList;
 use Tests\Orisai\Scheduler\Doubles\CustomNameJob;
 use Tests\Orisai\Scheduler\Doubles\TestLockFactory;
+use Tests\Orisai\Scheduler\Unit\SchedulerProcessSetup;
 use function array_map;
 use function explode;
 use function implode;
 use function putenv;
 use function rtrim;
+use function sort;
 use const PHP_EOL;
 
 /**
@@ -49,7 +51,7 @@ MSG,
 	public function testSuccess(): void
 	{
 		$clock = new FrozenClock(1, new DateTimeZone('Europe/Prague'));
-		$scheduler = new SimpleScheduler(null, null, $clock);
+		$scheduler = new SimpleScheduler(null, null, null, $clock);
 
 		$cbs = new CallbackList();
 		$scheduler->addJob(
@@ -109,7 +111,7 @@ MSG,
 			// Noop
 		};
 		$clock = new FrozenClock(1, new DateTimeZone('Europe/Prague'));
-		$scheduler = new SimpleScheduler($errorHandler, null, $clock);
+		$scheduler = new SimpleScheduler($errorHandler, null, null, $clock);
 
 		$cbs = new CallbackList();
 		$scheduler->addJob(
@@ -148,7 +150,7 @@ MSG,
 	{
 		$lockFactory = new TestLockFactory(new InMemoryStore(), false);
 		$clock = new FrozenClock(1, new DateTimeZone('Europe/Prague'));
-		$scheduler = new SimpleScheduler(null, $lockFactory, $clock);
+		$scheduler = new SimpleScheduler(null, $lockFactory, null, $clock);
 
 		$cbs = new CallbackList();
 		$scheduler->addJob(
@@ -182,6 +184,31 @@ MSG,
 			),
 		);
 		self::assertSame($command::SUCCESS, $code);
+	}
+
+	public function testProcessExecutor(): void
+	{
+		$scheduler = SchedulerProcessSetup::createWithErrorHandler();
+
+		$command = new RunCommand($scheduler);
+		$tester = new CommandTester($command);
+
+		putenv('COLUMNS=80');
+		$code = $tester->execute([]);
+
+		$displayLines = explode(PHP_EOL, $tester->getDisplay());
+		sort($displayLines);
+
+		self::assertEquals(
+			[
+				'',
+				'1970-01-01 00:00:01 Running Tests\Orisai\Scheduler\Doubles\CallbackList::exceptionJob() 0ms FAIL',
+				'1970-01-01 00:00:01 Running Tests\Orisai\Scheduler\Doubles\CallbackList::job1() 0ms DONE',
+				'1970-01-01 00:00:01 Running Tests\Orisai\Scheduler\Doubles\CallbackList::job1() 0ms DONE',
+			],
+			$displayLines,
+		);
+		self::assertSame($command::FAILURE, $code);
 	}
 
 }

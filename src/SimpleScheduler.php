@@ -49,6 +49,7 @@ final class SimpleScheduler implements Scheduler
 	public function __construct(
 		?Closure $errorHandler = null,
 		?LockFactory $lockFactory = null,
+		?JobExecutor $executor = null,
 		?ClockInterface $clock = null
 	)
 	{
@@ -56,7 +57,7 @@ final class SimpleScheduler implements Scheduler
 		$this->lockFactory = $lockFactory ?? new LockFactory(new InMemoryStore());
 		$this->clock = $clock ?? new SystemClock();
 
-		$this->executor = new BasicJobExecutor(
+		$this->executor = $executor ?? new BasicJobExecutor(
 			$this->clock,
 			fn ($id): array => $this->jobs[$id],
 			fn ($id, Job $job, CronExpression $expression): array => $this->runInternal($id, $job, $expression),

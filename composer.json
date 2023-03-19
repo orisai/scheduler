@@ -2,6 +2,8 @@
 	"name": "orisai/scheduler",
 	"description": "Cron job scheduler - with locks, parallelism and more",
 	"keywords": [
+		"async",
+		"asynchronous",
 		"cron",
 		"cronjob",
 		"crontab",
@@ -9,6 +11,7 @@
 		"interval",
 		"job-scheduler",
 		"queue",
+		"parallel",
 		"recurring",
 		"runner",
 		"schedule",

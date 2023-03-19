@@ -50,7 +50,7 @@ MSG,
 	public function testList(): void
 	{
 		$clock = new FrozenClock(1, new DateTimeZone('Europe/Prague'));
-		$scheduler = new SimpleScheduler(null, null, $clock);
+		$scheduler = new SimpleScheduler(null, null, null, $clock);
 
 		$cbs = new CallbackList();
 		$scheduler->addJob(
@@ -142,7 +142,7 @@ MSG,
 	public function testNext(): void
 	{
 		$clock = new FrozenClock(1, new DateTimeZone('Europe/Prague'));
-		$scheduler = new SimpleScheduler(null, null, $clock);
+		$scheduler = new SimpleScheduler(null, null, null, $clock);
 
 		$cbs = new CallbackList();
 		$job = new CallbackJob(Closure::fromCallable([$cbs, 'job1']));

@@ -82,7 +82,7 @@ final class SimpleSchedulerTest extends TestCase
 	public function testNoJobs(): void
 	{
 		$clock = new FrozenClock(1);
-		$scheduler = new SimpleScheduler(null, null, $clock);
+		$scheduler = new SimpleScheduler(null, null, null, $clock);
 
 		self::assertSame([], $scheduler->getJobs());
 
@@ -183,7 +183,7 @@ MSG,
 		};
 		$clock = new FrozenClock(1);
 		$now = $clock->now();
-		$scheduler = new SimpleScheduler($errorHandler, null, $clock);
+		$scheduler = new SimpleScheduler($errorHandler, null, null, $clock);
 		$cbs = new CallbackList();
 
 		$job1 = new CallbackJob(Closure::fromCallable([$cbs, 'exceptionJob']));
@@ -237,7 +237,7 @@ MSG,
 	public function testTimeMovement(): void
 	{
 		$clock = new FrozenClock(1);
-		$scheduler = new SimpleScheduler(null, null, $clock);
+		$scheduler = new SimpleScheduler(null, null, null, $clock);
 
 		$jobLine = __LINE__ + 2;
 		$job = new CallbackJob(
@@ -294,7 +294,7 @@ MSG,
 	public function testDueTime(): void
 	{
 		$clock = new FrozenClock(1);
-		$scheduler = new SimpleScheduler(null, null, $clock);
+		$scheduler = new SimpleScheduler(null, null, null, $clock);
 
 		$expressions = [];
 		$scheduler->addAfterJobCallback(static function (JobInfo $info) use (&$expressions): void {
@@ -357,7 +357,7 @@ MSG,
 	public function testLongRunningJobDoesNotPreventNextJobToStart(): void
 	{
 		$clock = new FrozenClock(1);
-		$scheduler = new SimpleScheduler(null, null, $clock);
+		$scheduler = new SimpleScheduler(null, null, null, $clock);
 
 		$job1 = new CallbackJob(
 			static function () use ($clock): void {
@@ -386,7 +386,7 @@ MSG,
 	{
 		$clock = new FrozenClock(1);
 		$before = $clock->now();
-		$scheduler = new SimpleScheduler(null, null, $clock);
+		$scheduler = new SimpleScheduler(null, null, null, $clock);
 
 		$cbs = new CallbackList();
 		$scheduler->addJob(
@@ -437,7 +437,7 @@ MSG,
 	public function testJobSummary(): void
 	{
 		$clock = new FrozenClock(1);
-		$scheduler = new SimpleScheduler(null, null, $clock);
+		$scheduler = new SimpleScheduler(null, null, null, $clock);
 
 		$cbs = new CallbackList();
 		$job = new CallbackJob(Closure::fromCallable([$cbs, 'job1']));
@@ -465,7 +465,7 @@ MSG,
 	{
 		$lockFactory = new TestLockFactory(new InMemoryStore(), false);
 		$clock = new FrozenClock(1);
-		$scheduler = new SimpleScheduler(null, $lockFactory, $clock);
+		$scheduler = new SimpleScheduler(null, $lockFactory, null, $clock);
 
 		$i1 = 0;
 		$job1 = new CallbackJob(
@@ -565,7 +565,7 @@ MSG,
 		};
 		$lockFactory = new TestLockFactory(new InMemoryStore(), false);
 		$clock = new FrozenClock(1);
-		$scheduler = new SimpleScheduler($errorHandler, $lockFactory, $clock);
+		$scheduler = new SimpleScheduler($errorHandler, $lockFactory, null, $clock);
 
 		$throw = true;
 		$i = 0;
@@ -594,7 +594,7 @@ MSG,
 	{
 		$lockFactory = new TestLockFactory(new InMemoryStore(), false);
 		$clock = new FrozenClock(1);
-		$scheduler = new SimpleScheduler(null, $lockFactory, $clock);
+		$scheduler = new SimpleScheduler(null, $lockFactory, null, $clock);
 
 		$i = 0;
 		$job = new CallbackJob(
@@ -634,7 +634,7 @@ MSG,
 	{
 		$lockFactory = new TestLockFactory(new InMemoryStore(), false);
 		$clock = new FrozenClock(1);
-		$scheduler = new SimpleScheduler(null, $lockFactory, $clock);
+		$scheduler = new SimpleScheduler(null, $lockFactory, null, $clock);
 
 		$i = 0;
 		$job = new CallbackJob(
@@ -668,6 +668,58 @@ MSG,
 
 		$scheduler->run();
 		self::assertSame(3, $i);
+	}
+
+	public function testProcessExecutorWithErrorHandler(): void
+	{
+		$scheduler = SchedulerProcessSetup::createWithErrorHandler();
+		$summary = $scheduler->run();
+
+		self::assertCount(3, $summary->getJobs());
+	}
+
+	public function testProcessExecutorWithoutErrorHandler(): void
+	{
+		$scheduler = SchedulerProcessSetup::createWithoutErrorHandler();
+
+		$e = null;
+		try {
+			$scheduler->run();
+		} catch (RunFailure $e) {
+			// Handled bellow
+		}
+
+		self::assertNotNull($e);
+		self::assertStringStartsWith(
+			<<<'MSG'
+Run failed
+Suppressed errors:
+MSG,
+			$e->getMessage(),
+		);
+		self::assertStringNotContainsString('Could not open input file: bin/console', $e->getMessage());
+	}
+
+	public function testProcessExecutorWithDefaultExecutable(): void
+	{
+		$scheduler = SchedulerProcessSetup::createWithDefaultExecutable();
+
+		$e = null;
+		try {
+			$scheduler->run();
+		} catch (RunFailure $e) {
+			// Handled bellow
+		}
+
+		self::assertNotNull($e);
+		self::assertStringStartsWith(
+			<<<'MSG'
+Run failed
+Suppressed errors:
+MSG,
+			$e->getMessage(),
+		);
+		self::assertStringContainsString('Could not open input file: bin/console', $e->getMessage());
 	}
 
 }

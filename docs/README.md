@@ -10,6 +10,7 @@ Cron job scheduler - with locks, parallelism and more
 - [Events](#events)
 - [Handling errors](#handling-errors)
 - [Locks and job overlapping](#locks-and-job-overlapping)
+- [Parallelization and process isolation](#parallelization-and-process-isolation)
 - [Job types](#job-types)
 	- [Callback job](#callback-job)
 	- [Custom job](#custom-job)
@@ -35,7 +36,8 @@ With this library you can manage all cron jobs in application and setup them in 
 Well, you are right. But do they manage everything needed? By not using crontab directly you loose several features that
 library has to replicate:
 
-- parallelism - jobs should run in parallel and start in time even if one or more run for a long time
+- [parallelism](#parallelization-and-process-isolation) - jobs should run in parallel and start in time even if one or
+  more run for a long time
 - [failure protection](#handling-errors) - if one job fails, the failure should be logged and the other jobs should
   still be executed
 - [cron expressions](#execution-time) - library has to parse and properly evaluate cron expression to determine whether
@@ -220,6 +222,45 @@ new CallbackJob(function (JobLock $lock): void {
 });
 ```
 
+## Parallelization and process isolation
+
+It is important for crontab scheduler tasks to be executed asynchronously and in separate processes because this
+approach provides several benefits, including:
+
+- Isolation: Each task runs in its own separate process, which ensures that it is isolated from other tasks and any
+  errors or issues that occur in one task will not affect the execution of other tasks.
+- Resource management: Asynchronous execution of tasks allows for better resource management as multiple tasks can be
+  executed simultaneously without causing resource conflicts.
+- Efficiency: Asynchronous execution also allows for greater efficiency as tasks can be executed concurrently, reducing
+  the overall execution time.
+- Scalability: Asynchronous execution enables the system to scale more easily as additional tasks can be added without
+  increasing the load on any one process.
+- Flexibility: Asynchronous execution also allows for greater flexibility in scheduling as tasks can be scheduled to run
+  at different times and frequencies without interfering with each other.
+
+Overall, asynchronous and separate process execution of crontab scheduler tasks provides better performance,
+reliability, and flexibility than running tasks synchronously in a single process.
+
+To set up scheduler for parallelization and process isolation, you need to
+have [pcntl_*](https://www.php.net/manual/en/book.pcntl.php) functions enabled. Also in the background is
+used [run-job command](#run-job-command), so you need to have [console](#cli-commands) set up as well.
+
+```php
+use Orisai\Scheduler\SimpleScheduler;
+use Orisai\Scheduler\Executor\ProcessJobExecutor;
+
+$executor = new ProcessJobExecutor();
+$scheduler = new SimpleScheduler(null, null, $executor);
+```
+
+If your executable script is not `bin/console` or if you are using multiple scheduler setups, specify the executable:
+
+```php
+use Orisai\Scheduler\Executor\ProcessJobExecutor;
+
+$executor = new ProcessJobExecutor('bin/console');
+```
+
 ## Job types
 
 ### Callback job
@@ -401,7 +442,7 @@ Run scheduler repeatedly, once every minute
 
 `bin/console scheduler:worker`
 
-- requires `pcntl_*` function to be enabled
-- if your executable script is not `bin/console`, specify it:
+- requires [pcntl_*](https://www.php.net/manual/en/book.pcntl.php) functions to be enabled
+- if your executable script is not `bin/console` or if you are using multiple scheduler setups, specify the executable:
 	- via `your/console scheduler:worker -e=your/console`
 	- or via constructor parameter `new WorkerCommand(executable: 'your/console')`
