@@ -126,6 +126,7 @@ final class SimpleScheduler implements Scheduler
 	private function runInternal($id, Job $job, CronExpression $expression): array
 	{
 		$info = new JobInfo(
+			$id,
 			$job->getName(),
 			$expression->getExpression(),
 			$this->clock->now(),

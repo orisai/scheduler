@@ -30,7 +30,8 @@ abstract class BaseRunCommand extends Command
 
 		$runStart = $info->getStart()->format('Y-m-d H:i:s');
 		$running = ' Running ';
-		$jobName = $info->getName();
+		$id = $info->getId();
+		$name = $info->getName();
 		/* @infection-ignore-all */
 		$diff = (int) $result->getEnd()->format('Uv') - (int) $info->getStart()->format('Uv');
 		$runTime = number_format($diff) . 'ms';
@@ -59,16 +60,17 @@ abstract class BaseRunCommand extends Command
 			'.',
 			max(
 			/* @infection-ignore-all */
-				$terminalWidth - mb_strlen($runStart . $running . $jobName . $runTime . strip_tags($status)) - 2,
+				$terminalWidth - mb_strlen($runStart . $running . $id . $name . $runTime . strip_tags($status)) - 5,
 				0,
 			),
 		);
 
 		$output->writeln(sprintf(
-			'<fg=gray>%s</>%s%s<fg=#6C7280>%s</> <fg=gray>%s</> %s',
+			'<fg=gray>%s</>%s[%s] %s<fg=#6C7280>%s</> <fg=gray>%s</> %s',
 			$runStart,
 			$running,
-			$jobName,
+			$id,
+			$name,
 			$dots,
 			$runTime,
 			$status,

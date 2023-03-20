@@ -82,6 +82,7 @@ final class RunJobCommand extends BaseRunCommand
 
 		$output->writeln(json_encode([
 			'info' => [
+				'id' => $info->getId(),
 				'name' => $info->getName(),
 				'expression' => $info->getExpression(),
 				'start' => $info->getStart()->format('U.v'),

@@ -322,6 +322,7 @@ Status information available via [events](#events) and [run summary](#run-summar
 Info:
 
 ```php
+$id = $info->getId(); // string|int
 $name = $info->getName(); // string
 $expression = $info->getExpression(); // string, e.g. '* * * * *'
 $start = $info->getStart(); // DateTimeImmutable

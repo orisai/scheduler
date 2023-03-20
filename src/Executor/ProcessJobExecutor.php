@@ -75,6 +75,7 @@ final class ProcessJobExecutor implements JobExecutor
 
 					$summaryJobs[] = new JobSummary(
 						new JobInfo(
+							$decoded['info']['id'],
 							$decoded['info']['name'],
 							$decoded['info']['expression'],
 							DateTimeImmutable::createFromFormat('U.v', $decoded['info']['start']),

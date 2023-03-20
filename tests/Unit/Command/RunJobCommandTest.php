@@ -73,7 +73,7 @@ MSG,
 
 		self::assertSame(
 			<<<'MSG'
-1970-01-01 01:00:01 Running Tests\Orisai\Scheduler\Doubles\CallbackList::job1() 0ms DONE
+1970-01-01 01:00:01 Running [0] Tests\Orisai\Scheduler\Doubles\CallbackList::job1() 0ms DONE
 
 MSG,
 			implode(
@@ -93,7 +93,7 @@ MSG,
 
 		self::assertSame(
 			<<<'MSG'
-1970-01-01 01:00:01 Running Tests\Orisai\Scheduler\Doubles\CallbackList::job1()............ 0ms DONE
+1970-01-01 01:00:01 Running [0] Tests\Orisai\Scheduler\Doubles\CallbackList::job1()........ 0ms DONE
 
 MSG,
 			implode(
@@ -131,7 +131,7 @@ MSG,
 
 		self::assertSame(
 			<<<'MSG'
-1970-01-01 01:00:01 Running Tests\Orisai\Scheduler\Doubles\CallbackList::exceptionJob() 0ms FAIL
+1970-01-01 01:00:01 Running [0] Tests\Orisai\Scheduler\Doubles\CallbackList::exceptionJob() 0ms FAIL
 
 MSG,
 			implode(
@@ -173,7 +173,7 @@ MSG,
 
 		self::assertSame(
 			<<<'MSG'
-1970-01-01 01:00:01 Running job1....................................... 0ms SKIP
+1970-01-01 01:00:01 Running [0] job1................................... 0ms SKIP
 
 MSG,
 			implode(
@@ -209,7 +209,7 @@ MSG,
 
 		self::assertSame(
 			<<<'MSG'
-1970-01-01 01:00:01 Running Tests\Orisai\Scheduler\Doubles\CallbackList::job1() 0ms DONE
+1970-01-01 01:00:01 Running [0] Tests\Orisai\Scheduler\Doubles\CallbackList::job1() 0ms DONE
 
 MSG,
 			implode(
@@ -290,6 +290,7 @@ MSG,
 			<<<'MSG'
 {
     "info": {
+        "id": 0,
         "name": "Tests\\Orisai\\Scheduler\\Doubles\\CallbackList::job1()",
         "expression": "1 * * * *",
         "start": "61.000"

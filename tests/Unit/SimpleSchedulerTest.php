@@ -208,8 +208,8 @@ MSG,
 
 		self::assertEquals(
 			[
-				new JobInfo('Tests\Orisai\Scheduler\Doubles\CallbackList::exceptionJob()', '* * * * *', $now),
-				new JobInfo('Tests\Orisai\Scheduler\Doubles\CallbackList::job1()', '* * * * *', $now),
+				new JobInfo(0, 'Tests\Orisai\Scheduler\Doubles\CallbackList::exceptionJob()', '* * * * *', $now),
+				new JobInfo(1, 'Tests\Orisai\Scheduler\Doubles\CallbackList::job1()', '* * * * *', $now),
 			],
 			$beforeCollected,
 		);
@@ -217,11 +217,11 @@ MSG,
 		self::assertEquals(
 			[
 				[
-					new JobInfo('Tests\Orisai\Scheduler\Doubles\CallbackList::exceptionJob()', '* * * * *', $now),
+					new JobInfo(0, 'Tests\Orisai\Scheduler\Doubles\CallbackList::exceptionJob()', '* * * * *', $now),
 					new JobResult(new CronExpression('* * * * *'), $now, JobResultState::fail()),
 				],
 				[
-					new JobInfo('Tests\Orisai\Scheduler\Doubles\CallbackList::job1()', '* * * * *', $now),
+					new JobInfo(1, 'Tests\Orisai\Scheduler\Doubles\CallbackList::job1()', '* * * * *', $now),
 					new JobResult(new CronExpression('* * * * *'), $now, JobResultState::done()),
 				],
 			],
@@ -265,6 +265,7 @@ MSG,
 		self::assertEquals(
 			[
 				new JobInfo(
+					0,
 					"tests/Unit/SimpleSchedulerTest.php:$jobLine",
 					'* * * * *',
 					DateTimeImmutable::createFromFormat('U', '1'),
@@ -276,6 +277,7 @@ MSG,
 			[
 				[
 					new JobInfo(
+						0,
 						"tests/Unit/SimpleSchedulerTest.php:$jobLine",
 						'* * * * *',
 						DateTimeImmutable::createFromFormat('U', '1'),
@@ -414,6 +416,7 @@ MSG,
 				[
 					new JobSummary(
 						new JobInfo(
+							0,
 							'Tests\Orisai\Scheduler\Doubles\CallbackList::job1()',
 							'* * * * *',
 							$before,
@@ -422,6 +425,7 @@ MSG,
 					),
 					new JobSummary(
 						new JobInfo(
+							1,
 							'job1',
 							'* * * * *',
 							$before,
@@ -449,6 +453,7 @@ MSG,
 		$now = $clock->now();
 		self::assertEquals(
 			new JobInfo(
+				0,
 				'Tests\Orisai\Scheduler\Doubles\CallbackList::job1()',
 				'* * * * *',
 				$now,
@@ -499,11 +504,11 @@ MSG,
 		self::assertEquals(
 			[
 				new JobSummary(
-					new JobInfo('job1', '* * * * *', $clock->now()),
+					new JobInfo(0, 'job1', '* * * * *', $clock->now()),
 					new JobResult(new CronExpression('* * * * *'), $clock->now(), JobResultState::skip()),
 				),
 				new JobSummary(
-					new JobInfo('job2', '* * * * *', $clock->now()),
+					new JobInfo(1, 'job2', '* * * * *', $clock->now()),
 					new JobResult(new CronExpression('* * * * *'), $clock->now(), JobResultState::done()),
 				),
 			],
@@ -532,11 +537,11 @@ MSG,
 		self::assertEquals(
 			[
 				new JobSummary(
-					new JobInfo('job1', '* * * * *', $clock->now()),
+					new JobInfo(0, 'job1', '* * * * *', $clock->now()),
 					new JobResult(new CronExpression('* * * * *'), $clock->now(), JobResultState::done()),
 				),
 				new JobSummary(
-					new JobInfo('job2', '* * * * *', $clock->now()),
+					new JobInfo(1, 'job2', '* * * * *', $clock->now()),
 					new JobResult(new CronExpression('* * * * *'), $clock->now(), JobResultState::done()),
 				),
 			],
