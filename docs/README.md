@@ -31,7 +31,7 @@ not aware of these cron jobs.
 
 With this library you can manage all cron jobs in application and setup them in crontab with single line.
 
-> Why not any alternative library? There is ton of them.
+> Why not any [alternative library](https://github.com/search?q=php+cron&type=repositories)? There is ton of them.
 
 Well, you are right. But do they manage everything needed? By not using crontab directly you loose several features that
 library has to replicate:
