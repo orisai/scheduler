@@ -38,3 +38,28 @@
 <p>
 
 ##
+
+Create script with scheduler setup (e.g. `bin/scheduler.php`)
+
+```php
+use Cron\CronExpression;
+use Orisai\Scheduler\SimpleScheduler;
+
+$scheduler = new SimpleScheduler();
+
+// Add jobs
+$scheduler->addJob(
+	new CallbackJob(fn() => exampleTask()),
+	new CronExpression('* * * * *'),
+);
+
+$scheduler->run();
+```
+
+Configure crontab to run your script each minute
+
+```
+* * * * * php path/to/project/bin/scheduler.php >> /dev/null 2>&1
+```
+
+Looking for more? Documentation is [here](docs/README.md).
