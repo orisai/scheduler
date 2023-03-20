@@ -58,7 +58,7 @@ parameters:
 		-
 			message: "#^Parameter \\#3 \\$expression of class Orisai\\\\Scheduler\\\\Status\\\\JobInfo constructor expects string, string\\|null given\\.$#"
 			count: 1
-			path: ../src/SimpleScheduler.php
+			path: ../src/ManagedScheduler.php
 
 		-
 			message: "#^Parameter \\#2 \\$str of function explode expects string, string\\|null given\\.$#"

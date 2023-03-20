@@ -22,6 +22,7 @@ Cron job scheduler - with locks, parallelism and more
 	- [Run job command - run single job](#run-job-command)
 	- [List command - show all jobs](#list-command)
 	- [Worker command - run jobs periodically](#worker-command)
+- [Lazy loading](#lazy-loading)
 
 ## Why do you need it?
 
@@ -449,3 +450,30 @@ Run scheduler repeatedly, once every minute
 - if your executable script is not `bin/console` or if you are using multiple scheduler setups, specify the executable:
 	- via `your/console scheduler:worker -e=your/console`
 	- or via constructor parameter `new WorkerCommand(executable: 'your/console')`
+
+## Lazy loading
+
+Jobs are executed only when it is their due time. To prevent initializing potentially heavy job dependencies when they
+are not needed, you may lazy load the jobs. This is especially helpful
+if [separate processes](#parallelization-and-process-isolation) are used for jobs.
+
+To achieve it, use `ManagedScheduler` instead of `SimpleScheduler`. It is functionally identical, except:
+
+- it requires a `JobManager` implementation as a first argument
+- `addJob()` method is in `JobManager` instead of scheduler
+
+Either use our `CallbackJobManager` implementation to construct job via a callback or use it as an inspiration to create
+your own DI-specific version.
+
+```php
+use Orisai\Scheduler\Job\CallbackJob;
+use Orisai\Scheduler\Job\Job;
+use Orisai\Scheduler\ManagedScheduler;
+use Orisai\Scheduler\Manager\CallbackJobManager;
+
+$manager = new CallbackJobManager();
+$manager->addJob(fn (): Job => new CallbackJob(/* ... */), $expression);
+$manager->addJob(fn (): Job => new CallbackJob(/* ... */), $expression, $id);
+
+$scheduler = new ManagedScheduler($manager);
+```

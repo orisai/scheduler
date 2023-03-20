@@ -7,10 +7,12 @@ use Cron\CronExpression;
 use DateTimeImmutable;
 use Orisai\Scheduler\Exception\RunFailure;
 use Orisai\Scheduler\Job\Job;
+use Orisai\Scheduler\Manager\JobManager;
 use Orisai\Scheduler\Status\JobSummary;
 use Orisai\Scheduler\Status\RunSummary;
 use Psr\Clock\ClockInterface;
 use Throwable;
+use function assert;
 
 /**
  * @internal
@@ -20,20 +22,18 @@ final class BasicJobExecutor implements JobExecutor
 
 	private ClockInterface $clock;
 
-	/** @var Closure(string|int): array{Job, CronExpression} */
-	private Closure $getJobCb;
+	private JobManager $jobManager;
 
 	/** @var Closure(string|int, Job, CronExpression): array{JobSummary, Throwable|null} */
 	private Closure $runCb;
 
 	/**
-	 * @param Closure(string|int): array{Job, CronExpression}                             $getJobCb
 	 * @param Closure(string|int, Job, CronExpression): array{JobSummary, Throwable|null} $runCb
 	 */
-	public function __construct(ClockInterface $clock, Closure $getJobCb, Closure $runCb)
+	public function __construct(ClockInterface $clock, JobManager $jobManager, Closure $runCb)
 	{
 		$this->clock = $clock;
-		$this->getJobCb = $getJobCb;
+		$this->jobManager = $jobManager;
 		$this->runCb = $runCb;
 	}
 
@@ -42,7 +42,9 @@ final class BasicJobExecutor implements JobExecutor
 		$summaryJobs = [];
 		$suppressed = [];
 		foreach ($ids as $id) {
-			[$job, $expression] = ($this->getJobCb)($id);
+			$pair = $this->jobManager->getPair($id);
+			assert($pair !== null);
+			[$job, $expression] = $pair;
 
 			[$jobSummary, $throwable] = ($this->runCb)($id, $job, $expression);
 
