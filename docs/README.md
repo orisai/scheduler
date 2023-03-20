@@ -412,6 +412,8 @@ Run scheduler once, executing jobs scheduled for the current minute
 
 `bin/console scheduler:run`
 
+- use `--json` to output json with job info and result
+
 You can also change crontab settings to use command instead:
 
 ```

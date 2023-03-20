@@ -11,6 +11,11 @@ parameters:
 			path: ../src/Command/ListCommand.php
 
 		-
+			message: "#^Only booleans are allowed in an if condition, mixed given\\.$#"
+			count: 1
+			path: ../src/Command/RunCommand.php
+
+		-
 			message: "#^Only booleans are allowed in a negated boolean, mixed given\\.$#"
 			count: 1
 			path: ../src/Command/RunJobCommand.php
@@ -54,6 +59,11 @@ parameters:
 			message: "#^Parameter \\#3 \\$expression of class Orisai\\\\Scheduler\\\\Status\\\\JobInfo constructor expects string, string\\|null given\\.$#"
 			count: 1
 			path: ../src/SimpleScheduler.php
+
+		-
+			message: "#^Parameter \\#2 \\$str of function explode expects string, string\\|null given\\.$#"
+			count: 1
+			path: ../tests/Unit/Command/RunCommandTest.php
 
 		-
 			message: "#^Parameter \\#2 \\$str of function explode expects string, string\\|null given\\.$#"

@@ -6,7 +6,11 @@ use Orisai\Scheduler\Scheduler;
 use Orisai\Scheduler\Status\JobResultState;
 use Orisai\Scheduler\Status\RunSummary;
 use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+use function json_encode;
+use const JSON_PRETTY_PRINT;
+use const JSON_THROW_ON_ERROR;
 
 final class RunCommand extends BaseRunCommand
 {
@@ -29,18 +33,34 @@ final class RunCommand extends BaseRunCommand
 		return 'Run scheduler once';
 	}
 
+	protected function configure(): void
+	{
+		$this->addOption('json', null, InputOption::VALUE_NONE, 'Output in json format');
+	}
+
 	protected function execute(InputInterface $input, OutputInterface $output): int
 	{
 		$summary = $this->scheduler->run();
 
-		$this->renderJobs($output, $summary);
+		$this->renderJobs($input, $output, $summary);
 
 		return $this->getExitCode($summary);
 	}
 
-	private function renderJobs(OutputInterface $output, RunSummary $summary): void
+	private function renderJobs(InputInterface $input, OutputInterface $output, RunSummary $summary): void
 	{
 		$terminalWidth = $this->getTerminalWidth();
+
+		if ($input->getOption('json')) {
+			$summaries = [];
+			foreach ($summary->getJobs() as $jobSummary) {
+				$summaries[] = $this->jobToArray($jobSummary);
+			}
+
+			$output->writeln(json_encode($summaries, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT));
+
+			return;
+		}
 
 		foreach ($summary->getJobs() as $jobSummary) {
 			$this->renderJob($jobSummary, $terminalWidth, $output);
