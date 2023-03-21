@@ -27,18 +27,25 @@ final class WorkerCommand extends Command
 
 	private ClockInterface $clock;
 
-	private string $executable;
-
 	private ?int $testRuns = null;
 
 	/** @var Closure(): void|null */
 	private ?Closure $testCb = null;
 
-	public function __construct(?ClockInterface $clock = null, string $executable = 'bin/console')
+	private string $script = 'bin/console';
+
+	private string $command = 'scheduler:run';
+
+	public function __construct(?ClockInterface $clock = null)
 	{
-		$this->executable = $executable; // Order matters
 		parent::__construct();
 		$this->clock = $clock ?? new SystemClock();
+	}
+
+	public function setExecutable(string $script, string $command = 'scheduler:run'): void
+	{
+		$this->script = $script;
+		$this->command = $command;
 	}
 
 	public static function getDefaultName(): string
@@ -55,11 +62,16 @@ final class WorkerCommand extends Command
 	{
 		parent::configure();
 		$this->addOption(
-			'executable',
-			'e',
+			'script',
+			's',
 			InputOption::VALUE_REQUIRED,
 			'Executable file for executing console commands',
-			$this->executable,
+		);
+		$this->addOption(
+			'command',
+			'c',
+			InputOption::VALUE_REQUIRED,
+			'Name of executed command',
 		);
 	}
 
@@ -69,8 +81,8 @@ final class WorkerCommand extends Command
 
 		$command = implode(' ', array_map(static fn (string $arg) => escapeshellarg($arg), [
 			PHP_BINARY,
-			$input->getOption('executable'),
-			'scheduler:run',
+			$input->getOption('script') ?? $this->script,
+			$input->getOption('command') ?? $this->command,
 		]));
 
 		$lastExecutionStartedAt = $this->nullSeconds($this->clock->now()->modify('-1 minute'));

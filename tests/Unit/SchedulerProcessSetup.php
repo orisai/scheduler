@@ -39,9 +39,14 @@ final class SchedulerProcessSetup
 	/**
 	 * @param Closure(Throwable, JobInfo, JobResult): (void)|null $errorHandler
 	 */
-	private static function create(?Closure $errorHandler = null, ?string $executable = null): Scheduler
+	private static function create(?Closure $errorHandler = null, ?string $script = null): Scheduler
 	{
-		$executor = new ProcessJobExecutor($executable);
+		$executor = new ProcessJobExecutor();
+
+		if ($script !== null) {
+			$executor->setExecutable($script);
+		}
+
 		$clock = new FrozenClock(1);
 		$scheduler = new SimpleScheduler($errorHandler, null, $executor, $clock);
 		$cbs = new CallbackList();

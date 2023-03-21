@@ -31,14 +31,21 @@ use const PHP_BINARY;
 final class ProcessJobExecutor implements JobExecutor
 {
 
-	private string $executable;
-
 	private ClockInterface $clock;
 
-	public function __construct(?string $executable = null, ?ClockInterface $clock = null)
+	private string $script = 'bin/console';
+
+	private string $command = 'scheduler:run-job';
+
+	public function __construct(?ClockInterface $clock = null)
 	{
-		$this->executable = $executable ?? 'bin/console';
 		$this->clock = $clock ?? new SystemClock();
+	}
+
+	public function setExecutable(string $script, string $command = 'scheduler:run-job'): void
+	{
+		$this->script = $script;
+		$this->command = $command;
 	}
 
 	public function runJobs(array $ids, DateTimeImmutable $runStart): RunSummary
@@ -47,8 +54,8 @@ final class ProcessJobExecutor implements JobExecutor
 		foreach ($ids as $id) {
 			$command = implode(' ', array_map(static fn (string $arg) => escapeshellarg($arg), [
 				PHP_BINARY,
-				$this->executable,
-				'scheduler:run-job',
+				$this->script,
+				$this->command,
 				$id,
 				'--json',
 			]));

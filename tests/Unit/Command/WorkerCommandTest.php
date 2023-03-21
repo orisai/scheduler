@@ -55,7 +55,7 @@ MSG,
 
 		putenv('COLUMNS=80');
 		$code = $tester->execute([
-			'--executable' => 'tests/Unit/Command/worker-binary.php',
+			'--script' => 'tests/Unit/Command/worker-binary.php',
 		]);
 
 		self::assertSame($command::SUCCESS, $code);
@@ -66,7 +66,8 @@ MSG,
 	{
 		$clock = new FrozenClock(1_020, new DateTimeZone('Europe/Prague'));
 
-		$command = new WorkerCommand($clock, 'tests/Unit/Command/worker-binary.php');
+		$command = new WorkerCommand($clock);
+		$command->setExecutable('tests/Unit/Command/worker-binary.php');
 		$command->enableTestMode(1, static fn () => $clock->move(60));
 		$tester = new CommandTester($command);
 
@@ -87,7 +88,7 @@ MSG,
 
 		putenv('COLUMNS=80');
 		$code = $tester->execute([
-			'--executable' => 'tests/Unit/Command/worker-binary.php',
+			'--script' => 'tests/Unit/Command/worker-binary.php',
 		]);
 
 		self::assertSame($command::SUCCESS, $code);
@@ -104,7 +105,7 @@ MSG,
 
 		putenv('COLUMNS=80');
 		$code = $tester->execute([
-			'--executable' => 'tests/Unit/Command/worker-binary-no-matching-jobs.php',
+			'--script' => 'tests/Unit/Command/worker-binary-no-matching-jobs.php',
 		]);
 
 		self::assertSame($command::SUCCESS, $code);

@@ -259,7 +259,8 @@ If your executable script is not `bin/console` or if you are using multiple sche
 ```php
 use Orisai\Scheduler\Executor\ProcessJobExecutor;
 
-$executor = new ProcessJobExecutor('bin/console');
+$executor = new ProcessJobExecutor();
+$executor->setExecutable('bin/console', 'scheduler:run-job');
 ```
 
 ## Job types
@@ -448,8 +449,8 @@ Run scheduler repeatedly, once every minute
 
 - requires [proc_*](https://www.php.net/manual/en/ref.exec.php) functions to be enabled
 - if your executable script is not `bin/console` or if you are using multiple scheduler setups, specify the executable:
-	- via `your/console scheduler:worker -e=your/console`
-	- or via constructor parameter `new WorkerCommand(executable: 'your/console')`
+	- via `your/console scheduler:worker -s=your/console -c=scheduler:run`
+	- or via setter `$workerCommand->setExecutable('your/console', 'scheduler:run')`
 
 ## Lazy loading
 
