@@ -82,7 +82,7 @@ $scheduler->run();
 Configure crontab to run your script each minute
 
 ```
-* * * * * php path/to/project/bin/scheduler.php >> /dev/null 2>&1
+* * * * * cd path/to/project && php bin/scheduler.php >> /dev/null 2>&1
 ```
 
 Got to go!
@@ -419,7 +419,7 @@ Run scheduler once, executing jobs scheduled for the current minute
 You can also change crontab settings to use command instead:
 
 ```
-* * * * * php path/to/project/bin/console scheduler:run >> /dev/null 2>&1
+* * * * * cd path/to/project && php bin/console scheduler:run >> /dev/null 2>&1
 ```
 
 ### Run job command

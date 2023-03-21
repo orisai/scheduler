@@ -59,7 +59,7 @@ $scheduler->run();
 Configure crontab to run your script each minute
 
 ```
-* * * * * php path/to/project/bin/scheduler.php >> /dev/null 2>&1
+* * * * * cd path/to/project && php bin/scheduler.php >> /dev/null 2>&1
 ```
 
 Looking for more? Documentation is [here](docs/README.md).
