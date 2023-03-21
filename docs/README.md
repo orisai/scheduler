@@ -243,7 +243,7 @@ Overall, asynchronous and separate process execution of crontab scheduler tasks 
 reliability, and flexibility than running tasks synchronously in a single process.
 
 To set up scheduler for parallelization and process isolation, you need to
-have [pcntl_*](https://www.php.net/manual/en/book.pcntl.php) functions enabled. Also in the background is
+have [proc_*](https://www.php.net/manual/en/ref.exec.php) functions enabled. Also in the background is
 used [run-job command](#run-job-command), so you need to have [console](#cli-commands) set up as well.
 
 ```php
@@ -446,7 +446,7 @@ Run scheduler repeatedly, once every minute
 
 `bin/console scheduler:worker`
 
-- requires [pcntl_*](https://www.php.net/manual/en/book.pcntl.php) functions to be enabled
+- requires [proc_*](https://www.php.net/manual/en/ref.exec.php) functions to be enabled
 - if your executable script is not `bin/console` or if you are using multiple scheduler setups, specify the executable:
 	- via `your/console scheduler:worker -e=your/console`
 	- or via constructor parameter `new WorkerCommand(executable: 'your/console')`
