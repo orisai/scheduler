@@ -385,6 +385,7 @@ thrown `JobFailure`.
 For symfony/console you may use our commands:
 
 - [Run](#run-command)
+- [Run job](#run-job-command)
 - [List](#list-command)
 - [Worker](#worker-command)
 
