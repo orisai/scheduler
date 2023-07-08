@@ -23,6 +23,7 @@ Cron job scheduler - with locks, parallelism and more
 	- [List command - show all jobs](#list-command)
 	- [Worker command - run jobs periodically](#worker-command)
 - [Lazy loading](#lazy-loading)
+- [Integrations and extensions](#integrations-and-extensions)
 
 ## Why do you need it?
 
@@ -479,3 +480,7 @@ $manager->addJob(fn (): Job => new CallbackJob(/* ... */), $expression, $id);
 
 $scheduler = new ManagedScheduler($manager);
 ```
+
+## Integrations and extensions
+
+- [Nette](https://github.com/nette) integration - [orisai/nette-scheduler](https://github.com/orisai/nette-scheduler)
