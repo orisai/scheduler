@@ -66,14 +66,14 @@ class ManagedScheduler implements Scheduler
 		);
 	}
 
-	public function getJobs(): array
+	public function getScheduledJobs(): array
 	{
-		return $this->jobManager->getPairs();
+		return $this->jobManager->getScheduledJobs();
 	}
 
 	public function runJob($id, bool $force = true): ?JobSummary
 	{
-		$pair = $this->jobManager->getPair($id);
+		$pair = $this->jobManager->getScheduledJob($id);
 
 		if ($pair === null) {
 			$message = Message::create()

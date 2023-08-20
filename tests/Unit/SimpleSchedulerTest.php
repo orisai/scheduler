@@ -512,15 +512,15 @@ MSG,
 					new JobResult(new CronExpression('* * * * *'), $clock->now(), JobResultState::done()),
 				),
 			],
-			$result->getJobs(),
+			$result->getJobSummaries(),
 		);
 		self::assertSame(
-			$result->getJobs()[0]->getInfo()->getStart(),
-			$result->getJobs()[0]->getResult()->getEnd(),
+			$result->getJobSummaries()[0]->getInfo()->getStart(),
+			$result->getJobSummaries()[0]->getResult()->getEnd(),
 		);
 		self::assertNotSame(
-			$result->getJobs()[1]->getInfo()->getStart(),
-			$result->getJobs()[1]->getResult()->getEnd(),
+			$result->getJobSummaries()[1]->getInfo()->getStart(),
+			$result->getJobSummaries()[1]->getResult()->getEnd(),
 		);
 
 		$scheduler->runJob(0);
@@ -545,7 +545,7 @@ MSG,
 					new JobResult(new CronExpression('* * * * *'), $clock->now(), JobResultState::done()),
 				),
 			],
-			$result->getJobs(),
+			$result->getJobSummaries(),
 		);
 
 		$scheduler->runJob(0);
@@ -680,7 +680,7 @@ MSG,
 		$scheduler = SchedulerProcessSetup::createWithErrorHandler();
 		$summary = $scheduler->run();
 
-		self::assertCount(3, $summary->getJobs());
+		self::assertCount(3, $summary->getJobSummaries());
 	}
 
 	public function testProcessExecutorWithoutErrorHandler(): void

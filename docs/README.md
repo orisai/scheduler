@@ -352,7 +352,7 @@ $summary = $scheduler->run(); // RunSummary
 $summary->getStart(); // DateTimeImmutable
 $summary->getEnd(); // DateTimeImmutable
 
-foreach ($summary->getJobs() as $jobSummary) {
+foreach ($summary->getJobSummaries() as $jobSummary) {
 	$jobSummary->getInfo(); // JobInfo
 	$jobSummary->getResult(); // JobResult
 }

@@ -12,16 +12,16 @@ final class RunSummary
 	private DateTimeImmutable $end;
 
 	/** @var list<JobSummary> */
-	private array $jobs;
+	private array $jobSummaries;
 
 	/**
-	 * @param list<JobSummary> $jobs
+	 * @param list<JobSummary> $jobSummaries
 	 */
-	public function __construct(DateTimeImmutable $start, DateTimeImmutable $end, array $jobs)
+	public function __construct(DateTimeImmutable $start, DateTimeImmutable $end, array $jobSummaries)
 	{
 		$this->start = $start;
 		$this->end = $end;
-		$this->jobs = $jobs;
+		$this->jobSummaries = $jobSummaries;
 	}
 
 	public function getStart(): DateTimeImmutable
@@ -37,9 +37,9 @@ final class RunSummary
 	/**
 	 * @return list<JobSummary>
 	 */
-	public function getJobs(): array
+	public function getJobSummaries(): array
 	{
-		return $this->jobs;
+		return $this->jobSummaries;
 	}
 
 }

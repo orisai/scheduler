@@ -34,7 +34,7 @@ final class RunSummaryTest extends TestCase
 		self::assertSame($end, $summary->getEnd());
 		self::assertSame(
 			$jobs,
-			$summary->getJobs(),
+			$summary->getJobSummaries(),
 		);
 	}
 

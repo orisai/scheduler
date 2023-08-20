@@ -53,7 +53,7 @@ final class RunCommand extends BaseRunCommand
 
 		if ($input->getOption('json')) {
 			$summaries = [];
-			foreach ($summary->getJobs() as $jobSummary) {
+			foreach ($summary->getJobSummaries() as $jobSummary) {
 				$summaries[] = $this->jobToArray($jobSummary);
 			}
 
@@ -62,14 +62,14 @@ final class RunCommand extends BaseRunCommand
 			return;
 		}
 
-		foreach ($summary->getJobs() as $jobSummary) {
+		foreach ($summary->getJobSummaries() as $jobSummary) {
 			$this->renderJob($jobSummary, $terminalWidth, $output);
 		}
 	}
 
 	private function getExitCode(RunSummary $summary): int
 	{
-		foreach ($summary->getJobs() as $jobSummary) {
+		foreach ($summary->getJobSummaries() as $jobSummary) {
 			if ($jobSummary->getResult()->getState() === JobResultState::fail()) {
 				return self::FAILURE;
 			}
