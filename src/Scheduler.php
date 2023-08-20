@@ -15,7 +15,7 @@ interface Scheduler
 	/**
 	 * @return array<int|string, array{Job, CronExpression}>
 	 */
-	public function getJobs(): array;
+	public function getScheduledJobs(): array;
 
 	/**
 	 * @throws RunFailure When 1-x jobs failed and no error handler was set

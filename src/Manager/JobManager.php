@@ -12,12 +12,12 @@ interface JobManager
 	 * @param int|string $id
 	 * @return array{Job, CronExpression}|null
 	 */
-	public function getPair($id): ?array;
+	public function getScheduledJob($id): ?array;
 
 	/**
 	 * @return array<int|string, array{Job, CronExpression}>
 	 */
-	public function getPairs(): array;
+	public function getScheduledJobs(): array;
 
 	/**
 	 * @return array<int|string, CronExpression>

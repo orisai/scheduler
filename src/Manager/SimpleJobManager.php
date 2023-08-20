@@ -25,7 +25,7 @@ final class SimpleJobManager implements JobManager
 		}
 	}
 
-	public function getPair($id): ?array
+	public function getScheduledJob($id): ?array
 	{
 		$job = $this->jobs[$id] ?? null;
 
@@ -39,7 +39,7 @@ final class SimpleJobManager implements JobManager
 		];
 	}
 
-	public function getPairs(): array
+	public function getScheduledJobs(): array
 	{
 		$pairs = [];
 		foreach ($this->jobs as $id => $job) {

@@ -42,7 +42,7 @@ final class SimpleSchedulerTest extends TestCase
 
 		self::assertSame([
 			[$job, $expression],
-		], $scheduler->getJobs());
+		], $scheduler->getScheduledJobs());
 
 		$scheduler->run();
 		self::assertSame(1, $i);
@@ -73,7 +73,7 @@ final class SimpleSchedulerTest extends TestCase
 
 		self::assertSame([
 			$key => [$job, $expression],
-		], $scheduler->getJobs());
+		], $scheduler->getScheduledJobs());
 
 		$scheduler->runJob($key);
 		self::assertSame(1, $i);
@@ -84,7 +84,7 @@ final class SimpleSchedulerTest extends TestCase
 		$clock = new FrozenClock(1);
 		$scheduler = new SimpleScheduler(null, null, null, $clock);
 
-		self::assertSame([], $scheduler->getJobs());
+		self::assertSame([], $scheduler->getScheduledJobs());
 
 		self::assertEquals(
 			new RunSummary($clock->now(), $clock->now(), []),
@@ -96,8 +96,8 @@ final class SimpleSchedulerTest extends TestCase
 			<<<'MSG'
 Context: Running job with ID '0'
 Problem: Job is not registered by scheduler.
-Tip: Inspect keys in 'Scheduler->getJobs()' or run command 'scheduler:list' to
-     find correct job ID.
+Tip: Inspect keys in 'Scheduler->getScheduledJobs()' or run command
+     'scheduler:list' to find correct job ID.
 MSG,
 		);
 		$scheduler->runJob(0);

@@ -42,9 +42,9 @@ final class BasicJobExecutor implements JobExecutor
 		$summaryJobs = [];
 		$suppressed = [];
 		foreach ($ids as $id) {
-			$pair = $this->jobManager->getPair($id);
-			assert($pair !== null);
-			[$job, $expression] = $pair;
+			$scheduledJob = $this->jobManager->getScheduledJob($id);
+			assert($scheduledJob !== null);
+			[$job, $expression] = $scheduledJob;
 
 			[$jobSummary, $throwable] = ($this->runCb)($id, $job, $expression);
 

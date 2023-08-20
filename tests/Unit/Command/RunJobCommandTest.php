@@ -42,8 +42,8 @@ final class RunJobCommandTest extends TestCase
 			<<<'MSG'
 Context: Running job with ID 'id'
 Problem: Job is not registered by scheduler.
-Tip: Inspect keys in 'Scheduler->getJobs()' or run command 'scheduler:list' to
-     find correct job ID.
+Tip: Inspect keys in 'Scheduler->getScheduledJobs()' or run command
+     'scheduler:list' to find correct job ID.
 MSG,
 		);
 

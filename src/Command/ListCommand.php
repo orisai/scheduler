@@ -63,7 +63,7 @@ final class ListCommand extends Command
 	{
 		$nextOption = $this->validateOptionNext($input);
 
-		$jobs = $this->scheduler->getJobs();
+		$jobs = $this->scheduler->getScheduledJobs();
 
 		if ($jobs === []) {
 			$output->writeln('<info>No scheduled jobs have been defined.</info>');

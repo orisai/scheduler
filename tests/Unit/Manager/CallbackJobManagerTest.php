@@ -15,10 +15,10 @@ final class CallbackJobManagerTest extends TestCase
 	{
 		$manager = new CallbackJobManager();
 		self::assertSame([], $manager->getExpressions());
-		self::assertSame([], $manager->getPairs());
-		self::assertNull($manager->getPair(0));
-		self::assertNull($manager->getPair('id'));
-		self::assertNull($manager->getPair(42));
+		self::assertSame([], $manager->getScheduledJobs());
+		self::assertNull($manager->getScheduledJob(0));
+		self::assertNull($manager->getScheduledJob('id'));
+		self::assertNull($manager->getScheduledJob(42));
 
 		$job1 = new CallbackJob(static function (): void {
 			// Noop
@@ -42,11 +42,11 @@ final class CallbackJobManagerTest extends TestCase
 				0 => [$job1, $expression1],
 				'id' => [$job2, $expression2],
 			],
-			$manager->getPairs(),
+			$manager->getScheduledJobs(),
 		);
-		self::assertSame([$job1, $expression1], $manager->getPair(0));
-		self::assertSame([$job2, $expression2], $manager->getPair('id'));
-		self::assertNull($manager->getPair(42));
+		self::assertSame([$job1, $expression1], $manager->getScheduledJob(0));
+		self::assertSame([$job2, $expression2], $manager->getScheduledJob('id'));
+		self::assertNull($manager->getScheduledJob(42));
 	}
 
 }
