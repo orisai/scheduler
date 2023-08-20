@@ -22,6 +22,7 @@ use Psr\Clock\ClockInterface;
 use Symfony\Component\Lock\LockFactory;
 use Symfony\Component\Lock\Store\InMemoryStore;
 use Throwable;
+use function iterator_to_array;
 
 class ManagedScheduler implements Scheduler
 {
@@ -73,9 +74,9 @@ class ManagedScheduler implements Scheduler
 
 	public function runJob($id, bool $force = true): ?JobSummary
 	{
-		$pair = $this->jobManager->getScheduledJob($id);
+		$scheduledJob = $this->jobManager->getScheduledJob($id);
 
-		if ($pair === null) {
+		if ($scheduledJob === null) {
 			$message = Message::create()
 				->withContext("Running job with ID '$id'")
 				->withProblem('Job is not registered by scheduler.')
@@ -88,7 +89,7 @@ class ManagedScheduler implements Scheduler
 				->withMessage($message);
 		}
 
-		[$job, $expression] = $pair;
+		[$job, $expression] = $scheduledJob;
 
 		if (!$force && !$expression->isDue($this->clock->now())) {
 			return null;
@@ -113,7 +114,11 @@ class ManagedScheduler implements Scheduler
 			}
 		}
 
-		return $this->executor->runJobs($ids, $runStart);
+		$generator = $this->executor->runJobs($ids, $runStart);
+		// Forces generator to execute
+		iterator_to_array($generator);
+
+		return $generator->getReturn();
 	}
 
 	/**

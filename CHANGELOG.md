@@ -16,3 +16,5 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 	- `getJobs()` -> `getScheduledJobs()`
 - `RunSummary`
 	- `getJobs()` -> `getJobSummaries()`
+- `JobExecutor`
+  - `runJobs()` returns `Generator<int, JobSummary, void, RunSummary>` instead of `RunSummary`

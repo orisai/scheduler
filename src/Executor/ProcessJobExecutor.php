@@ -4,6 +4,7 @@ namespace Orisai\Scheduler\Executor;
 
 use Cron\CronExpression;
 use DateTimeImmutable;
+use Generator;
 use JsonException;
 use Orisai\Clock\SystemClock;
 use Orisai\Scheduler\Exception\JobProcessFailure;
@@ -48,7 +49,7 @@ final class ProcessJobExecutor implements JobExecutor
 		$this->command = $command;
 	}
 
-	public function runJobs(array $ids, DateTimeImmutable $runStart): RunSummary
+	public function runJobs(array $ids, DateTimeImmutable $runStart): Generator
 	{
 		$executions = [];
 		foreach ($ids as $id) {
@@ -64,7 +65,7 @@ final class ProcessJobExecutor implements JobExecutor
 			$execution->start();
 		}
 
-		$summaryJobs = [];
+		$jobSummaries = [];
 		$suppressed = [];
 		while ($executions !== []) {
 			foreach ($executions as $key => $execution) {
@@ -80,7 +81,7 @@ final class ProcessJobExecutor implements JobExecutor
 					$decoded = json_decode($output, true, 512, JSON_THROW_ON_ERROR);
 					assert(is_array($decoded));
 
-					$summaryJobs[] = new JobSummary(
+					yield $jobSummaries[] = new JobSummary(
 						new JobInfo(
 							$decoded['info']['id'],
 							$decoded['info']['name'],
@@ -102,7 +103,7 @@ final class ProcessJobExecutor implements JobExecutor
 			usleep(1_000);
 		}
 
-		$summary = new RunSummary($runStart, $this->clock->now(), $summaryJobs);
+		$summary = new RunSummary($runStart, $this->clock->now(), $jobSummaries);
 
 		if ($suppressed !== []) {
 			throw RunFailure::create($summary, $suppressed);

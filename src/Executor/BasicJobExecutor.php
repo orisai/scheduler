@@ -5,6 +5,7 @@ namespace Orisai\Scheduler\Executor;
 use Closure;
 use Cron\CronExpression;
 use DateTimeImmutable;
+use Generator;
 use Orisai\Scheduler\Exception\RunFailure;
 use Orisai\Scheduler\Job\Job;
 use Orisai\Scheduler\Manager\JobManager;
@@ -37,9 +38,9 @@ final class BasicJobExecutor implements JobExecutor
 		$this->runCb = $runCb;
 	}
 
-	public function runJobs(array $ids, DateTimeImmutable $runStart): RunSummary
+	public function runJobs(array $ids, DateTimeImmutable $runStart): Generator
 	{
-		$summaryJobs = [];
+		$jobSummaries = [];
 		$suppressed = [];
 		foreach ($ids as $id) {
 			$scheduledJob = $this->jobManager->getScheduledJob($id);
@@ -48,13 +49,14 @@ final class BasicJobExecutor implements JobExecutor
 
 			[$jobSummary, $throwable] = ($this->runCb)($id, $job, $expression);
 
-			$summaryJobs[] = $jobSummary;
+			yield $jobSummaries[] = $jobSummary;
+
 			if ($throwable !== null) {
 				$suppressed[] = $throwable;
 			}
 		}
 
-		$summary = new RunSummary($runStart, $this->clock->now(), $summaryJobs);
+		$summary = new RunSummary($runStart, $this->clock->now(), $jobSummaries);
 
 		if ($suppressed !== []) {
 			throw RunFailure::create($summary, $suppressed);

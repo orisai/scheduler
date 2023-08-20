@@ -18,7 +18,7 @@ final class RunSummaryTest extends TestCase
 	{
 		$start = new DateTimeImmutable();
 		$end = new DateTimeImmutable();
-		$jobs = [
+		$jobSummaries = [
 			new JobSummary(
 				new JobInfo('id', '1', '* * * * *', new DateTimeImmutable()),
 				new JobResult(new CronExpression('* * * * *'), new DateTimeImmutable(), JobResultState::done()),
@@ -29,11 +29,11 @@ final class RunSummaryTest extends TestCase
 			),
 		];
 
-		$summary = new RunSummary($start, $end, $jobs);
+		$summary = new RunSummary($start, $end, $jobSummaries);
 		self::assertSame($start, $summary->getStart());
 		self::assertSame($end, $summary->getEnd());
 		self::assertSame(
-			$jobs,
+			$jobSummaries,
 			$summary->getJobSummaries(),
 		);
 	}
