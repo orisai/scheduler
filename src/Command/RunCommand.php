@@ -42,25 +42,28 @@ final class RunCommand extends BaseRunCommand
 	{
 		$summary = $this->scheduler->run();
 
-		$this->renderJobs($input, $output, $summary);
+		if ($input->getOption('json')) {
+			$this->renderJobsAsJson($output, $summary);
+		} else {
+			$this->renderJobs($output, $summary);
+		}
 
 		return $this->getExitCode($summary);
 	}
 
-	private function renderJobs(InputInterface $input, OutputInterface $output, RunSummary $summary): void
+	private function renderJobsAsJson(OutputInterface $output, RunSummary $summary): void
+	{
+		$summaries = [];
+		foreach ($summary->getJobSummaries() as $jobSummary) {
+			$summaries[] = $this->jobToArray($jobSummary);
+		}
+
+		$output->writeln(json_encode($summaries, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT));
+	}
+
+	private function renderJobs(OutputInterface $output, RunSummary $summary): void
 	{
 		$terminalWidth = $this->getTerminalWidth();
-
-		if ($input->getOption('json')) {
-			$summaries = [];
-			foreach ($summary->getJobSummaries() as $jobSummary) {
-				$summaries[] = $this->jobToArray($jobSummary);
-			}
-
-			$output->writeln(json_encode($summaries, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT));
-
-			return;
-		}
 
 		foreach ($summary->getJobSummaries() as $jobSummary) {
 			$this->renderJob($jobSummary, $terminalWidth, $output);
