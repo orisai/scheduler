@@ -4,6 +4,7 @@ namespace Orisai\Scheduler;
 
 use Closure;
 use Cron\CronExpression;
+use Generator;
 use Orisai\Clock\SystemClock;
 use Orisai\Exceptions\Logic\InvalidArgument;
 use Orisai\Exceptions\Message;
@@ -104,7 +105,7 @@ class ManagedScheduler implements Scheduler
 		return $summary;
 	}
 
-	public function run(): RunSummary
+	public function runPromise(): Generator
 	{
 		$runStart = $this->clock->now();
 		$ids = [];
@@ -114,7 +115,12 @@ class ManagedScheduler implements Scheduler
 			}
 		}
 
-		$generator = $this->executor->runJobs($ids, $runStart);
+		return $this->executor->runJobs($ids, $runStart);
+	}
+
+	public function run(): RunSummary
+	{
+		$generator = $this->runPromise();
 		// Forces generator to execute
 		iterator_to_array($generator);
 

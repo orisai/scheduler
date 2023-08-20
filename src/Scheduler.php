@@ -3,6 +3,7 @@
 namespace Orisai\Scheduler;
 
 use Cron\CronExpression;
+use Generator;
 use Orisai\Scheduler\Exception\JobFailure;
 use Orisai\Scheduler\Exception\RunFailure;
 use Orisai\Scheduler\Job\Job;
@@ -16,6 +17,13 @@ interface Scheduler
 	 * @return array<int|string, array{Job, CronExpression}>
 	 */
 	public function getScheduledJobs(): array;
+
+	/**
+	 * @return Generator<int, JobSummary, void, RunSummary>
+	 *
+	 * @internal
+	 */
+	public function runPromise(): Generator;
 
 	/**
 	 * @throws RunFailure When 1-x jobs failed and no error handler was set

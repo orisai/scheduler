@@ -68,40 +68,65 @@ MSG,
 		$tester = new CommandTester($command);
 
 		putenv('COLUMNS=80');
-		$code = $tester->execute([]);
 
+		$code = $tester->execute([]);
 		self::assertSame(
 			<<<'MSG'
 1970-01-01 01:00:01 Running [0] Tests\Orisai\Scheduler\Doubles\CallbackList::job1() 0ms DONE
 1970-01-01 01:00:01 Running [1] Tests\Orisai\Scheduler\Doubles\CallbackList::job2() 0ms DONE
 
 MSG,
-			implode(
-				PHP_EOL,
-				array_map(
-					static fn (string $s): string => rtrim($s),
-					explode(PHP_EOL, $tester->getDisplay()),
-				),
-			),
+			$this->getNormalizedLines($tester),
 		);
 		self::assertSame($command::SUCCESS, $code);
 
 		putenv('COLUMNS=100');
-		$code = $tester->execute([]);
 
+		$code = $tester->execute([]);
 		self::assertSame(
 			<<<'MSG'
 1970-01-01 01:00:01 Running [0] Tests\Orisai\Scheduler\Doubles\CallbackList::job1()........ 0ms DONE
 1970-01-01 01:00:01 Running [1] Tests\Orisai\Scheduler\Doubles\CallbackList::job2()........ 0ms DONE
 
 MSG,
-			implode(
-				PHP_EOL,
-				array_map(
-					static fn (string $s): string => rtrim($s),
-					explode(PHP_EOL, $tester->getDisplay()),
-				),
-			),
+			$this->getNormalizedLines($tester),
+		);
+		self::assertSame($command::SUCCESS, $code);
+
+		$code = $tester->execute([
+			'--json' => true,
+		]);
+		self::assertSame(
+			<<<'MSG'
+[
+    {
+        "info": {
+            "id": 0,
+            "name": "Tests\\Orisai\\Scheduler\\Doubles\\CallbackList::job1()",
+            "expression": "* * * * *",
+            "start": "1.000"
+        },
+        "result": {
+            "end": "1.000",
+            "state": "done"
+        }
+    },
+    {
+        "info": {
+            "id": 1,
+            "name": "Tests\\Orisai\\Scheduler\\Doubles\\CallbackList::job2()",
+            "expression": "* * * * *",
+            "start": "1.000"
+        },
+        "result": {
+            "end": "1.000",
+            "state": "done"
+        }
+    }
+]
+
+MSG,
+			$this->getNormalizedLines($tester),
 		);
 		self::assertSame($command::SUCCESS, $code);
 	}
@@ -128,21 +153,52 @@ MSG,
 		$tester = new CommandTester($command);
 
 		putenv('COLUMNS=80');
-		$code = $tester->execute([]);
 
+		$code = $tester->execute([]);
 		self::assertSame(
 			<<<'MSG'
 1970-01-01 01:00:01 Running [0] Tests\Orisai\Scheduler\Doubles\CallbackList::job1() 0ms DONE
 1970-01-01 01:00:01 Running [1] Tests\Orisai\Scheduler\Doubles\CallbackList::exceptionJob() 0ms FAIL
 
 MSG,
-			implode(
-				PHP_EOL,
-				array_map(
-					static fn (string $s): string => rtrim($s),
-					explode(PHP_EOL, $tester->getDisplay()),
-				),
-			),
+			$this->getNormalizedLines($tester),
+		);
+		self::assertSame($command::FAILURE, $code);
+
+		$code = $tester->execute([
+			'--json' => true,
+		]);
+		self::assertSame(
+			<<<'MSG'
+[
+    {
+        "info": {
+            "id": 0,
+            "name": "Tests\\Orisai\\Scheduler\\Doubles\\CallbackList::job1()",
+            "expression": "* * * * *",
+            "start": "1.000"
+        },
+        "result": {
+            "end": "1.000",
+            "state": "done"
+        }
+    },
+    {
+        "info": {
+            "id": 1,
+            "name": "Tests\\Orisai\\Scheduler\\Doubles\\CallbackList::exceptionJob()",
+            "expression": "* * * * *",
+            "start": "1.000"
+        },
+        "result": {
+            "end": "1.000",
+            "state": "fail"
+        }
+    }
+]
+
+MSG,
+			$this->getNormalizedLines($tester),
 		);
 		self::assertSame($command::FAILURE, $code);
 	}
@@ -176,13 +232,7 @@ MSG,
 1970-01-01 01:00:01 Running [0] job1................................... 0ms SKIP
 
 MSG,
-			implode(
-				PHP_EOL,
-				array_map(
-					static fn (string $s): string => rtrim($s),
-					explode(PHP_EOL, $tester->getDisplay()),
-				),
-			),
+			$this->getNormalizedLines($tester),
 		);
 		self::assertSame($command::SUCCESS, $code);
 	}
@@ -212,71 +262,15 @@ MSG,
 		self::assertSame($command::FAILURE, $code);
 	}
 
-	public function testJson(): void
+	public function getNormalizedLines(CommandTester $tester): string
 	{
-		$errorHandler = static function (): void {
-			// Noop
-		};
-		$clock = new FrozenClock(1, new DateTimeZone('Europe/Prague'));
-		$scheduler = new SimpleScheduler($errorHandler, null, null, $clock);
-
-		$cbs = new CallbackList();
-		$scheduler->addJob(
-			new CallbackJob(Closure::fromCallable([$cbs, 'job1'])),
-			new CronExpression('* * * * *'),
-		);
-		$scheduler->addJob(
-			new CallbackJob(Closure::fromCallable([$cbs, 'exceptionJob'])),
-			new CronExpression('* * * * *'),
-		);
-
-		$command = new RunCommand($scheduler);
-		$tester = new CommandTester($command);
-
-		putenv('COLUMNS=80');
-		$code = $tester->execute([
-			'--json' => true,
-		]);
-
-		self::assertSame(
-			<<<'MSG'
-[
-    {
-        "info": {
-            "id": 0,
-            "name": "Tests\\Orisai\\Scheduler\\Doubles\\CallbackList::job1()",
-            "expression": "* * * * *",
-            "start": "1.000"
-        },
-        "result": {
-            "end": "1.000",
-            "state": "done"
-        }
-    },
-    {
-        "info": {
-            "id": 1,
-            "name": "Tests\\Orisai\\Scheduler\\Doubles\\CallbackList::exceptionJob()",
-            "expression": "* * * * *",
-            "start": "1.000"
-        },
-        "result": {
-            "end": "1.000",
-            "state": "fail"
-        }
-    }
-]
-
-MSG,
-			implode(
-				PHP_EOL,
-				array_map(
-					static fn (string $s): string => rtrim($s),
-					explode(PHP_EOL, preg_replace('~\R~u', PHP_EOL, $tester->getDisplay())),
-				),
+		return implode(
+			PHP_EOL,
+			array_map(
+				static fn (string $s): string => rtrim($s),
+				explode(PHP_EOL, preg_replace('~\R~u', PHP_EOL, $tester->getDisplay())),
 			),
 		);
-		self::assertSame($command::FAILURE, $code);
 	}
 
 }

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased](https://github.com/orisai/scheduler/compare/1.0.0...v2.x)
 
+### Added
+
+- `Scheduler`
+	- `runPromise()` - allows `scheduler:run` and `scheduler:work` commands to output job result as soon as it is
+	  finished
+
 ### Changed
 
 - `JobManager`
@@ -17,4 +23,4 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - `RunSummary`
 	- `getJobs()` -> `getJobSummaries()`
 - `JobExecutor`
-  - `runJobs()` returns `Generator<int, JobSummary, void, RunSummary>` instead of `RunSummary`
+	- `runJobs()` returns `Generator<int, JobSummary, void, RunSummary>` instead of `RunSummary`

@@ -2,9 +2,9 @@
 
 namespace Orisai\Scheduler\Command;
 
+use Generator;
 use Orisai\Scheduler\Scheduler;
 use Orisai\Scheduler\Status\JobResultState;
-use Orisai\Scheduler\Status\RunSummary;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -40,45 +40,46 @@ final class RunCommand extends BaseRunCommand
 
 	protected function execute(InputInterface $input, OutputInterface $output): int
 	{
-		$summary = $this->scheduler->run();
+		$summary = $this->scheduler->runPromise();
 
-		if ($input->getOption('json')) {
-			$this->renderJobsAsJson($output, $summary);
-		} else {
-			$this->renderJobs($output, $summary);
-		}
+		$success = $input->getOption('json')
+			? $this->renderJobsAsJson($output, $summary)
+			: $this->renderJobs($output, $summary);
 
-		return $this->getExitCode($summary);
+		return $success ? self::SUCCESS : self::FAILURE;
 	}
 
-	private function renderJobsAsJson(OutputInterface $output, RunSummary $summary): void
+	private function renderJobsAsJson(OutputInterface $output, Generator $generator): bool
 	{
 		$summaries = [];
-		foreach ($summary->getJobSummaries() as $jobSummary) {
+		$success = true;
+		foreach ($generator as $jobSummary) {
+			if ($success && $jobSummary->getResult()->getState() === JobResultState::fail()) {
+				$success = false;
+			}
+
 			$summaries[] = $this->jobToArray($jobSummary);
 		}
 
 		$output->writeln(json_encode($summaries, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT));
+
+		return $success;
 	}
 
-	private function renderJobs(OutputInterface $output, RunSummary $summary): void
+	private function renderJobs(OutputInterface $output, Generator $generator): bool
 	{
 		$terminalWidth = $this->getTerminalWidth();
 
-		foreach ($summary->getJobSummaries() as $jobSummary) {
+		$success = true;
+		foreach ($generator as $jobSummary) {
+			if ($success && $jobSummary->getResult()->getState() === JobResultState::fail()) {
+				$success = false;
+			}
+
 			$this->renderJob($jobSummary, $terminalWidth, $output);
 		}
-	}
 
-	private function getExitCode(RunSummary $summary): int
-	{
-		foreach ($summary->getJobSummaries() as $jobSummary) {
-			if ($jobSummary->getResult()->getState() === JobResultState::fail()) {
-				return self::FAILURE;
-			}
-		}
-
-		return self::SUCCESS;
+		return $success;
 	}
 
 }
