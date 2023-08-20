@@ -20,11 +20,11 @@
 	<a href="https://github.com/orisai/scheduler/actions?query=workflow%3ACI">
 		<img src="https://github.com/orisai/scheduler/workflows/CI/badge.svg">
 	</a>
-	<a href="https://coveralls.io/r/orisai/scheduler">
-		<img src="https://badgen.net/coveralls/c/github/orisai/scheduler/v1.x?cache=300">
+	<a href="https://coveralls.io/r/orisai/scheduler?branch=v2.x">
+		<img src="https://badgen.net/coveralls/c/github/orisai/scheduler/v2.x?cache=300">
 	</a>
-	<a href="https://dashboard.stryker-mutator.io/reports/github.com/orisai/scheduler/v1.x">
-		<img src="https://badge.stryker-mutator.io/github.com/orisai/scheduler/v1.x">
+	<a href="https://dashboard.stryker-mutator.io/reports/github.com/orisai/scheduler/v2.x">
+		<img src="https://badge.stryker-mutator.io/github.com/orisai/scheduler/v2.x">
 	</a>
 	<a href="https://packagist.org/packages/orisai/scheduler">
 		<img src="https://badgen.net/packagist/dt/orisai/scheduler?cache=3600">
