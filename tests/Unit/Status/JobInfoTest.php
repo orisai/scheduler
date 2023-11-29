@@ -14,12 +14,14 @@ final class JobInfoTest extends TestCase
 		$id = 'id';
 		$name = 'name';
 		$expression = '* * * * *';
+		$second = 0;
 		$start = new DateTimeImmutable();
 
-		$info = new JobInfo($id, $name, $expression, $start);
+		$info = new JobInfo($id, $name, $expression, $second, $start);
 		self::assertSame($id, $info->getId());
 		self::assertSame($name, $info->getName());
 		self::assertSame($expression, $info->getExpression());
+		self::assertSame($second, $info->getSecond());
 		self::assertSame($start, $info->getStart());
 	}
 

@@ -5,6 +5,8 @@ namespace Orisai\Scheduler;
 use Closure;
 use Cron\CronExpression;
 use Generator;
+use Orisai\Clock\Adapter\ClockAdapterFactory;
+use Orisai\Clock\Clock;
 use Orisai\Clock\SystemClock;
 use Orisai\Exceptions\Logic\InvalidArgument;
 use Orisai\Exceptions\Message;
@@ -18,6 +20,7 @@ use Orisai\Scheduler\Status\JobInfo;
 use Orisai\Scheduler\Status\JobResult;
 use Orisai\Scheduler\Status\JobResultState;
 use Orisai\Scheduler\Status\JobSummary;
+use Orisai\Scheduler\Status\RunParameters;
 use Orisai\Scheduler\Status\RunSummary;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Lock\LockFactory;
@@ -37,7 +40,7 @@ class ManagedScheduler implements Scheduler
 
 	private JobExecutor $executor;
 
-	private ClockInterface $clock;
+	private Clock $clock;
 
 	/** @var list<Closure(JobInfo): void> */
 	private array $beforeJob = [];
@@ -59,12 +62,17 @@ class ManagedScheduler implements Scheduler
 		$this->jobManager = $jobManager;
 		$this->errorHandler = $errorHandler;
 		$this->lockFactory = $lockFactory ?? new LockFactory(new InMemoryStore());
-		$this->clock = $clock ?? new SystemClock();
+		$this->clock = ClockAdapterFactory::create($clock ?? new SystemClock());
 
 		$this->executor = $executor ?? new BasicJobExecutor(
 			$this->clock,
 			$this->jobManager,
-			fn ($id, Job $job, CronExpression $expression): array => $this->runInternal($id, $job, $expression),
+			fn ($id, Job $job, CronExpression $expression, int $second): array => $this->runInternal(
+				$id,
+				$job,
+				$expression,
+				$second,
+			),
 		);
 	}
 
@@ -73,9 +81,10 @@ class ManagedScheduler implements Scheduler
 		return $this->jobManager->getScheduledJobs();
 	}
 
-	public function runJob($id, bool $force = true): ?JobSummary
+	public function runJob($id, bool $force = true, ?RunParameters $parameters = null): ?JobSummary
 	{
 		$scheduledJob = $this->jobManager->getScheduledJob($id);
+		$parameters ??= new RunParameters(0);
 
 		if ($scheduledJob === null) {
 			$message = Message::create()
@@ -92,11 +101,12 @@ class ManagedScheduler implements Scheduler
 
 		[$job, $expression] = $scheduledJob;
 
+		// Intentionally ignores repeat after seconds
 		if (!$force && !$expression->isDue($this->clock->now())) {
 			return null;
 		}
 
-		[$summary, $throwable] = $this->runInternal($id, $job, $expression);
+		[$summary, $throwable] = $this->runInternal($id, $job, $expression, $parameters->getSecond());
 
 		if ($throwable !== null) {
 			throw JobFailure::create($summary, $throwable);
@@ -129,14 +139,16 @@ class ManagedScheduler implements Scheduler
 
 	/**
 	 * @param string|int $id
+	 * @param int<0, max> $second
 	 * @return array{JobSummary, Throwable|null}
 	 */
-	private function runInternal($id, Job $job, CronExpression $expression): array
+	private function runInternal($id, Job $job, CronExpression $expression, int $second): array
 	{
 		$info = new JobInfo(
 			$id,
 			$job->getName(),
 			$expression->getExpression(),
+			$second,
 			$this->clock->now(),
 		);
 

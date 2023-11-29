@@ -15,17 +15,28 @@ final class CallbackJobManager implements JobManager
 	/** @var array<int|string, CronExpression> */
 	private array $expressions = [];
 
+	/** @var array<int|string, int<0, 30>> */
+	private array $repeat = [];
+
 	/**
 	 * @param Closure(): Job $jobCtor
+	 * @param int<0, 30> $repeatAfterSeconds
 	 */
-	public function addJob(Closure $jobCtor, CronExpression $expression, ?string $id = null): void
+	public function addJob(
+		Closure $jobCtor,
+		CronExpression $expression,
+		?string $id = null,
+		int $repeatAfterSeconds = 0
+	): void
 	{
 		if ($id === null) {
 			$this->jobs[] = $jobCtor;
 			$this->expressions[] = $expression;
+			$this->repeat[] = $repeatAfterSeconds;
 		} else {
 			$this->jobs[$id] = $jobCtor;
 			$this->expressions[$id] = $expression;
+			$this->repeat[$id] = $repeatAfterSeconds;
 		}
 	}
 
@@ -40,20 +51,22 @@ final class CallbackJobManager implements JobManager
 		return [
 			$job(),
 			$this->expressions[$id],
+			$this->repeat[$id],
 		];
 	}
 
 	public function getScheduledJobs(): array
 	{
-		$pairs = [];
+		$scheduledJobs = [];
 		foreach ($this->jobs as $id => $job) {
-			$pairs[$id] = [
+			$scheduledJobs[$id] = [
 				$job(),
 				$this->expressions[$id],
+				$this->repeat[$id],
 			];
 		}
 
-		return $pairs;
+		return $scheduledJobs;
 	}
 
 	public function getExpressions(): array

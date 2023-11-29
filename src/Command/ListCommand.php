@@ -18,12 +18,14 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Terminal;
 use function abs;
 use function array_splice;
+use function floor;
 use function max;
 use function mb_strlen;
 use function preg_match;
 use function sprintf;
 use function str_pad;
 use function str_repeat;
+use function strlen;
 use function strnatcmp;
 use function uasort;
 use const STR_PAD_LEFT;
@@ -73,14 +75,19 @@ final class ListCommand extends Command
 
 		$terminalWidth = $this->getTerminalWidth();
 		$expressionSpacing = $this->getCronExpressionSpacing($jobs);
+		$repeatAfterSecondsSpacing = $this->getRepeatAfterSecondsSpacing($jobs);
 
-		foreach ($this->sortJobs($jobs, $nextOption) as $key => [$job, $expression]) {
+		foreach ($this->sortJobs($jobs, $nextOption) as $key => [$job, $expression, $repeatAfterSeconds]) {
 			$expressionString = $this->formatCronExpression($expression, $expressionSpacing);
+			$repeatAfterSecondsString = $this->formatRepeatAfterSeconds(
+				$repeatAfterSeconds,
+				$repeatAfterSecondsSpacing,
+			);
 
 			$name = $job->getName();
 
 			$nextDueDateLabel = 'Next Due:';
-			$nextDueDate = $this->getNextDueDateForEvent($expression);
+			$nextDueDate = $this->getNextDueDate($expression, $repeatAfterSeconds);
 			$nextDueDate = $output->isVerbose()
 				? $nextDueDate->format('Y-m-d H:i:s P')
 				: $this->getRelativeTime($nextDueDate);
@@ -89,14 +96,17 @@ final class ListCommand extends Command
 				'.',
 				max(
 				/* @infection-ignore-all */
-					$terminalWidth - mb_strlen($expressionString . $key . $name . $nextDueDateLabel . $nextDueDate) - 9,
+					$terminalWidth - mb_strlen(
+						$expressionString . $repeatAfterSecondsString . $key . $name . $nextDueDateLabel . $nextDueDate,
+					) - 9,
 					0,
 				),
 			);
 
 			$output->writeln(sprintf(
-				'  <fg=yellow>%s</>  [%s] %s<fg=#6C7280>%s %s %s</>',
+				'  <fg=yellow>%s</><fg=#6C7280>%s</>  [%s] %s<fg=#6C7280>%s %s %s</>',
 				$expressionString,
+				$repeatAfterSecondsString,
 				$key,
 				$name,
 				$dots,
@@ -138,18 +148,18 @@ final class ListCommand extends Command
 	}
 
 	/**
-	 * @param array<int|string, array{Job, CronExpression}> $jobs
-	 * @param bool|int<1, max>                              $next
-	 * @return array<int|string, array{Job, CronExpression}>
+	 * @param array<int|string, array{Job, CronExpression, int<0, 30>}> $jobs
+	 * @param bool|int<1, max>                                          $next
+	 * @return array<int|string, array{Job, CronExpression, int<0, 30>}>
 	 */
 	private function sortJobs(array $jobs, $next): array
 	{
 		if ($next !== false) {
 			/** @infection-ignore-all */
 			uasort($jobs, function ($a, $b): int {
-				$nextDueDateA = $this->getNextDueDateForEvent($a[1])
+				$nextDueDateA = $this->getNextDueDate($a[1], $a[2])
 					->setTimezone(new DateTimeZone('UTC'));
-				$nextDueDateB = $this->getNextDueDateForEvent($b[1])
+				$nextDueDateB = $this->getNextDueDate($b[1], $b[2])
 					->setTimezone(new DateTimeZone('UTC'));
 
 				if (
@@ -182,11 +192,49 @@ final class ListCommand extends Command
 		return $jobs;
 	}
 
-	private function getNextDueDateForEvent(CronExpression $expression): DateTimeImmutable
+	private function getNextDueDate(CronExpression $expression, int $repeatAfterSeconds): DateTimeImmutable
 	{
-		return DateTimeImmutable::createFromMutable(
-			$expression->getNextRunDate($this->clock->now()),
+		$now = $this->clock->now();
+		$nextDueDate = DateTimeImmutable::createFromMutable(
+			$expression->getNextRunDate($now),
 		);
+
+		if ($repeatAfterSeconds === 0) {
+			return $nextDueDate;
+		}
+
+		$previousDueDate = DateTimeImmutable::createFromMutable(
+			$expression->getPreviousRunDate($now, 0, true),
+		);
+
+		if (!$this->wasPreviousDueDateInCurrentMinute($now, $previousDueDate)) {
+			return $nextDueDate;
+		}
+
+		$currentSecond = (int) $now->format('s');
+		$runTimes = (int) floor($currentSecond / $repeatAfterSeconds);
+		$nextRunSecond = ($runTimes + 1) * $repeatAfterSeconds;
+
+		// Don't abuse seconds overlap
+		if ($nextRunSecond > 59) {
+			return $nextDueDate;
+		}
+
+		return $now->setTime(
+			(int) $now->format('H'),
+			(int) $now->format('i'),
+			$nextRunSecond,
+		);
+	}
+
+	private function wasPreviousDueDateInCurrentMinute(DateTimeImmutable $now, DateTimeImmutable $previousDueDate): bool
+	{
+		$currentMinute = $now->setTime(
+			(int) $now->format('H'),
+			(int) $now->format('i'),
+		);
+
+		return $currentMinute->getTimestamp() === $previousDueDate->getTimestamp();
 	}
 
 	/**
@@ -225,14 +273,14 @@ final class ListCommand extends Command
 	}
 
 	/**
-	 * @param array<int|string, array{Job, CronExpression}> $jobs
+	 * @param array<int|string, array{Job, CronExpression, int<0, 30>}> $jobs
 	 *
 	 * @infection-ignore-all
 	 */
 	private function getCronExpressionSpacing(array $jobs): int
 	{
 		$max = 0;
-		foreach ($jobs as [$job, $expression]) {
+		foreach ($jobs as [$job, $expression, $repeatAfterSeconds]) {
 			$length = mb_strlen($expression->getExpression());
 			if ($length > $max) {
 				$max = $length;
@@ -245,6 +293,41 @@ final class ListCommand extends Command
 	private function formatCronExpression(CronExpression $expression, int $spacing): string
 	{
 		return str_pad($expression->getExpression(), $spacing, ' ', STR_PAD_LEFT);
+	}
+
+	/**
+	 * @param array<int|string, array{Job, CronExpression, int<0, 30>}|null> $jobs
+	 *
+	 * @infection-ignore-all
+	 */
+	private function getRepeatAfterSecondsSpacing(array $jobs): int
+	{
+		$max = 0;
+		foreach ($jobs as [$job, $expression, $repeatAfterSeconds]) {
+			if ($repeatAfterSeconds === 0) {
+				continue;
+			}
+
+			$length = strlen((string) $repeatAfterSeconds);
+			if ($length > $max) {
+				$max = $length;
+			}
+		}
+
+		if ($max !== 0) {
+			$max += 3;
+		}
+
+		return $max;
+	}
+
+	private function formatRepeatAfterSeconds(int $repeatAfterSeconds, int $spacing): string
+	{
+		if ($repeatAfterSeconds === 0) {
+			return str_pad('', $spacing);
+		}
+
+		return str_pad(" / $repeatAfterSeconds", $spacing);
 	}
 
 	private function getTerminalWidth(): int

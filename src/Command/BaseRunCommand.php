@@ -90,6 +90,7 @@ abstract class BaseRunCommand extends Command
 				'id' => $info->getId(),
 				'name' => $info->getName(),
 				'expression' => $info->getExpression(),
+				'second' => $info->getSecond(),
 				'start' => $info->getStart()->format('U.v'),
 			],
 			'result' => [

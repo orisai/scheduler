@@ -33,9 +33,12 @@ final class SimpleScheduler extends ManagedScheduler
 		);
 	}
 
-	public function addJob(Job $job, CronExpression $expression, ?string $id = null): void
+	/**
+	 * @param int<0, 30> $repeatAfterSeconds
+	 */
+	public function addJob(Job $job, CronExpression $expression, ?string $id = null, int $repeatAfterSeconds = 0): void
 	{
-		$this->jobManager->addJob($job, $expression, $id);
+		$this->jobManager->addJob($job, $expression, $id, $repeatAfterSeconds);
 	}
 
 }

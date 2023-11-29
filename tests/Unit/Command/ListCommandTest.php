@@ -139,6 +139,67 @@ MSG,
 		self::assertSame($command::SUCCESS, $code);
 	}
 
+	public function testListWithSeconds(): void
+	{
+		$clock = new FrozenClock(1, new DateTimeZone('Europe/Prague'));
+		$scheduler = new SimpleScheduler(null, null, null, $clock);
+
+		$cbs = new CallbackList();
+		$scheduler->addJob(
+			new CallbackJob(Closure::fromCallable([$cbs, 'job1'])),
+			new CronExpression('* * * * *'),
+		);
+		$scheduler->addJob(
+			new CallbackJob(Closure::fromCallable([$cbs, 'job1'])),
+			new CronExpression('*/30 7-15 * * 1-5'),
+		);
+		$scheduler->addJob(
+			new CallbackJob(Closure::fromCallable([$cbs, 'job1'])),
+			new CronExpression('*/30 7-15 * * 1-5'),
+			null,
+			1,
+		);
+		$scheduler->addJob(
+			new CallbackJob(Closure::fromCallable($cbs)),
+			new CronExpression('* * * 4 *'),
+			null,
+			5,
+		);
+		$scheduler->addJob(
+			new CallbackJob($cbs->getClosure()),
+			new CronExpression('30 * 12 10 *'),
+			null,
+			30,
+		);
+
+		$command = new ListCommand($scheduler, $clock);
+		$tester = new CommandTester($command);
+
+		putenv('COLUMNS=120');
+		$code = $tester->execute([], [
+			'verbosity' => OutputInterface::VERBOSITY_VERBOSE,
+		]);
+
+		self::assertSame(
+			<<<'MSG'
+          * * * 4 * / 5   [3] Tests\Orisai\Scheduler\Doubles\CallbackList::__invoke() Next Due: 1970-04-01 00:00:00 +01:00
+          * * * * *       [0] Tests\Orisai\Scheduler\Doubles\CallbackList::job1().. Next Due: 1970-01-01 01:01:00 +01:00
+  */30 7-15 * * 1-5       [1] Tests\Orisai\Scheduler\Doubles\CallbackList::job1().. Next Due: 1970-01-01 07:00:00 +01:00
+  */30 7-15 * * 1-5 / 1   [2] Tests\Orisai\Scheduler\Doubles\CallbackList::job1().. Next Due: 1970-01-01 07:00:00 +01:00
+       30 * 12 10 * / 30  [4] tests/Doubles/CallbackList.php:32.................... Next Due: 1970-10-12 00:30:00 +01:00
+
+MSG,
+			implode(
+				PHP_EOL,
+				array_map(
+					static fn (string $s): string => rtrim($s),
+					explode(PHP_EOL, $tester->getDisplay()),
+				),
+			),
+		);
+		self::assertSame($command::SUCCESS, $code);
+	}
+
 	public function testNext(): void
 	{
 		$clock = new FrozenClock(1, new DateTimeZone('Europe/Prague'));
@@ -146,12 +207,13 @@ MSG,
 
 		$cbs = new CallbackList();
 		$job = new CallbackJob(Closure::fromCallable([$cbs, 'job1']));
-		$scheduler->addJob($job, new CronExpression('* * * 4 *'));
-		$scheduler->addJob($job, new CronExpression('* * * 4 *'));
 		$scheduler->addJob($job, new CronExpression('* * * 2 *'));
-		$scheduler->addJob($job, new CronExpression('* * * 7 *'));
-		$scheduler->addJob($job, new CronExpression('* * * 1 *'));
-		$scheduler->addJob($job, new CronExpression('* * * 6 *'));
+		$scheduler->addJob($job, new CronExpression('* * 3 * *'));
+		$scheduler->addJob($job, new CronExpression('* 3 * * *'));
+		$scheduler->addJob($job, new CronExpression('2 * * * *'));
+		$scheduler->addJob($job, new CronExpression('* * * * *'));
+		$scheduler->addJob($job, new CronExpression('* * * * *'), null, 1);
+		$scheduler->addJob($job, new CronExpression('* * * * *'));
 
 		$command = new ListCommand($scheduler, $clock);
 		$tester = new CommandTester($command);
@@ -163,12 +225,13 @@ MSG,
 
 		self::assertSame(
 			<<<'MSG'
-  * * * 1 *  [4] Tests\Orisai\Scheduler\Doubles\CallbackList::job1().......... Next Due: 59 seconds
-  * * * 2 *  [2] Tests\Orisai\Scheduler\Doubles\CallbackList::job1()............. Next Due: 1 month
-  * * * 4 *  [0] Tests\Orisai\Scheduler\Doubles\CallbackList::job1()............ Next Due: 2 months
-  * * * 4 *  [1] Tests\Orisai\Scheduler\Doubles\CallbackList::job1()............ Next Due: 2 months
-  * * * 6 *  [5] Tests\Orisai\Scheduler\Doubles\CallbackList::job1()............ Next Due: 5 months
-  * * * 7 *  [3] Tests\Orisai\Scheduler\Doubles\CallbackList::job1()............ Next Due: 6 months
+  * * * * * / 1  [5] Tests\Orisai\Scheduler\Doubles\CallbackList::job1()........ Next Due: 1 second
+  * * * * *      [4] Tests\Orisai\Scheduler\Doubles\CallbackList::job1()...... Next Due: 59 seconds
+  * * * * *      [6] Tests\Orisai\Scheduler\Doubles\CallbackList::job1()...... Next Due: 59 seconds
+  2 * * * *      [3] Tests\Orisai\Scheduler\Doubles\CallbackList::job1()........ Next Due: 1 minute
+  * 3 * * *      [2] Tests\Orisai\Scheduler\Doubles\CallbackList::job1().......... Next Due: 1 hour
+  * * 3 * *      [1] Tests\Orisai\Scheduler\Doubles\CallbackList::job1()........... Next Due: 1 day
+  * * * 2 *      [0] Tests\Orisai\Scheduler\Doubles\CallbackList::job1()......... Next Due: 1 month
 
 MSG,
 			implode(
@@ -182,13 +245,48 @@ MSG,
 		self::assertSame($command::SUCCESS, $code);
 
 		$code = $tester->execute([
-			'--next' => '2',
+			'--next' => '4',
 		]);
 
 		self::assertSame(
 			<<<'MSG'
-  * * * 1 *  [0] Tests\Orisai\Scheduler\Doubles\CallbackList::job1().......... Next Due: 59 seconds
-  * * * 2 *  [1] Tests\Orisai\Scheduler\Doubles\CallbackList::job1()............. Next Due: 1 month
+  * * * * * / 1  [0] Tests\Orisai\Scheduler\Doubles\CallbackList::job1()........ Next Due: 1 second
+  * * * * *      [1] Tests\Orisai\Scheduler\Doubles\CallbackList::job1()...... Next Due: 59 seconds
+  * * * * *      [2] Tests\Orisai\Scheduler\Doubles\CallbackList::job1()...... Next Due: 59 seconds
+  2 * * * *      [3] Tests\Orisai\Scheduler\Doubles\CallbackList::job1()........ Next Due: 1 minute
+
+MSG,
+			implode(
+				PHP_EOL,
+				array_map(
+					static fn (string $s): string => rtrim($s),
+					explode(PHP_EOL, $tester->getDisplay()),
+				),
+			),
+		);
+		self::assertSame($command::SUCCESS, $code);
+	}
+
+	public function testNextOverlap(): void
+	{
+		$clock = new FrozenClock(59, new DateTimeZone('Europe/Prague'));
+		$scheduler = new SimpleScheduler(null, null, null, $clock);
+
+		$cbs = new CallbackList();
+		$job = new CallbackJob(Closure::fromCallable([$cbs, 'job1']));
+		$scheduler->addJob($job, new CronExpression('* * * * *'), null, 1);
+
+		$command = new ListCommand($scheduler, $clock);
+		$tester = new CommandTester($command);
+
+		putenv('COLUMNS=100');
+		$code = $tester->execute([], [
+			'verbosity' => OutputInterface::VERBOSITY_VERBOSE,
+		]);
+
+		self::assertSame(
+			<<<'MSG'
+  * * * * * / 1  [0] Tests\Orisai\Scheduler\Doubles\CallbackList::job1() Next Due: 1970-01-01 01:01:00 +01:00
 
 MSG,
 			implode(

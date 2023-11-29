@@ -12,6 +12,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - `Scheduler`
 	- `runPromise()` - allows `scheduler:run` and `scheduler:work` commands to output job result as soon as it is
 	  finished
+	- `getScheduledJobs()` - added `repeatAfterSeconds` parameter into the returned array
+- `SimpleScheduler`
+	- `addJob()` accepts parameter `repeatAfterSeconds`
+- `JobInfo`
+	- `getSecond()`- returns for which second within a minute was job scheduled
+- `JobManager`
+	- `getScheduledJob()` - added `repeatAfterSeconds` parameter into the returned array
+	- `getScheduledJobs()` - added `repeatAfterSeconds` parameter into the returned array
+- `SimpleJobManager`
+	- `addJob()` accepts parameter `repeatAfterSeconds`
+- `CallbackJobManager`
+	- `addJob()` accepts parameter `repeatAfterSeconds`
 
 ### Changed
 
@@ -24,3 +36,5 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 	- `getJobs()` -> `getJobSummaries()`
 - `JobExecutor`
 	- `runJobs()` returns `Generator<int, JobSummary, void, RunSummary>` instead of `RunSummary`
+- `ProcessJobExecutor`
+	- constructor requires `JobManager` as first parameter

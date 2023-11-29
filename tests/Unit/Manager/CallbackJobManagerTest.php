@@ -28,7 +28,7 @@ final class CallbackJobManagerTest extends TestCase
 
 		$job2 = clone $job1;
 		$expression2 = clone $expression1;
-		$manager->addJob(static fn (): Job => $job2, $expression2, 'id');
+		$manager->addJob(static fn (): Job => $job2, $expression2, 'id', 1);
 
 		self::assertSame(
 			[
@@ -39,13 +39,13 @@ final class CallbackJobManagerTest extends TestCase
 		);
 		self::assertSame(
 			[
-				0 => [$job1, $expression1],
-				'id' => [$job2, $expression2],
+				0 => [$job1, $expression1, 0],
+				'id' => [$job2, $expression2, 1],
 			],
 			$manager->getScheduledJobs(),
 		);
-		self::assertSame([$job1, $expression1], $manager->getScheduledJob(0));
-		self::assertSame([$job2, $expression2], $manager->getScheduledJob('id'));
+		self::assertSame([$job1, $expression1, 0], $manager->getScheduledJob(0));
+		self::assertSame([$job2, $expression2, 1], $manager->getScheduledJob('id'));
 		self::assertNull($manager->getScheduledJob(42));
 	}
 

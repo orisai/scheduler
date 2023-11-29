@@ -5,6 +5,7 @@ namespace Tests\Orisai\Scheduler\Unit;
 use Closure;
 use Cron\CronExpression;
 use DateTimeImmutable;
+use Generator;
 use Orisai\Clock\FrozenClock;
 use Orisai\Exceptions\Logic\InvalidArgument;
 use Orisai\Scheduler\Exception\JobFailure;
@@ -15,6 +16,7 @@ use Orisai\Scheduler\Status\JobInfo;
 use Orisai\Scheduler\Status\JobResult;
 use Orisai\Scheduler\Status\JobResultState;
 use Orisai\Scheduler\Status\JobSummary;
+use Orisai\Scheduler\Status\RunParameters;
 use Orisai\Scheduler\Status\RunSummary;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Lock\Store\InMemoryStore;
@@ -41,7 +43,7 @@ final class SimpleSchedulerTest extends TestCase
 		$scheduler->addJob($job, $expression);
 
 		self::assertSame([
-			[$job, $expression],
+			[$job, $expression, 0],
 		], $scheduler->getScheduledJobs());
 
 		$scheduler->run();
@@ -72,7 +74,7 @@ final class SimpleSchedulerTest extends TestCase
 		$scheduler->addJob($job, $expression, $key);
 
 		self::assertSame([
-			$key => [$job, $expression],
+			$key => [$job, $expression, 0],
 		], $scheduler->getScheduledJobs());
 
 		$scheduler->runJob($key);
@@ -208,8 +210,8 @@ MSG,
 
 		self::assertEquals(
 			[
-				new JobInfo(0, 'Tests\Orisai\Scheduler\Doubles\CallbackList::exceptionJob()', '* * * * *', $now),
-				new JobInfo(1, 'Tests\Orisai\Scheduler\Doubles\CallbackList::job1()', '* * * * *', $now),
+				new JobInfo(0, 'Tests\Orisai\Scheduler\Doubles\CallbackList::exceptionJob()', '* * * * *', 0, $now),
+				new JobInfo(1, 'Tests\Orisai\Scheduler\Doubles\CallbackList::job1()', '* * * * *', 0, $now),
 			],
 			$beforeCollected,
 		);
@@ -217,11 +219,11 @@ MSG,
 		self::assertEquals(
 			[
 				[
-					new JobInfo(0, 'Tests\Orisai\Scheduler\Doubles\CallbackList::exceptionJob()', '* * * * *', $now),
+					new JobInfo(0, 'Tests\Orisai\Scheduler\Doubles\CallbackList::exceptionJob()', '* * * * *', 0, $now),
 					new JobResult(new CronExpression('* * * * *'), $now, JobResultState::fail()),
 				],
 				[
-					new JobInfo(1, 'Tests\Orisai\Scheduler\Doubles\CallbackList::job1()', '* * * * *', $now),
+					new JobInfo(1, 'Tests\Orisai\Scheduler\Doubles\CallbackList::job1()', '* * * * *', 0, $now),
 					new JobResult(new CronExpression('* * * * *'), $now, JobResultState::done()),
 				],
 			],
@@ -241,16 +243,15 @@ MSG,
 
 		$jobLine = __LINE__ + 2;
 		$job = new CallbackJob(
-			static function (): void {
-				// Noop
+			static function () use ($clock): void {
+				$clock->sleep(5);
 			},
 		);
 		$scheduler->addJob($job, new CronExpression('* * * * *'));
 
 		$beforeCollected = [];
-		$beforeCb = static function (JobInfo $info) use (&$beforeCollected, $clock): void {
+		$beforeCb = static function (JobInfo $info) use (&$beforeCollected): void {
 			$beforeCollected[] = $info;
-			$clock->move(1);
 		};
 		$scheduler->addBeforeJobCallback($beforeCb);
 
@@ -268,6 +269,7 @@ MSG,
 					0,
 					"tests/Unit/SimpleSchedulerTest.php:$jobLine",
 					'* * * * *',
+					0,
 					DateTimeImmutable::createFromFormat('U', '1'),
 				),
 			],
@@ -280,11 +282,12 @@ MSG,
 						0,
 						"tests/Unit/SimpleSchedulerTest.php:$jobLine",
 						'* * * * *',
+						0,
 						DateTimeImmutable::createFromFormat('U', '1'),
 					),
 					new JobResult(
 						new CronExpression('* * * * *'),
-						DateTimeImmutable::createFromFormat('U', '2'),
+						DateTimeImmutable::createFromFormat('U', '6'),
 						JobResultState::done(),
 					),
 				],
@@ -329,7 +332,7 @@ MSG,
 		self::assertNotNull($scheduler->runJob(2));
 
 		$expressions = [];
-		$clock->move(60);
+		$clock->sleep(60);
 		$scheduler->run();
 		self::assertSame(
 			[
@@ -343,7 +346,7 @@ MSG,
 		self::assertNotNull($scheduler->runJob(2, false));
 
 		$expressions = [];
-		$clock->move(60);
+		$clock->sleep(60);
 		$scheduler->run();
 		self::assertSame(
 			[
@@ -363,7 +366,7 @@ MSG,
 
 		$job1 = new CallbackJob(
 			static function () use ($clock): void {
-				$clock->move(60); // Moves time to next minute, next time will job be not ran
+				$clock->sleep(60); // Moves time to next minute, next time will job be not ran
 			},
 		);
 		$scheduler->addJob($job1, new CronExpression('0 * * * *'));
@@ -398,7 +401,7 @@ MSG,
 		$scheduler->addJob(
 			new CustomNameJob(
 				new CallbackJob(static function () use ($clock): void {
-					$clock->move(60);
+					$clock->sleep(60);
 				}),
 				'job1',
 			),
@@ -419,6 +422,7 @@ MSG,
 							0,
 							'Tests\Orisai\Scheduler\Doubles\CallbackList::job1()',
 							'* * * * *',
+							0,
 							$before,
 						),
 						new JobResult(new CronExpression('* * * * *'), $before, JobResultState::done()),
@@ -428,6 +432,7 @@ MSG,
 							1,
 							'job1',
 							'* * * * *',
+							0,
 							$before,
 						),
 						new JobResult(new CronExpression('* * * * *'), $after, JobResultState::done()),
@@ -438,7 +443,12 @@ MSG,
 		);
 	}
 
-	public function testJobSummary(): void
+	/**
+	 * @param int<0, max> $second
+	 *
+	 * @dataProvider provideJobSummary
+	 */
+	public function testJobSummary(?RunParameters $parameters, int $second): void
 	{
 		$clock = new FrozenClock(1);
 		$scheduler = new SimpleScheduler(null, null, null, $clock);
@@ -447,7 +457,7 @@ MSG,
 		$job = new CallbackJob(Closure::fromCallable([$cbs, 'job1']));
 		$scheduler->addJob($job, new CronExpression('* * * * *'));
 
-		$summary = $scheduler->runJob(0);
+		$summary = $scheduler->runJob(0, true, $parameters);
 		self::assertInstanceOf(JobSummary::class, $summary);
 
 		$now = $clock->now();
@@ -456,6 +466,7 @@ MSG,
 				0,
 				'Tests\Orisai\Scheduler\Doubles\CallbackList::job1()',
 				'* * * * *',
+				$second,
 				$now,
 			),
 			$summary->getInfo(),
@@ -464,6 +475,13 @@ MSG,
 			new JobResult(new CronExpression('* * * * *'), $now, JobResultState::done()),
 			$summary->getResult(),
 		);
+	}
+
+	public function provideJobSummary(): Generator
+	{
+		yield [null, 0];
+		yield [new RunParameters(10), 10];
+		yield [new RunParameters(30), 30];
 	}
 
 	public function testLockAlreadyAcquired(): void
@@ -504,11 +522,11 @@ MSG,
 		self::assertEquals(
 			[
 				new JobSummary(
-					new JobInfo(0, 'job1', '* * * * *', $clock->now()),
+					new JobInfo(0, 'job1', '* * * * *', 0, $clock->now()),
 					new JobResult(new CronExpression('* * * * *'), $clock->now(), JobResultState::skip()),
 				),
 				new JobSummary(
-					new JobInfo(1, 'job2', '* * * * *', $clock->now()),
+					new JobInfo(1, 'job2', '* * * * *', 0, $clock->now()),
 					new JobResult(new CronExpression('* * * * *'), $clock->now(), JobResultState::done()),
 				),
 			],
@@ -537,11 +555,11 @@ MSG,
 		self::assertEquals(
 			[
 				new JobSummary(
-					new JobInfo(0, 'job1', '* * * * *', $clock->now()),
+					new JobInfo(0, 'job1', '* * * * *', 0, $clock->now()),
 					new JobResult(new CronExpression('* * * * *'), $clock->now(), JobResultState::done()),
 				),
 				new JobSummary(
-					new JobInfo(1, 'job2', '* * * * *', $clock->now()),
+					new JobInfo(1, 'job2', '* * * * *', 0, $clock->now()),
 					new JobResult(new CronExpression('* * * * *'), $clock->now(), JobResultState::done()),
 				),
 			],
@@ -675,12 +693,68 @@ MSG,
 		self::assertSame(3, $i);
 	}
 
+	public function testRepeat(): void
+	{
+		$clock = new FrozenClock(1);
+		$scheduler = new SimpleScheduler(null, null, null, $clock);
+
+		$i1 = 0;
+		$job1 = new CallbackJob(
+			static function () use (&$i1): void {
+				$i1++;
+			},
+		);
+		$scheduler->addJob(
+			$job1,
+			new CronExpression('* * * * *'),
+			null,
+			30,
+		);
+
+		$summary = $scheduler->run();
+		self::assertSame(2, $i1);
+		self::assertCount(2, $summary->getJobSummaries());
+		self::assertSame(31, $clock->now()->getTimestamp());
+
+		$i2 = 0;
+		$job2 = new CallbackJob(
+			static function () use (&$i2): void {
+				$i2++;
+			},
+		);
+		$scheduler->addJob(
+			$job2,
+			new CronExpression('* * * * *'),
+			null,
+			1,
+		);
+
+		$summary = $scheduler->run();
+		self::assertSame(4, $i1);
+		self::assertSame(60, $i2);
+		self::assertCount(62, $summary->getJobSummaries());
+		self::assertSame(90, $clock->now()->getTimestamp());
+	}
+
+	public function testProcessNoJobs(): void
+	{
+		$clock = new FrozenClock(1);
+		$scheduler = SchedulerProcessSetup::createEmpty();
+
+		self::assertSame([], $scheduler->getScheduledJobs());
+
+		self::assertEquals(
+			new RunSummary($clock->now(), $clock->now(), []),
+			$scheduler->run(),
+		);
+	}
+
 	public function testProcessExecutorWithErrorHandler(): void
 	{
 		$scheduler = SchedulerProcessSetup::createWithErrorHandler();
 		$summary = $scheduler->run();
 
-		self::assertCount(3, $summary->getJobSummaries());
+		self::assertCount(4, $summary->getJobSummaries());
 	}
 
 	public function testProcessExecutorWithoutErrorHandler(): void

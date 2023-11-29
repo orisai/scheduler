@@ -10,6 +10,7 @@ use Orisai\Exceptions\Logic\InvalidArgument;
 use Orisai\Scheduler\Command\RunJobCommand;
 use Orisai\Scheduler\Job\CallbackJob;
 use Orisai\Scheduler\SimpleScheduler;
+use Orisai\Scheduler\Status\RunParameters;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Tester\CommandTester;
 use Symfony\Component\Lock\Store\InMemoryStore;
@@ -19,9 +20,11 @@ use Tests\Orisai\Scheduler\Doubles\TestLockFactory;
 use function array_map;
 use function explode;
 use function implode;
+use function json_encode;
 use function preg_replace;
 use function putenv;
 use function rtrim;
+use const JSON_THROW_ON_ERROR;
 use const PHP_EOL;
 
 /**
@@ -222,7 +225,7 @@ MSG,
 		);
 		self::assertSame($command::SUCCESS, $code);
 
-		$clock->move(60);
+		$clock->sleep(60);
 		$code = $tester->execute([
 			'id' => 0,
 			'--no-force' => true,
@@ -280,10 +283,11 @@ MSG,
 		);
 		self::assertSame($command::SUCCESS, $code);
 
-		$clock->move(60);
+		$clock->sleep(60);
 		$code = $tester->execute([
 			'id' => 0,
 			'--json' => true,
+			'--parameters' => json_encode((new RunParameters(30))->toArray(), JSON_THROW_ON_ERROR),
 		]);
 
 		self::assertSame(
@@ -293,6 +297,7 @@ MSG,
         "id": 0,
         "name": "Tests\\Orisai\\Scheduler\\Doubles\\CallbackList::job1()",
         "expression": "1 * * * *",
+        "second": 30,
         "start": "61.000"
     },
     "result": {

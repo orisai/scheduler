@@ -104,6 +104,7 @@ MSG,
             "id": 0,
             "name": "Tests\\Orisai\\Scheduler\\Doubles\\CallbackList::job1()",
             "expression": "* * * * *",
+            "second": 0,
             "start": "1.000"
         },
         "result": {
@@ -116,6 +117,7 @@ MSG,
             "id": 1,
             "name": "Tests\\Orisai\\Scheduler\\Doubles\\CallbackList::job2()",
             "expression": "* * * * *",
+            "second": 0,
             "start": "1.000"
         },
         "result": {
@@ -176,6 +178,7 @@ MSG,
             "id": 0,
             "name": "Tests\\Orisai\\Scheduler\\Doubles\\CallbackList::job1()",
             "expression": "* * * * *",
+            "second": 0,
             "start": "1.000"
         },
         "result": {
@@ -188,6 +191,7 @@ MSG,
             "id": 1,
             "name": "Tests\\Orisai\\Scheduler\\Doubles\\CallbackList::exceptionJob()",
             "expression": "* * * * *",
+            "second": 0,
             "start": "1.000"
         },
         "result": {
@@ -225,8 +229,8 @@ MSG,
 		$tester = new CommandTester($command);
 
 		putenv('COLUMNS=80');
-		$code = $tester->execute([]);
 
+		$code = $tester->execute([]);
 		self::assertSame(
 			<<<'MSG'
 1970-01-01 01:00:01 Running [0] job1................................... 0ms SKIP
@@ -245,8 +249,8 @@ MSG,
 		$tester = new CommandTester($command);
 
 		putenv('COLUMNS=80');
-		$code = $tester->execute([]);
 
+		$code = $tester->execute([]);
 		$displayLines = explode(PHP_EOL, $tester->getDisplay());
 		sort($displayLines);
 
@@ -255,6 +259,7 @@ MSG,
 				'',
 				'1970-01-01 00:00:01 Running [0] Tests\Orisai\Scheduler\Doubles\CallbackList::exceptionJob() 0ms FAIL',
 				'1970-01-01 00:00:01 Running [1] Tests\Orisai\Scheduler\Doubles\CallbackList::job1() 0ms DONE',
+				'1970-01-01 00:00:01 Running [job1] Tests\Orisai\Scheduler\Doubles\CallbackList::job1() 0ms DONE',
 				'1970-01-01 00:00:01 Running [job1] Tests\Orisai\Scheduler\Doubles\CallbackList::job1() 0ms DONE',
 			],
 			$displayLines,

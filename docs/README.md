@@ -7,6 +7,8 @@ Cron job scheduler - with locks, parallelism and more
 - [Why do you need it?](#why-do-you-need-it)
 - [Quick start](#quick-start)
 - [Execution time](#execution-time)
+	- [Cron expression - minutes and above](#cron-expression---minutes-and-above)
+	- [Seconds](#seconds)
 - [Events](#events)
 - [Handling errors](#handling-errors)
 - [Locks and job overlapping](#locks-and-job-overlapping)
@@ -50,6 +52,7 @@ Orisai Scheduler solves all of these problems.
 On top of that you get:
 
 - [locking](#locks-and-job-overlapping) - each job should run only once at a time, without overlapping
+- [per-second scheduling](#seconds) - run jobs multiple times in a minute
 - [before/after job events](#events) for accessing job status
 - [overview of all jobs](#list-command), including estimated time of next run
 - running jobs either [once](#run-command) or [periodically](#worker-command) during development
@@ -90,7 +93,22 @@ Good to go!
 
 ## Execution time
 
-Cron execution time is expressed via `CronExpression`, using crontab syntax
+Execution time is determined by [cron expression](#cron-expression---minutes-and-above) which allows you to schedule
+jobs from anywhere between once a year and once every minute and [seconds], allowing you tu run job several times in a
+minute.
+
+In ideal situation, jobs are executed just in time, but it may not be always the case. Crontab can execute jobs several
+seconds late, serial jobs execution may take way over a minute and long jobs may overlap. To prevent any issues, we
+implement multiple measures:
+
+- jobs [repeated after seconds](#seconds) take in account crontab may run late and delay each execution accordingly to
+  minimize unwanted gaps between executions (e.g. if crontab starts 10 seconds late, all jobs also run 10 seconds late)
+- [parallel execution](#parallelization-and-process-isolation) can be used instead of the serial
+- [locks](#locks-and-job-overlapping) should be used to prevent overlapping of long-running jobs
+
+### Cron expression - minutes and above
+
+Main job execution time is expressed via `CronExpression`, using crontab syntax
 
 ```php
 use Cron\CronExpression;
@@ -130,6 +148,37 @@ You can also use macro instead of an expression:
 - `@weekly` - Run once a week, midnight on Sun - `0 0 * * 0`
 - `@daily`, `@midnight` - Run once a day, midnight - `0 0 * * *`
 - `@hourly` - Run once an hour, first minute - `0 * * * *`
+
+### Seconds
+
+Run a job every n seconds within a minute.
+
+```php
+use Cron\CronExpression;
+
+$scheduler->addJob(
+	/* ... */,
+	new CronExpression('* * * * *'),
+	/* ... */,
+	1, // every second, 60 times a minute
+);
+```
+
+```php
+use Cron\CronExpression;
+
+$scheduler->addJob(
+	/* ... */,
+	new CronExpression('* * * * *'),
+	/* ... */,
+	30, // every 30 seconds, 2 times a minute
+);
+```
+
+With default, synchronous job executor, all jobs scheduled for current second are executed and just after it is
+finished, jobs for the next second are executed. With [parallel](#parallelization-and-process-isolation) executor it is
+different - all jobs are executed as soon as it is their time. Therefore, it is strongly recommended to
+use [locking](#locks-and-job-overlapping) to prevent overlapping.
 
 ## Events
 
@@ -178,6 +227,7 @@ $errorHandler = function(Throwable $throwable, JobInfo $info, JobResult $result)
 		'exception' => $throwable,
 		'name' => $info->getName(),
 		'expression' => $info->getExpression(),
+		'second' => $info->getSecond(),
 		'start' => $info->getStart()->format(DateTimeInterface::ATOM),
 		'end' => $result->getEnd()->format(DateTimeInterface::ATOM),
 	]);
@@ -248,11 +298,13 @@ have [proc_*](https://www.php.net/manual/en/ref.exec.php) functions enabled. Als
 used [run-job command](#run-job-command), so you need to have [console](#cli-commands) set up as well.
 
 ```php
-use Orisai\Scheduler\SimpleScheduler;
 use Orisai\Scheduler\Executor\ProcessJobExecutor;
+use Orisai\Scheduler\ManagedScheduler;
+use Orisai\Scheduler\Manager\SimpleJobManager;
 
-$executor = new ProcessJobExecutor();
-$scheduler = new SimpleScheduler(null, null, $executor);
+$jobManager = new SimpleJobManager();
+$executor = new ProcessJobExecutor($jobManager);
+$scheduler = new ManagedScheduler($jobManager, null, null, $executor);
 ```
 
 If your executable script is not `bin/console` or if you are using multiple scheduler setups, specify the executable:
@@ -260,7 +312,7 @@ If your executable script is not `bin/console` or if you are using multiple sche
 ```php
 use Orisai\Scheduler\Executor\ProcessJobExecutor;
 
-$executor = new ProcessJobExecutor();
+$executor = new ProcessJobExecutor($jobManager);
 $executor->setExecutable('bin/console', 'scheduler:run-job');
 ```
 
@@ -328,6 +380,7 @@ Info:
 $id = $info->getId(); // string|int
 $name = $info->getName(); // string
 $expression = $info->getExpression(); // string, e.g. '* * * * *'
+$second = $info->getSecond();
 $start = $info->getStart(); // DateTimeImmutable
 ```
 
@@ -435,7 +488,7 @@ Run single job, ignoring scheduled time
 
 ### List command
 
-List all scheduled jobs (in `expression [id] name... next-due` format)
+List all scheduled jobs (in `expression / second [id] name... next-due` format)
 
 `bin/console scheduler:list`
 

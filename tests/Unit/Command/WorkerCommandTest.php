@@ -23,7 +23,7 @@ final class WorkerCommandTest extends TestCase
 		$clock = new FrozenClock(1_020, new DateTimeZone('Europe/Prague'));
 
 		$command = new WorkerCommand($clock);
-		$command->enableTestMode(0, static fn () => $clock->move(60));
+		$command->enableTestMode(0, static fn () => $clock->sleep(60));
 		$tester = new CommandTester($command);
 
 		putenv('COLUMNS=80');
@@ -50,7 +50,7 @@ MSG,
 		$clock = new FrozenClock(1_020, new DateTimeZone('Europe/Prague'));
 
 		$command = new WorkerCommand($clock);
-		$command->enableTestMode(1, static fn () => $clock->move(60));
+		$command->enableTestMode(1, static fn () => $clock->sleep(60));
 		$tester = new CommandTester($command);
 
 		putenv('COLUMNS=80');
@@ -68,7 +68,7 @@ MSG,
 
 		$command = new WorkerCommand($clock);
 		$command->setExecutable('tests/Unit/Command/worker-binary.php');
-		$command->enableTestMode(1, static fn () => $clock->move(60));
+		$command->enableTestMode(1, static fn () => $clock->sleep(60));
 		$tester = new CommandTester($command);
 
 		putenv('COLUMNS=80');
@@ -83,7 +83,7 @@ MSG,
 		$clock = new FrozenClock(1_020, new DateTimeZone('Europe/Prague'));
 
 		$command = new WorkerCommand($clock);
-		$command->enableTestMode(2, static fn () => $clock->move(60));
+		$command->enableTestMode(2, static fn () => $clock->sleep(60));
 		$tester = new CommandTester($command);
 
 		putenv('COLUMNS=80');
@@ -100,7 +100,7 @@ MSG,
 		$clock = new FrozenClock(1_020, new DateTimeZone('Europe/Prague'));
 
 		$command = new WorkerCommand($clock);
-		$command->enableTestMode(2, static fn () => $clock->move(60));
+		$command->enableTestMode(2, static fn () => $clock->sleep(60));
 		$tester = new CommandTester($command);
 
 		putenv('COLUMNS=80');
@@ -129,7 +129,7 @@ MSG,
 		$clock = new FrozenClock(1_020, new DateTimeZone('Europe/Prague'));
 
 		$command = new WorkerCommand($clock);
-		$command->enableTestMode(2, static fn () => $clock->move(60));
+		$command->enableTestMode(2, static fn () => $clock->sleep(60));
 		$tester = new CommandTester($command);
 
 		putenv('COLUMNS=80');

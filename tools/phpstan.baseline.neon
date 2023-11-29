@@ -31,22 +31,12 @@ parameters:
 			path: ../src/Command/WorkerCommand.php
 
 		-
-			message: "#^Foreach overwrites \\$execution with its value variable\\.$#"
-			count: 1
-			path: ../src/Executor/ProcessJobExecutor.php
-
-		-
-			message: "#^Parameter \\#1 \\$callback of function array_map expects \\(callable\\(int\\|string\\)\\: mixed\\)\\|null, Closure\\(string\\)\\: string given\\.$#"
-			count: 1
-			path: ../src/Executor/ProcessJobExecutor.php
-
-		-
 			message: "#^Parameter \\#2 \\$end of class Orisai\\\\Scheduler\\\\Status\\\\JobResult constructor expects DateTimeImmutable, DateTimeImmutable\\|false given\\.$#"
 			count: 1
 			path: ../src/Executor/ProcessJobExecutor.php
 
 		-
-			message: "#^Parameter \\#4 \\$start of class Orisai\\\\Scheduler\\\\Status\\\\JobInfo constructor expects DateTimeImmutable, DateTimeImmutable\\|false given\\.$#"
+			message: "#^Parameter \\#5 \\$start of class Orisai\\\\Scheduler\\\\Status\\\\JobInfo constructor expects DateTimeImmutable, DateTimeImmutable\\|false given\\.$#"
 			count: 1
 			path: ../src/Executor/ProcessJobExecutor.php
 
@@ -126,6 +116,11 @@ parameters:
 			path: ../tests/Unit/SimpleSchedulerTest.php
 
 		-
+			message: "#^Call to static method PHPUnit\\\\Framework\\\\Assert\\:\\:assertSame\\(\\) with 4 and 2 will always evaluate to false\\.$#"
+			count: 1
+			path: ../tests/Unit/SimpleSchedulerTest.php
+
+		-
 			message: "#^Call to static method PHPUnit\\\\Framework\\\\Assert\\:\\:assertSame\\(\\) with array\\{'\\* \\* \\* \\* \\*', '1 \\* \\* \\* \\*'\\} and array\\{\\} will always evaluate to false\\.$#"
 			count: 1
 			path: ../tests/Unit/SimpleSchedulerTest.php
@@ -151,7 +146,7 @@ parameters:
 			path: ../tests/Unit/SimpleSchedulerTest.php
 
 		-
-			message: "#^Parameter \\#4 \\$start of class Orisai\\\\Scheduler\\\\Status\\\\JobInfo constructor expects DateTimeImmutable, DateTimeImmutable\\|false given\\.$#"
+			message: "#^Parameter \\#5 \\$start of class Orisai\\\\Scheduler\\\\Status\\\\JobInfo constructor expects DateTimeImmutable, DateTimeImmutable\\|false given\\.$#"
 			count: 2
 			path: ../tests/Unit/SimpleSchedulerTest.php
 

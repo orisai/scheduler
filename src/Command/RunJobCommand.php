@@ -5,10 +5,12 @@ namespace Orisai\Scheduler\Command;
 use Orisai\Scheduler\Scheduler;
 use Orisai\Scheduler\Status\JobResultState;
 use Orisai\Scheduler\Status\JobSummary;
+use Orisai\Scheduler\Status\RunParameters;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+use function json_decode;
 use function json_encode;
 use const JSON_PRETTY_PRINT;
 use const JSON_THROW_ON_ERROR;
@@ -44,14 +46,19 @@ final class RunJobCommand extends BaseRunCommand
 			'Don\'t force job to run and respect due time instead',
 		);
 		$this->addOption('json', null, InputOption::VALUE_NONE, 'Output in json format');
+		$this->addOption('parameters', null, InputOption::VALUE_REQUIRED, '[Internal]');
 	}
 
 	protected function execute(InputInterface $input, OutputInterface $output): int
 	{
 		$json = $input->getOption('json');
+		$params = $input->getOption('parameters');
 		$summary = $this->scheduler->runJob(
 			$input->getArgument('id'),
 			!$input->getOption('no-force'),
+			$params === null
+				? null
+				: RunParameters::fromArray(json_decode($params, true, 512, JSON_THROW_ON_ERROR)),
 		);
 
 		if ($summary === null) {

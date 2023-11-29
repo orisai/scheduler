@@ -14,14 +14,22 @@ final class SimpleJobManager implements JobManager
 	/** @var array<int|string, CronExpression> */
 	private array $expressions = [];
 
-	public function addJob(Job $job, CronExpression $expression, ?string $id = null): void
+	/** @var array<int|string, int<0, 30>> */
+	private array $repeat = [];
+
+	/**
+	 * @param int<0, 30> $repeatAfterSeconds
+	 */
+	public function addJob(Job $job, CronExpression $expression, ?string $id = null, int $repeatAfterSeconds = 0): void
 	{
 		if ($id === null) {
 			$this->jobs[] = $job;
 			$this->expressions[] = $expression;
+			$this->repeat[] = $repeatAfterSeconds;
 		} else {
 			$this->jobs[$id] = $job;
 			$this->expressions[$id] = $expression;
+			$this->repeat[$id] = $repeatAfterSeconds;
 		}
 	}
 
@@ -36,20 +44,22 @@ final class SimpleJobManager implements JobManager
 		return [
 			$job,
 			$this->expressions[$id],
+			$this->repeat[$id],
 		];
 	}
 
 	public function getScheduledJobs(): array
 	{
-		$pairs = [];
+		$scheduledJobs = [];
 		foreach ($this->jobs as $id => $job) {
-			$pairs[$id] = [
+			$scheduledJobs[$id] = [
 				$job,
 				$this->expressions[$id],
+				$this->repeat[$id],
 			];
 		}
 
-		return $pairs;
+		return $scheduledJobs;
 	}
 
 	public function getExpressions(): array
