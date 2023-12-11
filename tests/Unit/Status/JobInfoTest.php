@@ -30,7 +30,7 @@ final class JobInfoTest extends TestCase
 				'name' => $name,
 				'expression' => $expression,
 				'second' => $second,
-				'start' => $start->format('U.v'),
+				'start' => $start->format('U.u'),
 			],
 			$info->toArray(),
 		);

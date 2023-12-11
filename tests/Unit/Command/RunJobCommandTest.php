@@ -298,10 +298,10 @@ MSG,
         "name": "Tests\\Orisai\\Scheduler\\Doubles\\CallbackList::job1()",
         "expression": "1 * * * *",
         "second": 30,
-        "start": "61.000"
+        "start": "61.000000"
     },
     "result": {
-        "end": "61.000",
+        "end": "61.000000",
         "state": "done"
     }
 }

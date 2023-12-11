@@ -21,7 +21,7 @@ final class JobResultTest extends TestCase
 
 		self::assertSame(
 			[
-				'end' => $end->format('U.v'),
+				'end' => $end->format('U.u'),
 				'state' => JobResultState::done()->value,
 			],
 			$result->toArray(),

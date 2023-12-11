@@ -63,7 +63,7 @@ final class JobResult
 	public function toArray(): array
 	{
 		return [
-			'end' => $this->getEnd()->format('U.v'),
+			'end' => $this->getEnd()->format('U.u'),
 			'state' => $this->getState()->value,
 		];
 	}

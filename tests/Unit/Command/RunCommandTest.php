@@ -105,10 +105,10 @@ MSG,
             "name": "Tests\\Orisai\\Scheduler\\Doubles\\CallbackList::job1()",
             "expression": "* * * * *",
             "second": 0,
-            "start": "1.000"
+            "start": "1.000000"
         },
         "result": {
-            "end": "1.000",
+            "end": "1.000000",
             "state": "done"
         }
     },
@@ -118,10 +118,10 @@ MSG,
             "name": "Tests\\Orisai\\Scheduler\\Doubles\\CallbackList::job2()",
             "expression": "* * * * *",
             "second": 0,
-            "start": "1.000"
+            "start": "1.000000"
         },
         "result": {
-            "end": "1.000",
+            "end": "1.000000",
             "state": "done"
         }
     }
@@ -179,10 +179,10 @@ MSG,
             "name": "Tests\\Orisai\\Scheduler\\Doubles\\CallbackList::job1()",
             "expression": "* * * * *",
             "second": 0,
-            "start": "1.000"
+            "start": "1.000000"
         },
         "result": {
-            "end": "1.000",
+            "end": "1.000000",
             "state": "done"
         }
     },
@@ -192,10 +192,10 @@ MSG,
             "name": "Tests\\Orisai\\Scheduler\\Doubles\\CallbackList::exceptionJob()",
             "expression": "* * * * *",
             "second": 0,
-            "start": "1.000"
+            "start": "1.000000"
         },
         "result": {
-            "end": "1.000",
+            "end": "1.000000",
             "state": "fail"
         }
     }

@@ -73,7 +73,7 @@ final class JobInfo
 			'name' => $this->getName(),
 			'expression' => $this->getExpression(),
 			'second' => $this->getSecond(),
-			'start' => $this->getStart()->format('U.v'),
+			'start' => $this->getStart()->format('U.u'),
 		];
 	}
 

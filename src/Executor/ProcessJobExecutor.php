@@ -180,11 +180,11 @@ final class ProcessJobExecutor implements JobExecutor
 				$raw['info']['name'],
 				$raw['info']['expression'],
 				$raw['info']['second'],
-				DateTimeImmutable::createFromFormat('U.v', $raw['info']['start']),
+				DateTimeImmutable::createFromFormat('U.u', $raw['info']['start']),
 			),
 			new JobResult(
 				new CronExpression($raw['info']['expression']),
-				DateTimeImmutable::createFromFormat('U.v', $raw['result']['end']),
+				DateTimeImmutable::createFromFormat('U.u', $raw['result']['end']),
 				JobResultState::from($raw['result']['state']),
 			),
 		);
