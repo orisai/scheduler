@@ -23,6 +23,17 @@ final class JobInfoTest extends TestCase
 		self::assertSame($expression, $info->getExpression());
 		self::assertSame($second, $info->getSecond());
 		self::assertSame($start, $info->getStart());
+
+		self::assertSame(
+			[
+				'id' => $id,
+				'name' => $name,
+				'expression' => $expression,
+				'second' => $second,
+				'start' => $start->format('U.v'),
+			],
+			$info->toArray(),
+		);
 	}
 
 }

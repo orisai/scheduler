@@ -18,6 +18,14 @@ final class JobResultTest extends TestCase
 		$result = new JobResult(new CronExpression('* * * * *'), $end, JobResultState::done());
 		self::assertSame($end, $result->getEnd());
 		self::assertSame(JobResultState::done(), $result->getState());
+
+		self::assertSame(
+			[
+				'end' => $end->format('U.v'),
+				'state' => JobResultState::done()->value,
+			],
+			$result->toArray(),
+		);
 	}
 
 	public function testDatesComputing(): void

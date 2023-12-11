@@ -25,4 +25,15 @@ final class JobSummary
 		return $this->result;
 	}
 
+	/**
+	 * @return array<mixed>
+	 */
+	public function toArray(): array
+	{
+		return [
+			'info' => $this->info->toArray(),
+			'result' => $this->result->toArray(),
+		];
+	}
+
 }

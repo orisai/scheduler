@@ -5,6 +5,8 @@ namespace Orisai\Scheduler\Command;
 use Generator;
 use Orisai\Scheduler\Scheduler;
 use Orisai\Scheduler\Status\JobResultState;
+use Orisai\Scheduler\Status\JobSummary;
+use Orisai\Scheduler\Status\RunSummary;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -49,6 +51,9 @@ final class RunCommand extends BaseRunCommand
 		return $success ? self::SUCCESS : self::FAILURE;
 	}
 
+	/**
+	 * @param Generator<int, JobSummary, void, RunSummary> $generator
+	 */
 	private function renderJobsAsJson(OutputInterface $output, Generator $generator): bool
 	{
 		$summaries = [];
@@ -58,7 +63,7 @@ final class RunCommand extends BaseRunCommand
 				$success = false;
 			}
 
-			$summaries[] = $this->jobToArray($jobSummary);
+			$summaries[] = $jobSummary->toArray();
 		}
 
 		$output->writeln(json_encode($summaries, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT));
@@ -66,6 +71,9 @@ final class RunCommand extends BaseRunCommand
 		return $success;
 	}
 
+	/**
+	 * @param Generator<int, JobSummary, void, RunSummary> $generator
+	 */
 	private function renderJobs(OutputInterface $output, Generator $generator): bool
 	{
 		$terminalWidth = $this->getTerminalWidth();

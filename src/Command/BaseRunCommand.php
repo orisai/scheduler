@@ -77,27 +77,4 @@ abstract class BaseRunCommand extends Command
 		));
 	}
 
-	/**
-	 * @return array<mixed>
-	 */
-	protected function jobToArray(JobSummary $summary): array
-	{
-		$info = $summary->getInfo();
-		$result = $summary->getResult();
-
-		return [
-			'info' => [
-				'id' => $info->getId(),
-				'name' => $info->getName(),
-				'expression' => $info->getExpression(),
-				'second' => $info->getSecond(),
-				'start' => $info->getStart()->format('U.v'),
-			],
-			'result' => [
-				'end' => $result->getEnd()->format('U.v'),
-				'state' => $result->getState()->value,
-			],
-		];
-	}
-
 }

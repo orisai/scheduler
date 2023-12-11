@@ -25,6 +25,14 @@ final class JobSummaryTest extends TestCase
 		$summary = new JobSummary($info, $result);
 		self::assertSame($info, $summary->getInfo());
 		self::assertSame($result, $summary->getResult());
+
+		self::assertSame(
+			[
+				'info' => $summary->getInfo()->toArray(),
+				'result' => $summary->getResult()->toArray(),
+			],
+			$summary->toArray(),
+		);
 	}
 
 }

@@ -63,4 +63,18 @@ final class JobInfo
 		return $this->start;
 	}
 
+	/**
+	 * @return array<mixed>
+	 */
+	public function toArray(): array
+	{
+		return [
+			'id' => $this->getId(),
+			'name' => $this->getName(),
+			'expression' => $this->getExpression(),
+			'second' => $this->getSecond(),
+			'start' => $this->getStart()->format('U.v'),
+		];
+	}
+
 }

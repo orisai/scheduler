@@ -85,7 +85,7 @@ final class RunJobCommand extends BaseRunCommand
 	private function renderJobAsJson(JobSummary $summary, OutputInterface $output): void
 	{
 		$output->writeln(
-			json_encode($this->jobToArray($summary), JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT),
+			json_encode($summary->toArray(), JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT),
 		);
 	}
 

@@ -57,4 +57,15 @@ final class JobResult
 		return $dates;
 	}
 
+	/**
+	 * @return array<mixed>
+	 */
+	public function toArray(): array
+	{
+		return [
+			'end' => $this->getEnd()->format('U.v'),
+			'state' => $this->getState()->value,
+		];
+	}
+
 }
