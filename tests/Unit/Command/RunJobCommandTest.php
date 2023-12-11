@@ -163,7 +163,7 @@ MSG,
 			new CronExpression('* * * * *'),
 		);
 
-		$lock = $lockFactory->createLock('Orisai.Scheduler.Job/* * * * *-job1-0');
+		$lock = $lockFactory->createLock('Orisai.Scheduler.Job/0');
 		$lock->acquire();
 
 		$command = new RunJobCommand($scheduler);

@@ -512,7 +512,7 @@ MSG,
 			new CronExpression('* * * * *'),
 		);
 
-		$lock = $lockFactory->createLock('Orisai.Scheduler.Job/* * * * *-job1-0');
+		$lock = $lockFactory->createLock('Orisai.Scheduler.Job/0');
 		$lock->acquire();
 
 		// Lock is active, job is not executed (but the other one is)

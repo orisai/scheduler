@@ -152,9 +152,7 @@ class ManagedScheduler implements Scheduler
 			$this->clock->now(),
 		);
 
-		$lock = $this->lockFactory->createLock(
-			"Orisai.Scheduler.Job/{$info->getExpression()}-{$info->getName()}-$id",
-		);
+		$lock = $this->lockFactory->createLock("Orisai.Scheduler.Job/$id");
 
 		if (!$lock->acquire()) {
 			return [

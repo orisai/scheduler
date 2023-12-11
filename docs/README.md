@@ -237,7 +237,7 @@ $scheduler = new SimpleScheduler($errorHandler);
 
 ## Locks and job overlapping
 
-Crontab jobs are time-based and simply run at specified intervals. If they take too long, they may overlap and run
+Jobs are time-based and simply run at specified intervals. If they take too long, they may overlap and run
 simultaneously. This may cause issues if the jobs access the same resources, such as files or databases, leading to
 conflicts or data corruption.
 
@@ -272,6 +272,17 @@ new CallbackJob(function (JobLock $lock): void {
 	$lock->isExpired(); // bool
 	$lock->refresh(); // void
 });
+```
+
+To make sure locks are correctly used during deployments, specify constant id for every added job, lock identifiers rely
+on that fact. Otherwise, your job id will change when new jobs are added before it and acquired lock will be ignored.
+
+```php
+$scheduler->addJob(
+	/* ... */,
+	/* ... */,
+	'job-id',
+);
 ```
 
 ## Parallelization and process isolation
