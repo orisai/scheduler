@@ -17,7 +17,6 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Terminal;
 use function abs;
-use function array_splice;
 use function floor;
 use function max;
 use function mb_strlen;
@@ -173,7 +172,18 @@ final class ListCommand extends Command
 			});
 
 			if ($next !== true) {
-				array_splice($jobs, $next);
+				$slicedJobs = [];
+				$count = 0;
+				foreach ($jobs as $key => $value) {
+					if ($count >= $next) {
+						break;
+					}
+
+					$slicedJobs[$key] = $value;
+					$count++;
+				}
+
+				$jobs = $slicedJobs;
 			}
 		} else {
 			/** @infection-ignore-all */

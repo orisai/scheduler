@@ -42,3 +42,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - `ManagedScheduler`
 	- acquired job locks are scoped just to their id - changing run frequency or job name will not make process loose
 	  the lock
+
+### Fixed
+
+- `ListCommand`
+	- Fix numeric job ids in case option `--next` is used

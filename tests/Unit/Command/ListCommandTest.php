@@ -250,9 +250,9 @@ MSG,
 
 		self::assertSame(
 			<<<'MSG'
-  * * * * * / 1  [0] Tests\Orisai\Scheduler\Doubles\CallbackList::job1()........ Next Due: 1 second
-  * * * * *      [1] Tests\Orisai\Scheduler\Doubles\CallbackList::job1()...... Next Due: 59 seconds
-  * * * * *      [2] Tests\Orisai\Scheduler\Doubles\CallbackList::job1()...... Next Due: 59 seconds
+  * * * * * / 1  [5] Tests\Orisai\Scheduler\Doubles\CallbackList::job1()........ Next Due: 1 second
+  * * * * *      [4] Tests\Orisai\Scheduler\Doubles\CallbackList::job1()...... Next Due: 59 seconds
+  * * * * *      [6] Tests\Orisai\Scheduler\Doubles\CallbackList::job1()...... Next Due: 59 seconds
   2 * * * *      [3] Tests\Orisai\Scheduler\Doubles\CallbackList::job1()........ Next Due: 1 minute
 
 MSG,
