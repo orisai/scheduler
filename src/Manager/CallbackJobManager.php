@@ -5,6 +5,7 @@ namespace Orisai\Scheduler\Manager;
 use Closure;
 use Cron\CronExpression;
 use Orisai\Scheduler\Job\Job;
+use Orisai\Scheduler\Job\JobSchedule;
 
 final class CallbackJobManager implements JobManager
 {
@@ -40,7 +41,7 @@ final class CallbackJobManager implements JobManager
 		}
 	}
 
-	public function getScheduledJob($id): ?array
+	public function getJobSchedule($id): ?JobSchedule
 	{
 		$job = $this->jobs[$id] ?? null;
 
@@ -48,22 +49,22 @@ final class CallbackJobManager implements JobManager
 			return null;
 		}
 
-		return [
+		return new JobSchedule(
 			$job(),
 			$this->expressions[$id],
 			$this->repeat[$id],
-		];
+		);
 	}
 
-	public function getScheduledJobs(): array
+	public function getJobSchedules(): array
 	{
 		$scheduledJobs = [];
 		foreach ($this->jobs as $id => $job) {
-			$scheduledJobs[$id] = [
+			$scheduledJobs[$id] = new JobSchedule(
 				$job(),
 				$this->expressions[$id],
 				$this->repeat[$id],
-			];
+			);
 		}
 
 		return $scheduledJobs;

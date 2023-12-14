@@ -8,7 +8,7 @@ use DateTimeInterface;
 use DateTimeZone;
 use Orisai\Clock\SystemClock;
 use Orisai\Exceptions\Logic\InvalidArgument;
-use Orisai\Scheduler\Job\Job;
+use Orisai\Scheduler\Job\JobSchedule;
 use Orisai\Scheduler\Scheduler;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Console\Command\Command;
@@ -64,29 +64,29 @@ final class ListCommand extends Command
 	{
 		$nextOption = $this->validateOptionNext($input);
 
-		$jobs = $this->scheduler->getScheduledJobs();
+		$jobSchedules = $this->scheduler->getJobSchedules();
 
-		if ($jobs === []) {
+		if ($jobSchedules === []) {
 			$output->writeln('<info>No scheduled jobs have been defined.</info>');
 
 			return self::SUCCESS;
 		}
 
 		$terminalWidth = $this->getTerminalWidth();
-		$expressionSpacing = $this->getCronExpressionSpacing($jobs);
-		$repeatAfterSecondsSpacing = $this->getRepeatAfterSecondsSpacing($jobs);
+		$expressionSpacing = $this->getCronExpressionSpacing($jobSchedules);
+		$repeatAfterSecondsSpacing = $this->getRepeatAfterSecondsSpacing($jobSchedules);
 
-		foreach ($this->sortJobs($jobs, $nextOption) as $key => [$job, $expression, $repeatAfterSeconds]) {
-			$expressionString = $this->formatCronExpression($expression, $expressionSpacing);
+		foreach ($this->sortJobs($jobSchedules, $nextOption) as $key => $jobSchedule) {
+			$expressionString = $this->formatCronExpression($jobSchedule->getExpression(), $expressionSpacing);
 			$repeatAfterSecondsString = $this->formatRepeatAfterSeconds(
-				$repeatAfterSeconds,
+				$jobSchedule->getRepeatAfterSeconds(),
 				$repeatAfterSecondsSpacing,
 			);
 
-			$name = $job->getName();
+			$name = $jobSchedule->getJob()->getName();
 
 			$nextDueDateLabel = 'Next Due:';
-			$nextDueDate = $this->getNextDueDate($expression, $repeatAfterSeconds);
+			$nextDueDate = $this->getNextDueDate($jobSchedule);
 			$nextDueDate = $output->isVerbose()
 				? $nextDueDate->format('Y-m-d H:i:s P')
 				: $this->getRelativeTime($nextDueDate);
@@ -147,18 +147,18 @@ final class ListCommand extends Command
 	}
 
 	/**
-	 * @param array<int|string, array{Job, CronExpression, int<0, 30>}> $jobs
-	 * @param bool|int<1, max>                                          $next
-	 * @return array<int|string, array{Job, CronExpression, int<0, 30>}>
+	 * @param array<int|string, JobSchedule> $jobSchedules
+	 * @param bool|int<1, max>               $next
+	 * @return array<int|string, JobSchedule>
 	 */
-	private function sortJobs(array $jobs, $next): array
+	private function sortJobs(array $jobSchedules, $next): array
 	{
 		if ($next !== false) {
 			/** @infection-ignore-all */
-			uasort($jobs, function ($a, $b): int {
-				$nextDueDateA = $this->getNextDueDate($a[1], $a[2])
+			uasort($jobSchedules, function (JobSchedule $a, JobSchedule $b): int {
+				$nextDueDateA = $this->getNextDueDate($a)
 					->setTimezone(new DateTimeZone('UTC'));
-				$nextDueDateB = $this->getNextDueDate($b[1], $b[2])
+				$nextDueDateB = $this->getNextDueDate($b)
 					->setTimezone(new DateTimeZone('UTC'));
 
 				if (
@@ -174,7 +174,7 @@ final class ListCommand extends Command
 			if ($next !== true) {
 				$slicedJobs = [];
 				$count = 0;
-				foreach ($jobs as $key => $value) {
+				foreach ($jobSchedules as $key => $value) {
 					if ($count >= $next) {
 						break;
 					}
@@ -183,13 +183,13 @@ final class ListCommand extends Command
 					$count++;
 				}
 
-				$jobs = $slicedJobs;
+				$jobSchedules = $slicedJobs;
 			}
 		} else {
 			/** @infection-ignore-all */
-			uasort($jobs, static function ($a, $b): int {
-				$nameA = $a[0]->getName();
-				$nameB = $b[0]->getName();
+			uasort($jobSchedules, static function (JobSchedule $a, JobSchedule $b): int {
+				$nameA = $a->getJob()->getName();
+				$nameB = $b->getJob()->getName();
 
 				if ($nameA === $nameB) {
 					return 0;
@@ -199,11 +199,14 @@ final class ListCommand extends Command
 			});
 		}
 
-		return $jobs;
+		return $jobSchedules;
 	}
 
-	private function getNextDueDate(CronExpression $expression, int $repeatAfterSeconds): DateTimeImmutable
+	private function getNextDueDate(JobSchedule $jobSchedule): DateTimeImmutable
 	{
+		$expression = $jobSchedule->getExpression();
+		$repeatAfterSeconds = $jobSchedule->getRepeatAfterSeconds();
+
 		$now = $this->clock->now();
 		$nextDueDate = DateTimeImmutable::createFromMutable(
 			$expression->getNextRunDate($now),
@@ -283,15 +286,15 @@ final class ListCommand extends Command
 	}
 
 	/**
-	 * @param array<int|string, array{Job, CronExpression, int<0, 30>}> $jobs
+	 * @param array<int|string, JobSchedule> $jobSchedules
 	 *
 	 * @infection-ignore-all
 	 */
-	private function getCronExpressionSpacing(array $jobs): int
+	private function getCronExpressionSpacing(array $jobSchedules): int
 	{
 		$max = 0;
-		foreach ($jobs as [$job, $expression, $repeatAfterSeconds]) {
-			$length = mb_strlen($expression->getExpression());
+		foreach ($jobSchedules as $jobSchedule) {
+			$length = mb_strlen($jobSchedule->getExpression()->getExpression());
 			if ($length > $max) {
 				$max = $length;
 			}
@@ -306,14 +309,15 @@ final class ListCommand extends Command
 	}
 
 	/**
-	 * @param array<int|string, array{Job, CronExpression, int<0, 30>}|null> $jobs
+	 * @param array<int|string, JobSchedule> $jobSchedules
 	 *
 	 * @infection-ignore-all
 	 */
-	private function getRepeatAfterSecondsSpacing(array $jobs): int
+	private function getRepeatAfterSecondsSpacing(array $jobSchedules): int
 	{
 		$max = 0;
-		foreach ($jobs as [$job, $expression, $repeatAfterSeconds]) {
+		foreach ($jobSchedules as $jobSchedule) {
+			$repeatAfterSeconds = $jobSchedule->getRepeatAfterSeconds();
 			if ($repeatAfterSeconds === 0) {
 				continue;
 			}

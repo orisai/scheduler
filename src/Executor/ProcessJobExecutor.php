@@ -11,7 +11,7 @@ use Orisai\Clock\Clock;
 use Orisai\Clock\SystemClock;
 use Orisai\Scheduler\Exception\JobProcessFailure;
 use Orisai\Scheduler\Exception\RunFailure;
-use Orisai\Scheduler\Job\Job;
+use Orisai\Scheduler\Job\JobSchedule;
 use Orisai\Scheduler\Manager\JobManager;
 use Orisai\Scheduler\Status\JobInfo;
 use Orisai\Scheduler\Status\JobResult;
@@ -60,27 +60,27 @@ final class ProcessJobExecutor implements JobExecutor
 			return new RunSummary($runStart, $runStart, []);
 		}
 
-		$scheduledJobsBySecond = $this->getScheduledJobsBySecond($ids);
+		$jobSchedulesBySecond = $this->getJobSchedulesBySecond($ids);
 
 		$jobExecutions = [];
 		$jobSummaries = [];
 		$suppressedExceptions = [];
 
 		$lastExecutedSecond = -1;
-		while ($jobExecutions !== [] || $scheduledJobsBySecond !== []) {
+		while ($jobExecutions !== [] || $jobSchedulesBySecond !== []) {
 			// If we have scheduled jobs and are at right second, execute them
-			if ($scheduledJobsBySecond !== []) {
+			if ($jobSchedulesBySecond !== []) {
 				$shouldRunSecond = $this->clock->now()->getTimestamp() - $runStart->getTimestamp();
 
 				while ($lastExecutedSecond < $shouldRunSecond) {
 					$currentSecond = $lastExecutedSecond + 1;
-					if (isset($scheduledJobsBySecond[$currentSecond])) {
+					if (isset($jobSchedulesBySecond[$currentSecond])) {
 						$jobExecutions = $this->startJobs(
-							$scheduledJobsBySecond[$currentSecond],
+							$jobSchedulesBySecond[$currentSecond],
 							$jobExecutions,
 							new RunParameters($currentSecond),
 						);
-						unset($scheduledJobsBySecond[$currentSecond]);
+						unset($jobSchedulesBySecond[$currentSecond]);
 					}
 
 					$lastExecutedSecond = $currentSecond;
@@ -121,21 +121,22 @@ final class ProcessJobExecutor implements JobExecutor
 
 	/**
 	 * @param non-empty-list<int|string> $ids
-	 * @return non-empty-array<int, list<array{int|string, Job, CronExpression}>>
+	 * @return non-empty-array<int, array<int|string, JobSchedule>>
 	 */
-	private function getScheduledJobsBySecond(array $ids): array
+	private function getJobSchedulesBySecond(array $ids): array
 	{
 		$scheduledJobsBySecond = [];
 		foreach ($ids as $id) {
-			$scheduledJob = $this->jobManager->getScheduledJob($id);
-			assert($scheduledJob !== null);
-			[$job, $expression, $repeatAfterSeconds] = $scheduledJob;
+			$jobSchedule = $this->jobManager->getJobSchedule($id);
+			assert($jobSchedule !== null);
+
+			$repeatAfterSeconds = $jobSchedule->getRepeatAfterSeconds();
 
 			if ($repeatAfterSeconds === 0) {
-				$scheduledJobsBySecond[0][] = [$id, $job, $expression];
+				$scheduledJobsBySecond[0][$id] = $jobSchedule;
 			} else {
 				for ($second = 0; $second <= 59; $second += $repeatAfterSeconds) {
-					$scheduledJobsBySecond[$second][] = [$id, $job, $expression];
+					$scheduledJobsBySecond[$second][$id] = $jobSchedule;
 				}
 			}
 		}
@@ -147,13 +148,13 @@ final class ProcessJobExecutor implements JobExecutor
 	}
 
 	/**
-	 * @param list<array{int|string, Job, CronExpression}> $scheduledJobs
-	 * @param array<int, Process>                          $jobExecutions
+	 * @param array<int|string, JobSchedule> $jobSchedules
+	 * @param array<int, Process>            $jobExecutions
 	 * @return array<int, Process>
 	 */
-	private function startJobs(array $scheduledJobs, array $jobExecutions, RunParameters $parameters): array
+	private function startJobs(array $jobSchedules, array $jobExecutions, RunParameters $parameters): array
 	{
-		foreach ($scheduledJobs as [$id, $job, $expression]) {
+		foreach ($jobSchedules as $id => $jobSchedule) {
 			$jobExecutions[] = $execution = new Process([
 				PHP_BINARY,
 				$this->script,

@@ -5,6 +5,7 @@ namespace Tests\Orisai\Scheduler\Unit\Manager;
 use Cron\CronExpression;
 use Orisai\Scheduler\Job\CallbackJob;
 use Orisai\Scheduler\Job\Job;
+use Orisai\Scheduler\Job\JobSchedule;
 use Orisai\Scheduler\Manager\CallbackJobManager;
 use PHPUnit\Framework\TestCase;
 
@@ -15,10 +16,10 @@ final class CallbackJobManagerTest extends TestCase
 	{
 		$manager = new CallbackJobManager();
 		self::assertSame([], $manager->getExpressions());
-		self::assertSame([], $manager->getScheduledJobs());
-		self::assertNull($manager->getScheduledJob(0));
-		self::assertNull($manager->getScheduledJob('id'));
-		self::assertNull($manager->getScheduledJob(42));
+		self::assertSame([], $manager->getJobSchedules());
+		self::assertNull($manager->getJobSchedule(0));
+		self::assertNull($manager->getJobSchedule('id'));
+		self::assertNull($manager->getJobSchedule(42));
 
 		$job1 = new CallbackJob(static function (): void {
 			// Noop
@@ -37,16 +38,16 @@ final class CallbackJobManagerTest extends TestCase
 			],
 			$manager->getExpressions(),
 		);
-		self::assertSame(
+		self::assertEquals(
 			[
-				0 => [$job1, $expression1, 0],
-				'id' => [$job2, $expression2, 1],
+				0 => new JobSchedule($job1, $expression1, 0),
+				'id' => new JobSchedule($job2, $expression2, 1),
 			],
-			$manager->getScheduledJobs(),
+			$manager->getJobSchedules(),
 		);
-		self::assertSame([$job1, $expression1, 0], $manager->getScheduledJob(0));
-		self::assertSame([$job2, $expression2, 1], $manager->getScheduledJob('id'));
-		self::assertNull($manager->getScheduledJob(42));
+		self::assertEquals(new JobSchedule($job1, $expression1, 0), $manager->getJobSchedule(0));
+		self::assertEquals(new JobSchedule($job2, $expression2, 1), $manager->getJobSchedule('id'));
+		self::assertNull($manager->getJobSchedule(42));
 	}
 
 }

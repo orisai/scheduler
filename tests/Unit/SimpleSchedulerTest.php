@@ -11,6 +11,7 @@ use Orisai\Exceptions\Logic\InvalidArgument;
 use Orisai\Scheduler\Exception\JobFailure;
 use Orisai\Scheduler\Exception\RunFailure;
 use Orisai\Scheduler\Job\CallbackJob;
+use Orisai\Scheduler\Job\JobSchedule;
 use Orisai\Scheduler\SimpleScheduler;
 use Orisai\Scheduler\Status\JobInfo;
 use Orisai\Scheduler\Status\JobResult;
@@ -42,9 +43,9 @@ final class SimpleSchedulerTest extends TestCase
 		$expression = new CronExpression('* * * * *');
 		$scheduler->addJob($job, $expression);
 
-		self::assertSame([
-			[$job, $expression, 0],
-		], $scheduler->getScheduledJobs());
+		self::assertEquals([
+			new JobSchedule($job, $expression, 0),
+		], $scheduler->getJobSchedules());
 
 		$scheduler->run();
 		self::assertSame(1, $i);
@@ -73,9 +74,9 @@ final class SimpleSchedulerTest extends TestCase
 		$key = 'key';
 		$scheduler->addJob($job, $expression, $key);
 
-		self::assertSame([
-			$key => [$job, $expression, 0],
-		], $scheduler->getScheduledJobs());
+		self::assertEquals([
+			$key => new JobSchedule($job, $expression, 0),
+		], $scheduler->getJobSchedules());
 
 		$scheduler->runJob($key);
 		self::assertSame(1, $i);
@@ -86,7 +87,7 @@ final class SimpleSchedulerTest extends TestCase
 		$clock = new FrozenClock(1);
 		$scheduler = new SimpleScheduler(null, null, null, $clock);
 
-		self::assertSame([], $scheduler->getScheduledJobs());
+		self::assertSame([], $scheduler->getJobSchedules());
 
 		self::assertEquals(
 			new RunSummary($clock->now(), $clock->now(), []),
@@ -741,7 +742,7 @@ MSG,
 		$clock = new FrozenClock(1);
 		$scheduler = SchedulerProcessSetup::createEmpty();
 
-		self::assertSame([], $scheduler->getScheduledJobs());
+		self::assertSame([], $scheduler->getJobSchedules());
 
 		self::assertEquals(
 			new RunSummary($clock->now(), $clock->now(), []),

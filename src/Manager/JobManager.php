@@ -3,21 +3,20 @@
 namespace Orisai\Scheduler\Manager;
 
 use Cron\CronExpression;
-use Orisai\Scheduler\Job\Job;
+use Orisai\Scheduler\Job\JobSchedule;
 
 interface JobManager
 {
 
 	/**
 	 * @param int|string $id
-	 * @return array{Job, CronExpression, int<0, 30>}|null
 	 */
-	public function getScheduledJob($id): ?array;
+	public function getJobSchedule($id): ?JobSchedule;
 
 	/**
-	 * @return array<int|string, array{Job, CronExpression, int<0, 30>}>
+	 * @return array<int|string, JobSchedule>
 	 */
-	public function getScheduledJobs(): array;
+	public function getJobSchedules(): array;
 
 	/**
 	 * @return array<int|string, CronExpression>

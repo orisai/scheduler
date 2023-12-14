@@ -4,62 +4,41 @@ namespace Orisai\Scheduler\Manager;
 
 use Cron\CronExpression;
 use Orisai\Scheduler\Job\Job;
+use Orisai\Scheduler\Job\JobSchedule;
 
 final class SimpleJobManager implements JobManager
 {
 
-	/** @var array<int|string, Job> */
-	private array $jobs = [];
+	/** @var array<int|string, JobSchedule> */
+	private array $jobSchedules = [];
 
 	/** @var array<int|string, CronExpression> */
 	private array $expressions = [];
-
-	/** @var array<int|string, int<0, 30>> */
-	private array $repeat = [];
 
 	/**
 	 * @param int<0, 30> $repeatAfterSeconds
 	 */
 	public function addJob(Job $job, CronExpression $expression, ?string $id = null, int $repeatAfterSeconds = 0): void
 	{
+		$jobSchedule = new JobSchedule($job, $expression, $repeatAfterSeconds);
+
 		if ($id === null) {
-			$this->jobs[] = $job;
+			$this->jobSchedules[] = $jobSchedule;
 			$this->expressions[] = $expression;
-			$this->repeat[] = $repeatAfterSeconds;
 		} else {
-			$this->jobs[$id] = $job;
+			$this->jobSchedules[$id] = $jobSchedule;
 			$this->expressions[$id] = $expression;
-			$this->repeat[$id] = $repeatAfterSeconds;
 		}
 	}
 
-	public function getScheduledJob($id): ?array
+	public function getJobSchedule($id): ?JobSchedule
 	{
-		$job = $this->jobs[$id] ?? null;
-
-		if ($job === null) {
-			return null;
-		}
-
-		return [
-			$job,
-			$this->expressions[$id],
-			$this->repeat[$id],
-		];
+		return $this->jobSchedules[$id] ?? null;
 	}
 
-	public function getScheduledJobs(): array
+	public function getJobSchedules(): array
 	{
-		$scheduledJobs = [];
-		foreach ($this->jobs as $id => $job) {
-			$scheduledJobs[$id] = [
-				$job,
-				$this->expressions[$id],
-				$this->repeat[$id],
-			];
-		}
-
-		return $scheduledJobs;
+		return $this->jobSchedules;
 	}
 
 	public function getExpressions(): array

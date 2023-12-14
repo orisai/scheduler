@@ -2,11 +2,10 @@
 
 namespace Orisai\Scheduler;
 
-use Cron\CronExpression;
 use Generator;
 use Orisai\Scheduler\Exception\JobFailure;
 use Orisai\Scheduler\Exception\RunFailure;
-use Orisai\Scheduler\Job\Job;
+use Orisai\Scheduler\Job\JobSchedule;
 use Orisai\Scheduler\Status\JobSummary;
 use Orisai\Scheduler\Status\RunParameters;
 use Orisai\Scheduler\Status\RunSummary;
@@ -15,9 +14,9 @@ interface Scheduler
 {
 
 	/**
-	 * @return array<int|string, array{Job, CronExpression, int<0, 30>}>
+	 * @return array<int|string, JobSchedule>
 	 */
-	public function getScheduledJobs(): array;
+	public function getJobSchedules(): array;
 
 	/**
 	 * @return Generator<int, JobSummary, void, RunSummary>

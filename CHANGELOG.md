@@ -12,14 +12,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - `Scheduler`
 	- `runPromise()` - allows `scheduler:run` and `scheduler:work` commands to output job result as soon as it is
 	  finished
-	- `getScheduledJobs()` - added `repeatAfterSeconds` parameter into the returned array
 - `SimpleScheduler`
 	- `addJob()` accepts parameter `repeatAfterSeconds`
 - `JobInfo`
 	- `getSecond()`- returns for which second within a minute was job scheduled
-- `JobManager`
-	- `getScheduledJob()` - added `repeatAfterSeconds` parameter into the returned array
-	- `getScheduledJobs()` - added `repeatAfterSeconds` parameter into the returned array
+- `JobSchedule` - contains info about the scheduled job
 - `SimpleJobManager`
 	- `addJob()` accepts parameter `repeatAfterSeconds`
 - `CallbackJobManager`
@@ -28,10 +25,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 
 - `JobManager`
-	- `getPair()` -> `getScheduledJob()`
-	- `getPairs()` -> `getScheduledJobs()`
+	- `getPair()` -> `getJobSchedule()`
+		- returns `JobSchedule` instead of an array
+	- `getPairs()` -> `getJobSchedules()`
+		- returns array of `JobSchedule` instead of an array of arrays
 - `Scheduler`
-	- `getJobs()` -> `getScheduledJobs()`
+	- `getJobs()` -> `getJobSchedules()`
+		- returns array of `JobSchedule` instead of an array of arrays
 - `RunSummary`
 	- `getJobs()` -> `getJobSummaries()`
 - `JobExecutor`

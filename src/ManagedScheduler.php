@@ -76,17 +76,17 @@ class ManagedScheduler implements Scheduler
 		);
 	}
 
-	public function getScheduledJobs(): array
+	public function getJobSchedules(): array
 	{
-		return $this->jobManager->getScheduledJobs();
+		return $this->jobManager->getJobSchedules();
 	}
 
 	public function runJob($id, bool $force = true, ?RunParameters $parameters = null): ?JobSummary
 	{
-		$scheduledJob = $this->jobManager->getScheduledJob($id);
+		$jobSchedule = $this->jobManager->getJobSchedule($id);
 		$parameters ??= new RunParameters(0);
 
-		if ($scheduledJob === null) {
+		if ($jobSchedule === null) {
 			$message = Message::create()
 				->withContext("Running job with ID '$id'")
 				->withProblem('Job is not registered by scheduler.')
@@ -99,14 +99,14 @@ class ManagedScheduler implements Scheduler
 				->withMessage($message);
 		}
 
-		[$job, $expression] = $scheduledJob;
+		$expression = $jobSchedule->getExpression();
 
 		// Intentionally ignores repeat after seconds
 		if (!$force && !$expression->isDue($this->clock->now())) {
 			return null;
 		}
 
-		[$summary, $throwable] = $this->runInternal($id, $job, $expression, $parameters->getSecond());
+		[$summary, $throwable] = $this->runInternal($id, $jobSchedule->getJob(), $expression, $parameters->getSecond());
 
 		if ($throwable !== null) {
 			throw JobFailure::create($summary, $throwable);

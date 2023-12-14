@@ -9,6 +9,7 @@ use Generator;
 use Orisai\Clock\Clock;
 use Orisai\Scheduler\Exception\RunFailure;
 use Orisai\Scheduler\Job\Job;
+use Orisai\Scheduler\Job\JobSchedule;
 use Orisai\Scheduler\Manager\JobManager;
 use Orisai\Scheduler\Status\JobSummary;
 use Orisai\Scheduler\Status\RunSummary;
@@ -46,16 +47,16 @@ final class BasicJobExecutor implements JobExecutor
 			return new RunSummary($runStart, $runStart, []);
 		}
 
-		$scheduledJobsBySecond = $this->getScheduledJobsBySecond($ids);
-		$lastSecond = max(array_keys($scheduledJobsBySecond));
+		$jobSchedulesBySecond = $this->getJobSchedulesBySecond($ids);
+		$lastSecond = max(array_keys($jobSchedulesBySecond));
 
 		$jobSummaries = [];
 		$suppressedExceptions = [];
 		for ($second = 0; $second <= $lastSecond; $second++) {
 			$secondInitiatedAt = $this->clock->now();
 
-			foreach ($scheduledJobsBySecond[$second] ?? [] as [$id, $job, $expression]) {
-				[$jobSummary, $throwable] = ($this->runCb)($id, $job, $expression, $second);
+			foreach ($jobSchedulesBySecond[$second] ?? [] as $id => $jobSchedule) {
+				[$jobSummary, $throwable] = ($this->runCb)($id, $jobSchedule->getJob(), $jobSchedule->getExpression(), $second);
 
 				yield $jobSummaries[] = $jobSummary;
 
@@ -78,21 +79,22 @@ final class BasicJobExecutor implements JobExecutor
 
 	/**
 	 * @param non-empty-list<int|string> $ids
-	 * @return non-empty-array<int, list<array{int|string, Job, CronExpression}>>
+	 * @return non-empty-array<int, array<int|string, JobSchedule>>
 	 */
-	private function getScheduledJobsBySecond(array $ids): array
+	private function getJobSchedulesBySecond(array $ids): array
 	{
 		$scheduledJobsBySecond = [];
 		foreach ($ids as $id) {
-			$scheduledJob = $this->jobManager->getScheduledJob($id);
-			assert($scheduledJob !== null);
-			[$job, $expression, $repeatAfterSeconds] = $scheduledJob;
+			$jobSchedule = $this->jobManager->getJobSchedule($id);
+			assert($jobSchedule !== null);
+
+			$repeatAfterSeconds = $jobSchedule->getRepeatAfterSeconds();
 
 			if ($repeatAfterSeconds === 0) {
-				$scheduledJobsBySecond[0][] = [$id, $job, $expression];
+				$scheduledJobsBySecond[0][$id] = $jobSchedule;
 			} else {
 				for ($second = 0; $second <= 59; $second += $repeatAfterSeconds) {
-					$scheduledJobsBySecond[$second][] = [$id, $job, $expression];
+					$scheduledJobsBySecond[$second][$id] = $jobSchedule;
 				}
 			}
 		}
