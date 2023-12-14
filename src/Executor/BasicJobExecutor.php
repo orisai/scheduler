@@ -43,12 +43,10 @@ final class BasicJobExecutor implements JobExecutor
 
 	public function runJobs(array $ids, DateTimeImmutable $runStart): Generator
 	{
-		if ($ids === []) {
-			return new RunSummary($runStart, $runStart, []);
-		}
-
 		$jobSchedulesBySecond = $this->getJobSchedulesBySecond($ids);
-		$lastSecond = max(array_keys($jobSchedulesBySecond));
+		$lastSecond = $jobSchedulesBySecond !== []
+			? max(array_keys($jobSchedulesBySecond))
+			: 0;
 
 		$jobSummaries = [];
 		$suppressedExceptions = [];
@@ -78,8 +76,8 @@ final class BasicJobExecutor implements JobExecutor
 	}
 
 	/**
-	 * @param non-empty-list<int|string> $ids
-	 * @return non-empty-array<int, array<int|string, JobSchedule>>
+	 * @param list<int|string> $ids
+	 * @return array<int, array<int|string, JobSchedule>>
 	 */
 	private function getJobSchedulesBySecond(array $ids): array
 	{
@@ -98,9 +96,6 @@ final class BasicJobExecutor implements JobExecutor
 				}
 			}
 		}
-
-		// $ids are not empty and for cycle is always run at least once
-		assert($scheduledJobsBySecond !== []);
 
 		return $scheduledJobsBySecond;
 	}
