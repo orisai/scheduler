@@ -3,12 +3,11 @@
 namespace Orisai\Scheduler\Executor;
 
 use Closure;
-use Cron\CronExpression;
 use DateTimeImmutable;
 use Generator;
 use Orisai\Clock\Clock;
 use Orisai\Scheduler\Exception\RunFailure;
-use Orisai\Scheduler\Job\Job;
+use Orisai\Scheduler\Job\JobSchedule;
 use Orisai\Scheduler\Status\JobSummary;
 use Orisai\Scheduler\Status\RunSummary;
 use Throwable;
@@ -23,11 +22,11 @@ final class BasicJobExecutor implements JobExecutor
 
 	private Clock $clock;
 
-	/** @var Closure(string|int, Job, CronExpression, int<0, max>): array{JobSummary, Throwable|null} */
+	/** @var Closure(string|int, JobSchedule, int<0, max>): array{JobSummary, Throwable|null} */
 	private Closure $runCb;
 
 	/**
-	 * @param Closure(string|int, Job, CronExpression, int<0, max>): array{JobSummary, Throwable|null} $runCb
+	 * @param Closure(string|int, JobSchedule, int<0, max>): array{JobSummary, Throwable|null} $runCb
 	 */
 	public function __construct(Clock $clock, Closure $runCb)
 	{
@@ -47,7 +46,7 @@ final class BasicJobExecutor implements JobExecutor
 			$secondInitiatedAt = $this->clock->now();
 
 			foreach ($jobSchedulesBySecond[$second] ?? [] as $id => $jobSchedule) {
-				[$jobSummary, $throwable] = ($this->runCb)($id, $jobSchedule->getJob(), $jobSchedule->getExpression(), $second);
+				[$jobSummary, $throwable] = ($this->runCb)($id, $jobSchedule, $second);
 
 				yield $jobSummaries[] = $jobSummary;
 

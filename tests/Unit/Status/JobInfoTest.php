@@ -14,14 +14,17 @@ final class JobInfoTest extends TestCase
 		$id = 'id';
 		$name = 'name';
 		$expression = '* * * * *';
-		$second = 0;
+		$repeatAfterSeconds = 2;
+		$runSecond = 0;
 		$start = new DateTimeImmutable();
 
-		$info = new JobInfo($id, $name, $expression, $second, $start);
+		$info = new JobInfo($id, $name, $expression, $repeatAfterSeconds, $runSecond, $start);
 		self::assertSame($id, $info->getId());
 		self::assertSame($name, $info->getName());
 		self::assertSame($expression, $info->getExpression());
-		self::assertSame($second, $info->getSecond());
+		self::assertSame($repeatAfterSeconds, $info->getRepeatAfterSeconds());
+		self::assertSame("$expression / $repeatAfterSeconds", $info->getExtendedExpression());
+		self::assertSame($runSecond, $info->getRunSecond());
 		self::assertSame($start, $info->getStart());
 
 		self::assertSame(
@@ -29,7 +32,8 @@ final class JobInfoTest extends TestCase
 				'id' => $id,
 				'name' => $name,
 				'expression' => $expression,
-				'second' => $second,
+				'repeatAfterSeconds' => $repeatAfterSeconds,
+				'runSecond' => $runSecond,
 				'start' => $start->format('U.u'),
 			],
 			$info->toArray(),

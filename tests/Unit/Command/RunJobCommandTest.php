@@ -297,7 +297,8 @@ MSG,
         "id": 0,
         "name": "Tests\\Orisai\\Scheduler\\Doubles\\CallbackList::job1()",
         "expression": "1 * * * *",
-        "second": 30,
+        "repeatAfterSeconds": 0,
+        "runSecond": 30,
         "start": "61.000000"
     },
     "result": {

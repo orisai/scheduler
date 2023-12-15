@@ -226,8 +226,8 @@ $errorHandler = function(Throwable $throwable, JobInfo $info, JobResult $result)
 	$this->logger->error("Job {$info->getName()} failed", [
 		'exception' => $throwable,
 		'name' => $info->getName(),
-		'expression' => $info->getExpression(),
-		'second' => $info->getSecond(),
+		'expression' => $info->getExtendedExpression(),
+		'runSecond' => $info->getRunSecond(),
 		'start' => $info->getStart()->format(DateTimeInterface::ATOM),
 		'end' => $result->getEnd()->format(DateTimeInterface::ATOM),
 	]);
@@ -389,7 +389,9 @@ Info:
 $id = $info->getId(); // string|int
 $name = $info->getName(); // string
 $expression = $info->getExpression(); // string, e.g. '* * * * *'
-$second = $info->getSecond();
+$repeatAfterSeconds = $info->getRepeatAfterSeconds(); // int<0, 30>
+$extendedExpression = $info->getExtendedExpression(); // string, e.g. '* * * * * / 30'
+$runSecond = $info->getRunSecond(); // int
 $start = $info->getStart(); // DateTimeImmutable
 ```
 

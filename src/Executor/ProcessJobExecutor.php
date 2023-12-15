@@ -144,7 +144,8 @@ final class ProcessJobExecutor implements JobExecutor
 				$raw['info']['id'],
 				$raw['info']['name'],
 				$raw['info']['expression'],
-				$raw['info']['second'],
+				$raw['info']['repeatAfterSeconds'],
+				$raw['info']['runSecond'],
 				DateTimeImmutable::createFromFormat('U.u', $raw['info']['start']),
 			),
 			new JobResult(

@@ -3,7 +3,6 @@
 namespace Orisai\Scheduler;
 
 use Closure;
-use Cron\CronExpression;
 use Generator;
 use Orisai\Clock\Adapter\ClockAdapterFactory;
 use Orisai\Clock\Clock;
@@ -13,7 +12,6 @@ use Orisai\Exceptions\Message;
 use Orisai\Scheduler\Exception\JobFailure;
 use Orisai\Scheduler\Executor\BasicJobExecutor;
 use Orisai\Scheduler\Executor\JobExecutor;
-use Orisai\Scheduler\Job\Job;
 use Orisai\Scheduler\Job\JobLock;
 use Orisai\Scheduler\Job\JobSchedule;
 use Orisai\Scheduler\Manager\JobManager;
@@ -68,11 +66,10 @@ class ManagedScheduler implements Scheduler
 
 		$this->executor = $executor ?? new BasicJobExecutor(
 			$this->clock,
-			fn ($id, Job $job, CronExpression $expression, int $second): array => $this->runInternal(
+			fn ($id, JobSchedule $jobSchedule, int $runSecond): array => $this->runInternal(
 				$id,
-				$job,
-				$expression,
-				$second,
+				$jobSchedule,
+				$runSecond,
 			),
 		);
 	}
@@ -107,7 +104,7 @@ class ManagedScheduler implements Scheduler
 			return null;
 		}
 
-		[$summary, $throwable] = $this->runInternal($id, $jobSchedule->getJob(), $expression, $parameters->getSecond());
+		[$summary, $throwable] = $this->runInternal($id, $jobSchedule, $parameters->getSecond());
 
 		if ($throwable !== null) {
 			throw JobFailure::create($summary, $throwable);
@@ -164,17 +161,21 @@ class ManagedScheduler implements Scheduler
 	}
 
 	/**
-	 * @param string|int $id
-	 * @param int<0, max> $second
+	 * @param string|int  $id
+	 * @param int<0, max> $runSecond
 	 * @return array{JobSummary, Throwable|null}
 	 */
-	private function runInternal($id, Job $job, CronExpression $expression, int $second): array
+	private function runInternal($id, JobSchedule $jobSchedule, int $runSecond): array
 	{
+		$job = $jobSchedule->getJob();
+		$expression = $jobSchedule->getExpression();
+
 		$info = new JobInfo(
 			$id,
 			$job->getName(),
 			$expression->getExpression(),
-			$second,
+			$jobSchedule->getRepeatAfterSeconds(),
+			$runSecond,
 			$this->clock->now(),
 		);
 

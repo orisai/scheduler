@@ -15,7 +15,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - `SimpleScheduler`
 	- `addJob()` accepts parameter `repeatAfterSeconds`
 - `JobInfo`
-	- `getSecond()`- returns for which second within a minute was job scheduled
+	- `getRepeatAfterSeconds()`- returns the seconds part of expression
+	- `getExtendedExpression()` - returns cron expression including seconds
+	- `getRunSecond()`- returns for which second within a minute was job scheduled
 - `JobSchedule` - contains info about the scheduled job
 - `SimpleJobManager`
 	- `addJob()` accepts parameter `repeatAfterSeconds`
