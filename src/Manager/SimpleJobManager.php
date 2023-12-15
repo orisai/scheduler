@@ -20,7 +20,7 @@ final class SimpleJobManager implements JobManager
 	 */
 	public function addJob(Job $job, CronExpression $expression, ?string $id = null, int $repeatAfterSeconds = 0): void
 	{
-		$jobSchedule = new JobSchedule($job, $expression, $repeatAfterSeconds);
+		$jobSchedule = JobSchedule::create($job, $expression, $repeatAfterSeconds);
 
 		if ($id === null) {
 			$this->jobSchedules[] = $jobSchedule;

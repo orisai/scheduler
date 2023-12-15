@@ -10,14 +10,11 @@ use Orisai\Scheduler\Job\JobSchedule;
 final class CallbackJobManager implements JobManager
 {
 
-	/** @var array<int|string, Closure(): Job> */
-	private array $jobs = [];
+	/** @var array<int|string, JobSchedule> */
+	private array $jobSchedules = [];
 
 	/** @var array<int|string, CronExpression> */
 	private array $expressions = [];
-
-	/** @var array<int|string, int<0, 30>> */
-	private array $repeat = [];
 
 	/**
 	 * @param Closure(): Job $jobCtor
@@ -30,44 +27,25 @@ final class CallbackJobManager implements JobManager
 		int $repeatAfterSeconds = 0
 	): void
 	{
+		$jobSchedule = JobSchedule::createLazy($jobCtor, $expression, $repeatAfterSeconds);
+
 		if ($id === null) {
-			$this->jobs[] = $jobCtor;
+			$this->jobSchedules[] = $jobSchedule;
 			$this->expressions[] = $expression;
-			$this->repeat[] = $repeatAfterSeconds;
 		} else {
-			$this->jobs[$id] = $jobCtor;
+			$this->jobSchedules[$id] = $jobSchedule;
 			$this->expressions[$id] = $expression;
-			$this->repeat[$id] = $repeatAfterSeconds;
 		}
 	}
 
 	public function getJobSchedule($id): ?JobSchedule
 	{
-		$job = $this->jobs[$id] ?? null;
-
-		if ($job === null) {
-			return null;
-		}
-
-		return new JobSchedule(
-			$job(),
-			$this->expressions[$id],
-			$this->repeat[$id],
-		);
+		return $this->jobSchedules[$id] ?? null;
 	}
 
 	public function getJobSchedules(): array
 	{
-		$scheduledJobs = [];
-		foreach ($this->jobs as $id => $job) {
-			$scheduledJobs[$id] = new JobSchedule(
-				$job(),
-				$this->expressions[$id],
-				$this->repeat[$id],
-			);
-		}
-
-		return $scheduledJobs;
+		return $this->jobSchedules;
 	}
 
 	public function getExpressions(): array

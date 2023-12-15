@@ -2,10 +2,14 @@
 
 namespace Orisai\Scheduler\Job;
 
+use Closure;
 use Cron\CronExpression;
 
 final class JobSchedule
 {
+
+	/** @var Closure(): Job|null  */
+	private ?Closure $jobConstructor;
 
 	private Job $job;
 
@@ -17,19 +21,46 @@ final class JobSchedule
 	/**
 	 * @param int<0, 30> $repeatAfterSeconds
 	 */
-	public function __construct(
+	public static function create(
 		Job $job,
 		CronExpression $expression,
 		int $repeatAfterSeconds
-	)
+	): self
 	{
-		$this->job = $job;
-		$this->expression = $expression;
-		$this->repeatAfterSeconds = $repeatAfterSeconds;
+		$self = new self();
+		$self->jobConstructor = null;
+		$self->job = $job;
+		$self->expression = $expression;
+		$self->repeatAfterSeconds = $repeatAfterSeconds;
+
+		return $self;
+	}
+
+	/**
+	 * @param Closure(): Job $jobConstructor
+	 * @param int<0, 30> $repeatAfterSeconds
+	 */
+	public static function createLazy(
+		Closure $jobConstructor,
+		CronExpression $expression,
+		int $repeatAfterSeconds
+	): self
+	{
+		$self = new self();
+		$self->jobConstructor = $jobConstructor;
+		$self->expression = $expression;
+		$self->repeatAfterSeconds = $repeatAfterSeconds;
+
+		return $self;
 	}
 
 	public function getJob(): Job
 	{
+		if ($this->jobConstructor !== null) {
+			$this->job = ($this->jobConstructor)();
+			$this->jobConstructor = null;
+		}
+
 		return $this->job;
 	}
 

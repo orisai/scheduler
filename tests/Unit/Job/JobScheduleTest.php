@@ -17,9 +17,24 @@ final class JobScheduleTest extends TestCase
 		$expression = new CronExpression('* * * * *');
 		$seconds = 1;
 
-		$schedule = new JobSchedule($job, $expression, $seconds);
+		$schedule = JobSchedule::create($job, $expression, $seconds);
 
 		self::assertSame($job, $schedule->getJob());
+		self::assertSame($expression, $schedule->getExpression());
+		self::assertSame($seconds, $schedule->getRepeatAfterSeconds());
+	}
+
+	public function testLazy(): void
+	{
+		$ctor = static fn (): CallbackJob => new CallbackJob(static function (): void {
+		});
+		$expression = new CronExpression('* * * * *');
+		$seconds = 1;
+
+		$schedule = JobSchedule::createLazy($ctor, $expression, $seconds);
+
+		self::assertInstanceOf(CallbackJob::class, $schedule->getJob());
+		self::assertSame($schedule->getJob(), $schedule->getJob());
 		self::assertSame($expression, $schedule->getExpression());
 		self::assertSame($seconds, $schedule->getRepeatAfterSeconds());
 	}

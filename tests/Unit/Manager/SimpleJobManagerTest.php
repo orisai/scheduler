@@ -39,13 +39,13 @@ final class SimpleJobManagerTest extends TestCase
 		);
 		self::assertEquals(
 			[
-				0 => new JobSchedule($job1, $expression1, 0),
-				'id' => new JobSchedule($job2, $expression2, 1),
+				0 => JobSchedule::create($job1, $expression1, 0),
+				'id' => JobSchedule::create($job2, $expression2, 1),
 			],
 			$manager->getJobSchedules(),
 		);
-		self::assertEquals(new JobSchedule($job1, $expression1, 0), $manager->getJobSchedule(0));
-		self::assertEquals(new JobSchedule($job2, $expression2, 1), $manager->getJobSchedule('id'));
+		self::assertEquals(JobSchedule::create($job1, $expression1, 0), $manager->getJobSchedule(0));
+		self::assertEquals(JobSchedule::create($job2, $expression2, 1), $manager->getJobSchedule('id'));
 		self::assertNull($manager->getJobSchedule(42));
 	}
 

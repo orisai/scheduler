@@ -44,7 +44,7 @@ final class SimpleSchedulerTest extends TestCase
 		$scheduler->addJob($job, $expression);
 
 		self::assertEquals([
-			new JobSchedule($job, $expression, 0),
+			JobSchedule::create($job, $expression, 0),
 		], $scheduler->getJobSchedules());
 
 		$scheduler->run();
@@ -75,7 +75,7 @@ final class SimpleSchedulerTest extends TestCase
 		$scheduler->addJob($job, $expression, $key);
 
 		self::assertEquals([
-			$key => new JobSchedule($job, $expression, 0),
+			$key => JobSchedule::create($job, $expression, 0),
 		], $scheduler->getJobSchedules());
 
 		$scheduler->runJob($key);
