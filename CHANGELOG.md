@@ -44,6 +44,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - `ManagedScheduler`
 	- acquired job locks are scoped just to their id - changing run frequency or job name will not make process loose
 	  the lock
+- `CronExpression` is cloned after being added to job manager or scheduler for job immutability
 
 ### Removed
 

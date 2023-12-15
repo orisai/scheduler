@@ -20,7 +20,8 @@ final class JobScheduleTest extends TestCase
 		$schedule = JobSchedule::create($job, $expression, $seconds);
 
 		self::assertSame($job, $schedule->getJob());
-		self::assertSame($expression, $schedule->getExpression());
+		self::assertEquals($expression, $schedule->getExpression());
+		self::assertNotSame($expression, $schedule->getExpression());
 		self::assertSame($seconds, $schedule->getRepeatAfterSeconds());
 	}
 
@@ -35,7 +36,8 @@ final class JobScheduleTest extends TestCase
 
 		self::assertInstanceOf(CallbackJob::class, $schedule->getJob());
 		self::assertSame($schedule->getJob(), $schedule->getJob());
-		self::assertSame($expression, $schedule->getExpression());
+		self::assertEquals($expression, $schedule->getExpression());
+		self::assertNotSame($expression, $schedule->getExpression());
 		self::assertSame($seconds, $schedule->getRepeatAfterSeconds());
 	}
 

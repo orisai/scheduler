@@ -30,7 +30,7 @@ final class JobSchedule
 		$self = new self();
 		$self->jobConstructor = null;
 		$self->job = $job;
-		$self->expression = $expression;
+		$self->expression = clone $expression;
 		$self->repeatAfterSeconds = $repeatAfterSeconds;
 
 		return $self;
@@ -48,7 +48,7 @@ final class JobSchedule
 	{
 		$self = new self();
 		$self->jobConstructor = $jobConstructor;
-		$self->expression = $expression;
+		$self->expression = clone $expression;
 		$self->repeatAfterSeconds = $repeatAfterSeconds;
 
 		return $self;
