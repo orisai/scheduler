@@ -78,7 +78,7 @@ final class ProcessJobExecutor implements JobExecutor
 			}
 
 			// Check running jobs
-			foreach ($jobExecutions as $i => $execution) {
+			foreach ($jobExecutions as $i => [$execution, $cronExpression]) {
 				if (!$execution->isRunning()) {
 					unset($jobExecutions[$i]);
 
@@ -88,7 +88,7 @@ final class ProcessJobExecutor implements JobExecutor
 						$decoded = json_decode($output, true, 512, JSON_THROW_ON_ERROR);
 						assert(is_array($decoded));
 
-						yield $jobSummaries[] = $this->createSummary($decoded);
+						yield $jobSummaries[] = $this->createSummary($decoded, $cronExpression);
 					} catch (JsonException $e) {
 						$suppressedExceptions[] = JobProcessFailure::create()
 							->withMessage("Job subprocess failed with following output:\n$output");
@@ -110,14 +110,14 @@ final class ProcessJobExecutor implements JobExecutor
 	}
 
 	/**
-	 * @param array<int|string, JobSchedule> $jobSchedules
-	 * @param array<int, Process>            $jobExecutions
-	 * @return array<int, Process>
+	 * @param array<int|string, JobSchedule>             $jobSchedules
+	 * @param array<int, array{Process, CronExpression}> $jobExecutions
+	 * @return array<int, array{Process, CronExpression}>
 	 */
 	private function startJobs(array $jobSchedules, array $jobExecutions, RunParameters $parameters): array
 	{
 		foreach ($jobSchedules as $id => $jobSchedule) {
-			$jobExecutions[] = $execution = new Process([
+			$execution = new Process([
 				PHP_BINARY,
 				$this->script,
 				$this->command,
@@ -127,6 +127,8 @@ final class ProcessJobExecutor implements JobExecutor
 				json_encode($parameters->toArray(), JSON_THROW_ON_ERROR),
 			]);
 			$execution->start();
+
+			$jobExecutions[] = [$execution, $jobSchedule->getExpression()];
 		}
 
 		return $jobExecutions;
@@ -135,7 +137,7 @@ final class ProcessJobExecutor implements JobExecutor
 	/**
 	 * @param array<mixed> $raw
 	 */
-	private function createSummary(array $raw): JobSummary
+	private function createSummary(array $raw, CronExpression $cronExpression): JobSummary
 	{
 		return new JobSummary(
 			new JobInfo(
@@ -146,7 +148,7 @@ final class ProcessJobExecutor implements JobExecutor
 				DateTimeImmutable::createFromFormat('U.u', $raw['info']['start']),
 			),
 			new JobResult(
-				new CronExpression($raw['info']['expression']),
+				$cronExpression,
 				DateTimeImmutable::createFromFormat('U.u', $raw['result']['end']),
 				JobResultState::from($raw['result']['state']),
 			),
