@@ -15,7 +15,6 @@ final class CallbackJobManagerTest extends TestCase
 	public function test(): void
 	{
 		$manager = new CallbackJobManager();
-		self::assertSame([], $manager->getExpressions());
 		self::assertSame([], $manager->getJobSchedules());
 		self::assertNull($manager->getJobSchedule(0));
 		self::assertNull($manager->getJobSchedule('id'));
@@ -33,13 +32,6 @@ final class CallbackJobManagerTest extends TestCase
 		$expression2 = clone $expression1;
 		$manager->addJob($job2Ctor, $expression2, 'id', 1);
 
-		self::assertSame(
-			[
-				0 => $expression1,
-				'id' => $expression2,
-			],
-			$manager->getExpressions(),
-		);
 		self::assertEquals(
 			[
 				0 => JobSchedule::createLazy($job1Ctor, $expression1, 0),

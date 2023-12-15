@@ -119,8 +119,8 @@ class ManagedScheduler implements Scheduler
 	{
 		$runStart = $this->clock->now();
 		$ids = [];
-		foreach ($this->jobManager->getExpressions() as $id => $expression) {
-			if ($expression->isDue($runStart)) {
+		foreach ($this->jobManager->getJobSchedules() as $id => $schedule) {
+			if ($schedule->getExpression()->isDue($runStart)) {
 				$ids[] = $id;
 			}
 		}

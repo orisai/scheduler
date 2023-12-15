@@ -2,7 +2,6 @@
 
 namespace Orisai\Scheduler\Manager;
 
-use Cron\CronExpression;
 use Orisai\Scheduler\Job\JobSchedule;
 
 interface JobManager
@@ -17,10 +16,5 @@ interface JobManager
 	 * @return array<int|string, JobSchedule>
 	 */
 	public function getJobSchedules(): array;
-
-	/**
-	 * @return array<int|string, CronExpression>
-	 */
-	public function getExpressions(): array;
 
 }

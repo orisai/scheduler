@@ -12,9 +12,6 @@ final class SimpleJobManager implements JobManager
 	/** @var array<int|string, JobSchedule> */
 	private array $jobSchedules = [];
 
-	/** @var array<int|string, CronExpression> */
-	private array $expressions = [];
-
 	/**
 	 * @param int<0, 30> $repeatAfterSeconds
 	 */
@@ -24,10 +21,8 @@ final class SimpleJobManager implements JobManager
 
 		if ($id === null) {
 			$this->jobSchedules[] = $jobSchedule;
-			$this->expressions[] = $expression;
 		} else {
 			$this->jobSchedules[$id] = $jobSchedule;
-			$this->expressions[$id] = $expression;
 		}
 	}
 
@@ -39,11 +34,6 @@ final class SimpleJobManager implements JobManager
 	public function getJobSchedules(): array
 	{
 		return $this->jobSchedules;
-	}
-
-	public function getExpressions(): array
-	{
-		return $this->expressions;
 	}
 
 }

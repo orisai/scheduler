@@ -13,9 +13,6 @@ final class CallbackJobManager implements JobManager
 	/** @var array<int|string, JobSchedule> */
 	private array $jobSchedules = [];
 
-	/** @var array<int|string, CronExpression> */
-	private array $expressions = [];
-
 	/**
 	 * @param Closure(): Job $jobCtor
 	 * @param int<0, 30> $repeatAfterSeconds
@@ -31,10 +28,8 @@ final class CallbackJobManager implements JobManager
 
 		if ($id === null) {
 			$this->jobSchedules[] = $jobSchedule;
-			$this->expressions[] = $expression;
 		} else {
 			$this->jobSchedules[$id] = $jobSchedule;
-			$this->expressions[$id] = $expression;
 		}
 	}
 
@@ -46,11 +41,6 @@ final class CallbackJobManager implements JobManager
 	public function getJobSchedules(): array
 	{
 		return $this->jobSchedules;
-	}
-
-	public function getExpressions(): array
-	{
-		return $this->expressions;
 	}
 
 }
