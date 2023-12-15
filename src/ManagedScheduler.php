@@ -15,6 +15,7 @@ use Orisai\Scheduler\Executor\BasicJobExecutor;
 use Orisai\Scheduler\Executor\JobExecutor;
 use Orisai\Scheduler\Job\Job;
 use Orisai\Scheduler\Job\JobLock;
+use Orisai\Scheduler\Job\JobSchedule;
 use Orisai\Scheduler\Manager\JobManager;
 use Orisai\Scheduler\Status\JobInfo;
 use Orisai\Scheduler\Status\JobResult;
@@ -26,6 +27,7 @@ use Psr\Clock\ClockInterface;
 use Symfony\Component\Lock\LockFactory;
 use Symfony\Component\Lock\Store\InMemoryStore;
 use Throwable;
+use function assert;
 use function iterator_to_array;
 
 class ManagedScheduler implements Scheduler
@@ -66,7 +68,6 @@ class ManagedScheduler implements Scheduler
 
 		$this->executor = $executor ?? new BasicJobExecutor(
 			$this->clock,
-			$this->jobManager,
 			fn ($id, Job $job, CronExpression $expression, int $second): array => $this->runInternal(
 				$id,
 				$job,
@@ -115,6 +116,31 @@ class ManagedScheduler implements Scheduler
 		return $summary;
 	}
 
+	/**
+	 * @param list<int|string> $ids
+	 * @return array<int, array<int|string, JobSchedule>>
+	 */
+	private function getJobSchedulesBySecond(array $ids): array
+	{
+		$scheduledJobsBySecond = [];
+		foreach ($ids as $id) {
+			$jobSchedule = $this->jobManager->getJobSchedule($id);
+			assert($jobSchedule !== null);
+
+			$repeatAfterSeconds = $jobSchedule->getRepeatAfterSeconds();
+
+			if ($repeatAfterSeconds === 0) {
+				$scheduledJobsBySecond[0][$id] = $jobSchedule;
+			} else {
+				for ($second = 0; $second <= 59; $second += $repeatAfterSeconds) {
+					$scheduledJobsBySecond[$second][$id] = $jobSchedule;
+				}
+			}
+		}
+
+		return $scheduledJobsBySecond;
+	}
+
 	public function runPromise(): Generator
 	{
 		$runStart = $this->clock->now();
@@ -125,7 +151,7 @@ class ManagedScheduler implements Scheduler
 			}
 		}
 
-		return $this->executor->runJobs($ids, $runStart);
+		return $this->executor->runJobs($this->getJobSchedulesBySecond($ids), $runStart);
 	}
 
 	public function run(): RunSummary

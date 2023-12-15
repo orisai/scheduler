@@ -41,7 +41,7 @@ final class SchedulerProcessSetup
 	{
 		$jobManager = new SimpleJobManager();
 		$clock = new FrozenClock(1);
-		$executor = new ProcessJobExecutor($jobManager, $clock);
+		$executor = new ProcessJobExecutor($clock);
 		$executor->setExecutable(__DIR__ . '/scheduler-process-binary-empty.php');
 
 		return new ManagedScheduler($jobManager, null, null, $executor, $clock);
@@ -74,7 +74,7 @@ final class SchedulerProcessSetup
 		);
 
 		$clock = new FrozenClock(1);
-		$executor = new ProcessJobExecutor($jobManager, $clock);
+		$executor = new ProcessJobExecutor($clock);
 
 		if ($script !== null) {
 			$executor->setExecutable($script);

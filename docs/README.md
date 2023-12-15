@@ -310,12 +310,10 @@ used [run-job command](#run-job-command), so you need to have [console](#cli-com
 
 ```php
 use Orisai\Scheduler\Executor\ProcessJobExecutor;
-use Orisai\Scheduler\ManagedScheduler;
-use Orisai\Scheduler\Manager\SimpleJobManager;
+use Orisai\Scheduler\SimpleScheduler;
 
-$jobManager = new SimpleJobManager();
-$executor = new ProcessJobExecutor($jobManager);
-$scheduler = new ManagedScheduler($jobManager, null, null, $executor);
+$executor = new ProcessJobExecutor();
+$scheduler = new SimpleScheduler(null, null, $executor);
 ```
 
 If your executable script is not `bin/console` or if you are using multiple scheduler setups, specify the executable:
@@ -323,7 +321,7 @@ If your executable script is not `bin/console` or if you are using multiple sche
 ```php
 use Orisai\Scheduler\Executor\ProcessJobExecutor;
 
-$executor = new ProcessJobExecutor($jobManager);
+$executor = new ProcessJobExecutor();
 $executor->setExecutable('bin/console', 'scheduler:run-job');
 ```
 

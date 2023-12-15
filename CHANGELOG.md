@@ -35,9 +35,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - `RunSummary`
 	- `getJobs()` -> `getJobSummaries()`
 - `JobExecutor`
+	- `runJobs()` accepts list of `JobSchedule` grouped by seconds instead of list of ids
 	- `runJobs()` returns `Generator<int, JobSummary, void, RunSummary>` instead of `RunSummary`
 - `ProcessJobExecutor`
-	- constructor requires `JobManager` as first parameter
 	- uses microseconds instead of milliseconds for start and end times
 - `ManagedScheduler`
 	- acquired job locks are scoped just to their id - changing run frequency or job name will not make process loose

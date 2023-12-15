@@ -12,7 +12,6 @@ use Orisai\Clock\SystemClock;
 use Orisai\Scheduler\Exception\JobProcessFailure;
 use Orisai\Scheduler\Exception\RunFailure;
 use Orisai\Scheduler\Job\JobSchedule;
-use Orisai\Scheduler\Manager\JobManager;
 use Orisai\Scheduler\Status\JobInfo;
 use Orisai\Scheduler\Status\JobResult;
 use Orisai\Scheduler\Status\JobResultState;
@@ -34,17 +33,14 @@ use const PHP_BINARY;
 final class ProcessJobExecutor implements JobExecutor
 {
 
-	private JobManager $jobManager;
-
 	private Clock $clock;
 
 	private string $script = 'bin/console';
 
 	private string $command = 'scheduler:run-job';
 
-	public function __construct(JobManager $jobManager, ?ClockInterface $clock = null)
+	public function __construct(?ClockInterface $clock = null)
 	{
-		$this->jobManager = $jobManager;
 		$this->clock = ClockAdapterFactory::create($clock ?? new SystemClock());
 	}
 
@@ -54,10 +50,8 @@ final class ProcessJobExecutor implements JobExecutor
 		$this->command = $command;
 	}
 
-	public function runJobs(array $ids, DateTimeImmutable $runStart): Generator
+	public function runJobs(array $jobSchedulesBySecond, DateTimeImmutable $runStart): Generator
 	{
-		$jobSchedulesBySecond = $this->getJobSchedulesBySecond($ids);
-
 		$jobExecutions = [];
 		$jobSummaries = [];
 		$suppressedExceptions = [];
@@ -113,31 +107,6 @@ final class ProcessJobExecutor implements JobExecutor
 		}
 
 		return $summary;
-	}
-
-	/**
-	 * @param list<int|string> $ids
-	 * @return array<int, array<int|string, JobSchedule>>
-	 */
-	private function getJobSchedulesBySecond(array $ids): array
-	{
-		$scheduledJobsBySecond = [];
-		foreach ($ids as $id) {
-			$jobSchedule = $this->jobManager->getJobSchedule($id);
-			assert($jobSchedule !== null);
-
-			$repeatAfterSeconds = $jobSchedule->getRepeatAfterSeconds();
-
-			if ($repeatAfterSeconds === 0) {
-				$scheduledJobsBySecond[0][$id] = $jobSchedule;
-			} else {
-				for ($second = 0; $second <= 59; $second += $repeatAfterSeconds) {
-					$scheduledJobsBySecond[$second][$id] = $jobSchedule;
-				}
-			}
-		}
-
-		return $scheduledJobsBySecond;
 	}
 
 	/**

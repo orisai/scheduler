@@ -9,13 +9,10 @@ use Generator;
 use Orisai\Clock\Clock;
 use Orisai\Scheduler\Exception\RunFailure;
 use Orisai\Scheduler\Job\Job;
-use Orisai\Scheduler\Job\JobSchedule;
-use Orisai\Scheduler\Manager\JobManager;
 use Orisai\Scheduler\Status\JobSummary;
 use Orisai\Scheduler\Status\RunSummary;
 use Throwable;
 use function array_keys;
-use function assert;
 use function max;
 
 /**
@@ -26,24 +23,20 @@ final class BasicJobExecutor implements JobExecutor
 
 	private Clock $clock;
 
-	private JobManager $jobManager;
-
 	/** @var Closure(string|int, Job, CronExpression, int<0, max>): array{JobSummary, Throwable|null} */
 	private Closure $runCb;
 
 	/**
 	 * @param Closure(string|int, Job, CronExpression, int<0, max>): array{JobSummary, Throwable|null} $runCb
 	 */
-	public function __construct(Clock $clock, JobManager $jobManager, Closure $runCb)
+	public function __construct(Clock $clock, Closure $runCb)
 	{
 		$this->clock = $clock;
-		$this->jobManager = $jobManager;
 		$this->runCb = $runCb;
 	}
 
-	public function runJobs(array $ids, DateTimeImmutable $runStart): Generator
+	public function runJobs(array $jobSchedulesBySecond, DateTimeImmutable $runStart): Generator
 	{
-		$jobSchedulesBySecond = $this->getJobSchedulesBySecond($ids);
 		$lastSecond = $jobSchedulesBySecond !== []
 			? max(array_keys($jobSchedulesBySecond))
 			: 0;
@@ -73,31 +66,6 @@ final class BasicJobExecutor implements JobExecutor
 		}
 
 		return $summary;
-	}
-
-	/**
-	 * @param list<int|string> $ids
-	 * @return array<int, array<int|string, JobSchedule>>
-	 */
-	private function getJobSchedulesBySecond(array $ids): array
-	{
-		$scheduledJobsBySecond = [];
-		foreach ($ids as $id) {
-			$jobSchedule = $this->jobManager->getJobSchedule($id);
-			assert($jobSchedule !== null);
-
-			$repeatAfterSeconds = $jobSchedule->getRepeatAfterSeconds();
-
-			if ($repeatAfterSeconds === 0) {
-				$scheduledJobsBySecond[0][$id] = $jobSchedule;
-			} else {
-				for ($second = 0; $second <= 59; $second += $repeatAfterSeconds) {
-					$scheduledJobsBySecond[$second][$id] = $jobSchedule;
-				}
-			}
-		}
-
-		return $scheduledJobsBySecond;
 	}
 
 	/**
