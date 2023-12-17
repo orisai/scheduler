@@ -5,6 +5,7 @@ namespace Tests\Orisai\Scheduler\Unit;
 use Closure;
 use Cron\CronExpression;
 use DateTimeImmutable;
+use DateTimeZone;
 use Generator;
 use Orisai\Clock\FrozenClock;
 use Orisai\Exceptions\Logic\InvalidArgument;
@@ -495,6 +496,53 @@ MSG,
 		yield [null, 0];
 		yield [new RunParameters(10), 10];
 		yield [new RunParameters(30), 30];
+	}
+
+	public function testTimeZone(): void
+	{
+		$defaultTz = new DateTimeZone('UTC');
+		$otherTz = new DateTimeZone('Europe/Prague');
+		$clock = new FrozenClock(0, $defaultTz);
+
+		$scheduler = new SimpleScheduler(null, null, null, $clock);
+		$expression = new CronExpression('0 0 * * *');
+
+		$i1 = 0;
+		$job1 = new CallbackJob(
+			static function () use (&$i1): void {
+				$i1++;
+			},
+		);
+		$scheduler->addJob($job1, $expression, 'other', 0, $otherTz);
+
+		$i2 = 0;
+		$job2 = new CallbackJob(
+			static function () use (&$i2): void {
+				$i2++;
+			},
+		);
+		$scheduler->addJob($job2, $expression, 'default', 0, $defaultTz);
+
+		$scheduler->run();
+		self::assertSame(0, $i1);
+		self::assertSame(1, $i2);
+
+		$scheduler->runJob('other', false);
+		$scheduler->runJob('default', false);
+		self::assertSame(0, $i1);
+		self::assertSame(2, $i2);
+
+		$tzOffset = $otherTz->getOffset($clock->now());
+		$clock->sleep(86_400 - $tzOffset);
+
+		$scheduler->run();
+		self::assertSame(1, $i1);
+		self::assertSame(2, $i2);
+
+		$scheduler->runJob('other', false);
+		$scheduler->runJob('default', false);
+		self::assertSame(2, $i1);
+		self::assertSame(2, $i2);
 	}
 
 	public function testLockAlreadyAcquired(): void

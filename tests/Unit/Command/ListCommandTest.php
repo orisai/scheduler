@@ -327,4 +327,78 @@ MSG,
 		yield ['0'];
 	}
 
+	public function testTimeZone(): void
+	{
+		$clock = new FrozenClock(1, new DateTimeZone('UTC'));
+		$scheduler = new SimpleScheduler(null, null, null, $clock);
+
+		$cbs = new CallbackList();
+		$scheduler->addJob(
+			new CallbackJob(Closure::fromCallable($cbs)),
+			new CronExpression('0 1 * * *'),
+		);
+		$scheduler->addJob(
+			new CallbackJob(Closure::fromCallable($cbs)),
+			new CronExpression('0 1 * * *'),
+			null,
+			0,
+			new DateTimeZone('Europe/Prague'),
+		);
+		$scheduler->addJob(
+			new CallbackJob(Closure::fromCallable($cbs)),
+			new CronExpression('0 1 * * *'),
+			null,
+			0,
+			new DateTimeZone('Australia/Sydney'),
+		);
+
+		$command = new ListCommand($scheduler, $clock);
+		$tester = new CommandTester($command);
+
+		putenv('COLUMNS=80');
+		$code = $tester->execute([], [
+			'verbosity' => OutputInterface::VERBOSITY_VERBOSE,
+		]);
+
+		self::assertSame(
+			<<<'MSG'
+  0 1 * * *                     [0] Tests\Orisai\Scheduler\Doubles\CallbackList::__invoke() Next Due: 1970-01-01 01:00:00 +00:00
+  0 1 * * * (Europe/Prague)     [1] Tests\Orisai\Scheduler\Doubles\CallbackList::__invoke() Next Due: 1970-01-01 01:00:00 +00:00
+  0 1 * * * (Australia/Sydney)  [2] Tests\Orisai\Scheduler\Doubles\CallbackList::__invoke() Next Due: 1970-01-01 01:00:00 +00:00
+
+MSG,
+			implode(
+				PHP_EOL,
+				array_map(
+					static fn (string $s): string => rtrim($s),
+					explode(PHP_EOL, $tester->getDisplay()),
+				),
+			),
+		);
+		self::assertSame($command::SUCCESS, $code);
+
+		$code = $tester->execute([
+			'--timezone' => 'Europe/Prague',
+		], [
+			'verbosity' => OutputInterface::VERBOSITY_VERBOSE,
+		]);
+
+		self::assertSame(
+			<<<'MSG'
+  0 1 * * * (UTC)               [0] Tests\Orisai\Scheduler\Doubles\CallbackList::__invoke() Next Due: 1970-01-02 01:00:00 +01:00
+  0 1 * * *                     [1] Tests\Orisai\Scheduler\Doubles\CallbackList::__invoke() Next Due: 1970-01-02 01:00:00 +01:00
+  0 1 * * * (Australia/Sydney)  [2] Tests\Orisai\Scheduler\Doubles\CallbackList::__invoke() Next Due: 1970-01-02 01:00:00 +01:00
+
+MSG,
+			implode(
+				PHP_EOL,
+				array_map(
+					static fn (string $s): string => rtrim($s),
+					explode(PHP_EOL, $tester->getDisplay()),
+				),
+			),
+		);
+		self::assertSame($command::SUCCESS, $code);
+	}
+
 }

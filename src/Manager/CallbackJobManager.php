@@ -4,6 +4,7 @@ namespace Orisai\Scheduler\Manager;
 
 use Closure;
 use Cron\CronExpression;
+use DateTimeZone;
 use Orisai\Scheduler\Job\Job;
 use Orisai\Scheduler\Job\JobSchedule;
 
@@ -21,10 +22,11 @@ final class CallbackJobManager implements JobManager
 		Closure $jobCtor,
 		CronExpression $expression,
 		?string $id = null,
-		int $repeatAfterSeconds = 0
+		int $repeatAfterSeconds = 0,
+		?DateTimeZone $timeZone = null
 	): void
 	{
-		$jobSchedule = JobSchedule::createLazy($jobCtor, $expression, $repeatAfterSeconds);
+		$jobSchedule = JobSchedule::createLazy($jobCtor, $expression, $repeatAfterSeconds, $timeZone);
 
 		if ($id === null) {
 			$this->jobSchedules[] = $jobSchedule;

@@ -9,6 +9,7 @@ Cron job scheduler - with locks, parallelism and more
 - [Execution time](#execution-time)
 	- [Cron expression - minutes and above](#cron-expression---minutes-and-above)
 	- [Seconds](#seconds)
+	- [Timezones](#timezones)
 - [Events](#events)
 - [Handling errors](#handling-errors)
 - [Locks and job overlapping](#locks-and-job-overlapping)
@@ -53,6 +54,7 @@ On top of that you get:
 
 - [locking](#locks-and-job-overlapping) - each job should run only once at a time, without overlapping
 - [per-second scheduling](#seconds) - run jobs multiple times in a minute
+- [timezones](#timezones) - interpret job schedule within specified timezone
 - [before/after job events](#events) for accessing job status
 - [overview of all jobs](#list-command), including estimated time of next run
 - running jobs either [once](#run-command) or [periodically](#worker-command) during development
@@ -179,6 +181,33 @@ With default, synchronous job executor, all jobs scheduled for current second ar
 finished, jobs for the next second are executed. With [parallel](#parallelization-and-process-isolation) executor it is
 different - all jobs are executed as soon as it is their time. Therefore, it is strongly recommended to
 use [locking](#locks-and-job-overlapping) to prevent overlapping.
+
+### Timezones
+
+All jobs run within timezone used by your application. You may specify that your job execution time should be
+interpreted within different timezone, e.g. every midnight in Europe/Prague.
+
+```php
+use Cron\CronExpression;
+use DateTimeZone;
+
+$scheduler->addJob(
+	/* ... */,
+	new CronExpression('0 0 * * *'),
+	/* ... */,
+	/* ... */,
+	new DateTimeZone('Europe/Prague'),
+);
+```
+
+Some timezones use daylight savings time. When daylight saving time changes occur, scheduled job may run twice or even
+not run at all during that period. Make sure you run your tasks often enough and that running them more often gives you
+expected results.
+
+If you want job to run at specific time (e.g. midnight) in timezone of each user, run it every 15 minutes and implement
+timezone checking logic yourself. Several time zones have deviations of either 30 or 45 minutes. For instance, UTC-03:30
+is the standard time in Newfoundland, while Nepal's standard time is UTC+05:45. Indian Standard Time is UTC+05:30, and
+Myanmar Standard Time is UTC+06:30.
 
 ## Events
 

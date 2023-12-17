@@ -99,8 +99,13 @@ class ManagedScheduler implements Scheduler
 
 		$expression = $jobSchedule->getExpression();
 
+		$timeZone = $jobSchedule->getTimeZone();
+		$jobDueTime = $timeZone !== null
+			? $this->clock->now()->setTimezone($timeZone)
+			: $this->clock->now();
+
 		// Intentionally ignores repeat after seconds
-		if (!$force && !$expression->isDue($this->clock->now())) {
+		if (!$force && !$expression->isDue($jobDueTime)) {
 			return null;
 		}
 
@@ -143,7 +148,12 @@ class ManagedScheduler implements Scheduler
 		$runStart = $this->clock->now();
 		$ids = [];
 		foreach ($this->jobManager->getJobSchedules() as $id => $schedule) {
-			if ($schedule->getExpression()->isDue($runStart)) {
+			$timeZone = $schedule->getTimeZone();
+			$jobDueTime = $timeZone !== null
+				? $runStart->setTimezone($timeZone)
+				: $runStart;
+
+			if ($schedule->getExpression()->isDue($jobDueTime)) {
 				$ids[] = $id;
 			}
 		}

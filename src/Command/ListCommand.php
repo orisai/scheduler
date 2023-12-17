@@ -18,6 +18,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Terminal;
 use function abs;
 use function floor;
+use function in_array;
 use function max;
 use function mb_strlen;
 use function preg_match;
@@ -58,11 +59,13 @@ final class ListCommand extends Command
 		/** @infection-ignore-all */
 		parent::configure();
 		$this->addOption('next', null, InputOption::VALUE_OPTIONAL, 'Sort jobs by their next execution time', false);
+		$this->addOption('timezone', null, InputOption::VALUE_REQUIRED, 'The timezone times should be displayed in');
 	}
 
 	protected function execute(InputInterface $input, OutputInterface $output): int
 	{
 		$nextOption = $this->validateOptionNext($input);
+		$timeZone = $this->validateOptionTimeZone($input);
 
 		$jobSchedules = $this->scheduler->getJobSchedules();
 
@@ -75,18 +78,20 @@ final class ListCommand extends Command
 		$terminalWidth = $this->getTerminalWidth();
 		$expressionSpacing = $this->getCronExpressionSpacing($jobSchedules);
 		$repeatAfterSecondsSpacing = $this->getRepeatAfterSecondsSpacing($jobSchedules);
+		$timeZoneSpacing = $this->getTimeZoneSpacing($jobSchedules, $timeZone);
 
-		foreach ($this->sortJobs($jobSchedules, $nextOption) as $key => $jobSchedule) {
+		foreach ($this->sortJobs($jobSchedules, $nextOption, $timeZone) as $key => $jobSchedule) {
 			$expressionString = $this->formatCronExpression($jobSchedule->getExpression(), $expressionSpacing);
 			$repeatAfterSecondsString = $this->formatRepeatAfterSeconds(
 				$jobSchedule->getRepeatAfterSeconds(),
 				$repeatAfterSecondsSpacing,
 			);
+			$timeZoneString = $this->formatTimeZone($jobSchedule, $timeZone, $timeZoneSpacing);
 
 			$name = $jobSchedule->getJob()->getName();
 
 			$nextDueDateLabel = 'Next Due:';
-			$nextDueDate = $this->getNextDueDate($jobSchedule);
+			$nextDueDate = $this->getNextDueDate($jobSchedule, $timeZone);
 			$nextDueDate = $output->isVerbose()
 				? $nextDueDate->format('Y-m-d H:i:s P')
 				: $this->getRelativeTime($nextDueDate);
@@ -96,16 +101,17 @@ final class ListCommand extends Command
 				max(
 				/* @infection-ignore-all */
 					$terminalWidth - mb_strlen(
-						$expressionString . $repeatAfterSecondsString . $key . $name . $nextDueDateLabel . $nextDueDate,
+						$expressionString . $repeatAfterSecondsString . $timeZoneString . $key . $name . $nextDueDateLabel . $nextDueDate,
 					) - 9,
 					0,
 				),
 			);
 
 			$output->writeln(sprintf(
-				'  <fg=yellow>%s</><fg=#6C7280>%s</>  [%s] %s<fg=#6C7280>%s %s %s</>',
+				'  <fg=yellow>%s</><fg=#6C7280>%s</>%s  [%s] %s<fg=#6C7280>%s %s %s</>',
 				$expressionString,
 				$repeatAfterSecondsString,
+				$timeZoneString,
 				$key,
 				$name,
 				$dots,
@@ -146,19 +152,37 @@ final class ListCommand extends Command
 		return $nextInt;
 	}
 
+	private function validateOptionTimeZone(InputInterface $input): DateTimeZone
+	{
+		$option = $input->getOption('timezone');
+
+		if ($option === null) {
+			return $this->clock->now()->getTimezone();
+		}
+
+		if (!in_array($option, DateTimeZone::listIdentifiers(), true)) {
+			throw InvalidArgument::create()
+				->withMessage(
+					"Command '{$this->getName()}' option --timezone expects a timezone name, '$option' given.",
+				);
+		}
+
+		return new DateTimeZone($option);
+	}
+
 	/**
 	 * @param array<int|string, JobSchedule> $jobSchedules
 	 * @param bool|int<1, max>               $next
 	 * @return array<int|string, JobSchedule>
 	 */
-	private function sortJobs(array $jobSchedules, $next): array
+	private function sortJobs(array $jobSchedules, $next, DateTimeZone $timeZone): array
 	{
 		if ($next !== false) {
 			/** @infection-ignore-all */
-			uasort($jobSchedules, function (JobSchedule $a, JobSchedule $b): int {
-				$nextDueDateA = $this->getNextDueDate($a)
+			uasort($jobSchedules, function (JobSchedule $a, JobSchedule $b) use ($timeZone): int {
+				$nextDueDateA = $this->getNextDueDate($a, $timeZone)
 					->setTimezone(new DateTimeZone('UTC'));
-				$nextDueDateB = $this->getNextDueDate($b)
+				$nextDueDateB = $this->getNextDueDate($b, $timeZone)
 					->setTimezone(new DateTimeZone('UTC'));
 
 				if (
@@ -202,14 +226,14 @@ final class ListCommand extends Command
 		return $jobSchedules;
 	}
 
-	private function getNextDueDate(JobSchedule $jobSchedule): DateTimeImmutable
+	private function getNextDueDate(JobSchedule $jobSchedule, DateTimeZone $timeZone): DateTimeImmutable
 	{
 		$expression = $jobSchedule->getExpression();
 		$repeatAfterSeconds = $jobSchedule->getRepeatAfterSeconds();
 
-		$now = $this->clock->now();
+		$now = $this->clock->now()->setTimezone($timeZone);
 		$nextDueDate = DateTimeImmutable::createFromMutable(
-			$expression->getNextRunDate($now),
+			$expression->getNextRunDate($now)->setTimezone($timeZone),
 		);
 
 		if ($repeatAfterSeconds === 0) {
@@ -217,7 +241,7 @@ final class ListCommand extends Command
 		}
 
 		$previousDueDate = DateTimeImmutable::createFromMutable(
-			$expression->getPreviousRunDate($now, 0, true),
+			$expression->getPreviousRunDate($now, 0, true)->setTimezone($timeZone),
 		);
 
 		if (!$this->wasPreviousDueDateInCurrentMinute($now, $previousDueDate)) {
@@ -342,6 +366,63 @@ final class ListCommand extends Command
 		}
 
 		return str_pad(" / $repeatAfterSeconds", $spacing);
+	}
+
+	/**
+	 * @param array<int|string, JobSchedule> $jobSchedules
+	 *
+	 * @infection-ignore-all
+	 */
+	private function getTimeZoneSpacing(array $jobSchedules, DateTimeZone $renderedTimeZone): int
+	{
+		$max = 0;
+		$clockTimeZone = $this->clock->now()->getTimezone();
+
+		foreach ($jobSchedules as $jobSchedule) {
+			$timeZone = $jobSchedule->getTimeZone();
+			if ($timeZone === null && $renderedTimeZone->getName() !== $clockTimeZone->getName()) {
+				$timeZone = $clockTimeZone;
+			}
+
+			if ($timeZone === null) {
+				continue;
+			}
+
+			if ($timeZone->getName() === $renderedTimeZone->getName()) {
+				continue;
+			}
+
+			$length = strlen($timeZone->getName());
+			if ($length > $max) {
+				$max = $length;
+			}
+		}
+
+		if ($max !== 0) {
+			$max += 3;
+		}
+
+		return $max;
+	}
+
+	private function formatTimeZone(JobSchedule $schedule, DateTimeZone $renderedTimeZone, int $spacing): string
+	{
+		$timeZone = $schedule->getTimeZone();
+		$clockTimeZone = $this->clock->now()->getTimezone();
+
+		if ($timeZone === null && $renderedTimeZone->getName() !== $clockTimeZone->getName()) {
+			$timeZone = $clockTimeZone;
+		}
+
+		if ($timeZone === null) {
+			return str_pad('', $spacing);
+		}
+
+		if ($timeZone->getName() === $renderedTimeZone->getName()) {
+			return str_pad('', $spacing);
+		}
+
+		return str_pad(" ({$timeZone->getName()})", $spacing);
 	}
 
 	private function getTerminalWidth(): int

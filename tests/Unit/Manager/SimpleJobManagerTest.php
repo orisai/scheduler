@@ -3,6 +3,7 @@
 namespace Tests\Orisai\Scheduler\Unit\Manager;
 
 use Cron\CronExpression;
+use DateTimeZone;
 use Orisai\Scheduler\Job\CallbackJob;
 use Orisai\Scheduler\Job\JobSchedule;
 use Orisai\Scheduler\Manager\SimpleJobManager;
@@ -27,18 +28,22 @@ final class SimpleJobManagerTest extends TestCase
 
 		$job2 = clone $job1;
 		$expression2 = clone $expression1;
-		$manager->addJob($job2, $expression2, 'id', 1);
+		$manager->addJob($job2, $expression2, 'id', 1, new DateTimeZone('Europe/Prague'));
+
+		$schedule1 = JobSchedule::create($job1, $expression1, 0);
+		$schedule2 = JobSchedule::create($job2, $expression2, 1, new DateTimeZone('Europe/Prague'));
 
 		self::assertEquals(
 			[
-				0 => JobSchedule::create($job1, $expression1, 0),
-				'id' => JobSchedule::create($job2, $expression2, 1),
+				0 => $schedule1,
+				'id' => $schedule2,
 			],
 			$manager->getJobSchedules(),
 		);
-		self::assertEquals(JobSchedule::create($job1, $expression1, 0), $manager->getJobSchedule(0));
-		self::assertEquals(JobSchedule::create($job2, $expression2, 1), $manager->getJobSchedule('id'));
+		self::assertEquals($schedule1, $manager->getJobSchedule(0));
+		self::assertEquals($schedule2, $manager->getJobSchedule('id'));
 		self::assertNull($manager->getJobSchedule(42));
+		self::assertSame($manager->getJobSchedule(0), $manager->getJobSchedule(0));
 	}
 
 }

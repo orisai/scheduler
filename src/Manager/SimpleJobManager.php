@@ -3,6 +3,7 @@
 namespace Orisai\Scheduler\Manager;
 
 use Cron\CronExpression;
+use DateTimeZone;
 use Orisai\Scheduler\Job\Job;
 use Orisai\Scheduler\Job\JobSchedule;
 
@@ -15,9 +16,15 @@ final class SimpleJobManager implements JobManager
 	/**
 	 * @param int<0, 30> $repeatAfterSeconds
 	 */
-	public function addJob(Job $job, CronExpression $expression, ?string $id = null, int $repeatAfterSeconds = 0): void
+	public function addJob(
+		Job $job,
+		CronExpression $expression,
+		?string $id = null,
+		int $repeatAfterSeconds = 0,
+		?DateTimeZone $timeZone = null
+	): void
 	{
-		$jobSchedule = JobSchedule::create($job, $expression, $repeatAfterSeconds);
+		$jobSchedule = JobSchedule::create($job, $expression, $repeatAfterSeconds, $timeZone);
 
 		if ($id === null) {
 			$this->jobSchedules[] = $jobSchedule;

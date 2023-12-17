@@ -4,6 +4,7 @@ namespace Orisai\Scheduler;
 
 use Closure;
 use Cron\CronExpression;
+use DateTimeZone;
 use Orisai\Scheduler\Executor\JobExecutor;
 use Orisai\Scheduler\Job\Job;
 use Orisai\Scheduler\Manager\SimpleJobManager;
@@ -36,9 +37,15 @@ final class SimpleScheduler extends ManagedScheduler
 	/**
 	 * @param int<0, 30> $repeatAfterSeconds
 	 */
-	public function addJob(Job $job, CronExpression $expression, ?string $id = null, int $repeatAfterSeconds = 0): void
+	public function addJob(
+		Job $job,
+		CronExpression $expression,
+		?string $id = null,
+		int $repeatAfterSeconds = 0,
+		?DateTimeZone $timeZone = null
+	): void
 	{
-		$this->jobManager->addJob($job, $expression, $id, $repeatAfterSeconds);
+		$this->jobManager->addJob($job, $expression, $id, $repeatAfterSeconds, $timeZone);
 	}
 
 }
