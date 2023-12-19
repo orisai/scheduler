@@ -12,6 +12,7 @@ use Orisai\Exceptions\Logic\InvalidArgument;
 use Orisai\Scheduler\Exception\JobFailure;
 use Orisai\Scheduler\Exception\RunFailure;
 use Orisai\Scheduler\Job\CallbackJob;
+use Orisai\Scheduler\Job\Job;
 use Orisai\Scheduler\Job\JobSchedule;
 use Orisai\Scheduler\SimpleScheduler;
 use Orisai\Scheduler\Status\JobInfo;
@@ -59,6 +60,35 @@ final class SimpleSchedulerTest extends TestCase
 
 		$scheduler->runJob(0, false);
 		self::assertSame(4, $i);
+	}
+
+	public function testLazyJob(): void
+	{
+		$scheduler = new SimpleScheduler();
+
+		$executed = false;
+		$jobConstructor = static function () use (&$executed): Job {
+			$executed = true;
+
+			return new CallbackJob(static function (): void {
+			});
+		};
+		$expression = new CronExpression('* * * * *');
+
+		$scheduler->addLazyJob($jobConstructor, $expression);
+		$scheduler->addLazyJob($jobConstructor, $expression, null, 1, new DateTimeZone('Europe/Prague'));
+		self::assertFalse($executed);
+
+		self::assertEquals(
+			$scheduler->getJobSchedules(),
+			[
+				0 => JobSchedule::createLazy($jobConstructor, $expression, 0),
+				1 => JobSchedule::createLazy($jobConstructor, $expression, 1, new DateTimeZone('Europe/Prague')),
+			],
+		);
+
+		$scheduler->runJob(0);
+		self::assertTrue($executed);
 	}
 
 	public function testJobKey(): void

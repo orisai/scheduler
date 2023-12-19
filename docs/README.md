@@ -553,23 +553,35 @@ Jobs are executed only when it is their due time. To prevent initializing potent
 are not needed, you may lazy load the jobs. This is especially helpful
 if [separate processes](#parallelization-and-process-isolation) are used for jobs.
 
-To achieve it, use `ManagedScheduler` instead of `SimpleScheduler`. It is functionally identical, except:
+```php
+use Orisai\Scheduler\Job\Job;
+
+$jobConstructor = function(): Job {
+	// Initialize job
+};
+$scheduler->addLazyJob($jobConstructor, $expression, /* ... */);
+```
+
+For the same purpose you can also use `ManagedScheduler` instead of `SimpleScheduler`. It is functionally identical,
+except:
 
 - it requires a `JobManager` implementation as a first argument
 - `addJob()` method is in `JobManager` instead of scheduler
 
-Either use our `CallbackJobManager` implementation to construct job via a callback or use it as an inspiration to create
+Either use our `SimpleJobManager` implementation to construct job via a callback or use it as an inspiration to create
 your own DI-specific version.
 
 ```php
 use Orisai\Scheduler\Job\CallbackJob;
 use Orisai\Scheduler\Job\Job;
 use Orisai\Scheduler\ManagedScheduler;
-use Orisai\Scheduler\Manager\CallbackJobManager;
+use Orisai\Scheduler\Manager\SimpleJobManager;
 
-$manager = new CallbackJobManager();
-$manager->addJob(fn (): Job => new CallbackJob(/* ... */), $expression);
-$manager->addJob(fn (): Job => new CallbackJob(/* ... */), $expression, $id);
+$manager = new SimpleJobManager();
+$jobConstructor = function(): Job {
+	// Initialize job
+};
+$manager->addLazyJob($jobConstructor, $expression, /* ... */);
 
 $scheduler = new ManagedScheduler($manager);
 ```

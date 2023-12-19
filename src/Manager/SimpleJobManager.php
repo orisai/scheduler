@@ -2,6 +2,7 @@
 
 namespace Orisai\Scheduler\Manager;
 
+use Closure;
 use Cron\CronExpression;
 use DateTimeZone;
 use Orisai\Scheduler\Job\Job;
@@ -25,6 +26,27 @@ final class SimpleJobManager implements JobManager
 	): void
 	{
 		$jobSchedule = JobSchedule::create($job, $expression, $repeatAfterSeconds, $timeZone);
+
+		if ($id === null) {
+			$this->jobSchedules[] = $jobSchedule;
+		} else {
+			$this->jobSchedules[$id] = $jobSchedule;
+		}
+	}
+
+	/**
+	 * @param Closure(): Job $jobConstructor
+	 * @param int<0, 30>     $repeatAfterSeconds
+	 */
+	public function addLazyJob(
+		Closure $jobConstructor,
+		CronExpression $expression,
+		?string $id = null,
+		int $repeatAfterSeconds = 0,
+		?DateTimeZone $timeZone = null
+	): void
+	{
+		$jobSchedule = JobSchedule::createLazy($jobConstructor, $expression, $repeatAfterSeconds, $timeZone);
 
 		if ($id === null) {
 			$this->jobSchedules[] = $jobSchedule;

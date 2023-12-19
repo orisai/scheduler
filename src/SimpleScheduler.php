@@ -48,4 +48,19 @@ final class SimpleScheduler extends ManagedScheduler
 		$this->jobManager->addJob($job, $expression, $id, $repeatAfterSeconds, $timeZone);
 	}
 
+	/**
+	 * @param Closure(): Job $jobConstructor
+	 * @param int<0, 30> $repeatAfterSeconds
+	 */
+	public function addLazyJob(
+		Closure $jobConstructor,
+		CronExpression $expression,
+		?string $id = null,
+		int $repeatAfterSeconds = 0,
+		?DateTimeZone $timeZone = null
+	): void
+	{
+		$this->jobManager->addLazyJob($jobConstructor, $expression, $id, $repeatAfterSeconds, $timeZone);
+	}
+
 }

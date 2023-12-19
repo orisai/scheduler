@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - `SimpleScheduler`
 	- `addJob()` accepts parameter `repeatAfterSeconds`
 	- `addJob()` accepts parameter `timeZone`
+	- `addLazyJob()` replaces `CallbackJobManager`
 - `JobInfo`
 	- `getRepeatAfterSeconds()`- returns the seconds part of expression
 	- `getExtendedExpression()` - returns cron expression including seconds
@@ -23,9 +24,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - `SimpleJobManager`
 	- `addJob()` accepts parameter `repeatAfterSeconds`
 	- `addJob()` accepts parameter `timeZone`
-- `CallbackJobManager`
-	- `addJob()` accepts parameter `repeatAfterSeconds`
-	- `addJob()` accepts parameter `timeZone`
+	- `addLazyJob()` replaces `CallbackJobManager`
 - `ListCommand`
 	- prints `repeatAfterSeconds` parameter
 	- prints job's `timeZone` parameter
@@ -57,6 +56,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 - `JobManager`
 	- `getExpressions()` - replaced by `getJobSchedules()`
+- `CallbackJobManager` - use `SimpleJobManager->addLazyJob()` instead
 
 ### Fixed
 
