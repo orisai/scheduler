@@ -42,11 +42,14 @@ class ManagedScheduler implements Scheduler
 
 	private Clock $clock;
 
+	/** @var list<Closure(JobInfo, JobResult): void> */
+	private array $lockedJobCallbacks = [];
+
 	/** @var list<Closure(JobInfo): void> */
-	private array $beforeJob = [];
+	private array $beforeJobCallbacks = [];
 
 	/** @var list<Closure(JobInfo, JobResult): void> */
-	private array $afterJob = [];
+	private array $afterJobCallbacks = [];
 
 	/**
 	 * @param Closure(Throwable, JobInfo, JobResult): (void)|null $errorHandler
@@ -192,18 +195,21 @@ class ManagedScheduler implements Scheduler
 		$lock = $this->lockFactory->createLock("Orisai.Scheduler.Job/$id");
 
 		if (!$lock->acquire()) {
+			$result = new JobResult($expression, $info->getStart(), JobResultState::skip());
+
+			foreach ($this->lockedJobCallbacks as $cb) {
+				$cb($info, $result);
+			}
+
 			return [
-				new JobSummary(
-					$info,
-					new JobResult($expression, $info->getStart(), JobResultState::skip()),
-				),
+				new JobSummary($info, $result),
 				null,
 			];
 		}
 
 		$throwable = null;
 		try {
-			foreach ($this->beforeJob as $cb) {
+			foreach ($this->beforeJobCallbacks as $cb) {
 				$cb($info);
 			}
 
@@ -219,7 +225,7 @@ class ManagedScheduler implements Scheduler
 				$throwable === null ? JobResultState::done() : JobResultState::fail(),
 			);
 
-			foreach ($this->afterJob as $cb) {
+			foreach ($this->afterJobCallbacks as $cb) {
 				$cb($info, $result);
 			}
 
@@ -238,11 +244,19 @@ class ManagedScheduler implements Scheduler
 	}
 
 	/**
+	 * @param Closure(JobInfo, JobResult): void $callback
+	 */
+	public function addLockedJobCallback(Closure $callback): void
+	{
+		$this->lockedJobCallbacks[] = $callback;
+	}
+
+	/**
 	 * @param Closure(JobInfo): void $callback
 	 */
 	public function addBeforeJobCallback(Closure $callback): void
 	{
-		$this->beforeJob[] = $callback;
+		$this->beforeJobCallbacks[] = $callback;
 	}
 
 	/**
@@ -250,7 +264,7 @@ class ManagedScheduler implements Scheduler
 	 */
 	public function addAfterJobCallback(Closure $callback): void
 	{
-		$this->afterJob[] = $callback;
+		$this->afterJobCallbacks[] = $callback;
 	}
 
 }

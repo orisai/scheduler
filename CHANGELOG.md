@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 	- `addJob()` accepts parameter `repeatAfterSeconds`
 	- `addJob()` accepts parameter `timeZone`
 	- `addLazyJob()` replaces `CallbackJobManager`
+- `ManagedScheduler`
+	- `addLockedJobCallback()` - executes given callback when job is locked
 - `JobInfo`
 	- `getRepeatAfterSeconds()`- returns the seconds part of expression
 	- `getExtendedExpression()` - returns cron expression including seconds

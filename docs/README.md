@@ -11,6 +11,9 @@ Cron job scheduler - with locks, parallelism and more
 	- [Seconds](#seconds)
 	- [Timezones](#timezones)
 - [Events](#events)
+	- [Before job event](#before-job-event)
+	- [After job event](#after-job-event)
+	- [Locked job event](#locked-job-event)
 - [Handling errors](#handling-errors)
 - [Locks and job overlapping](#locks-and-job-overlapping)
 - [Parallelization and process isolation](#parallelization-and-process-isolation)
@@ -211,17 +214,31 @@ Myanmar Standard Time is UTC+06:30.
 
 ## Events
 
-Run callbacks before and after job to collect statistics, etc.
+Run callbacks to collect statistics, etc.
+
+Check [job info and result](#job-info-and-result) for available status info
+
+### Before job event
+
+Executes before job start
 
 ```php
 use Orisai\Scheduler\Status\JobInfo;
-use Orisai\Scheduler\Status\JobResult;
 
 $scheduler->addBeforeJobCallback(
 	function(JobInfo $info): void {
 		// Executes before job start
 	},
 );
+```
+
+### After job event
+
+Executes after job finish
+
+```php
+use Orisai\Scheduler\Status\JobInfo;
+use Orisai\Scheduler\Status\JobResult;
 
 $scheduler->addAfterJobCallback(
 	function(JobInfo $info, JobResult $result): void {
@@ -230,7 +247,20 @@ $scheduler->addAfterJobCallback(
 );
 ```
 
-Check [job info and result](#job-info-and-result) for available status info
+### Locked job event
+
+Executes when [lock](#locks-and-job-overlapping) for given job is acquired by another process
+
+```php
+use Orisai\Scheduler\Status\JobInfo;
+use Orisai\Scheduler\Status\JobResult;
+
+$scheduler->addLockedJobCallback(
+	function(JobInfo $info, JobResult $result): void {
+		// Executes when lock for given job is acquired by another process
+	},
+);
+```
 
 ## Handling errors
 

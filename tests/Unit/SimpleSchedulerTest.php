@@ -210,7 +210,7 @@ MSG,
 		self::assertCount(3, $errors);
 	}
 
-	public function testEvents(): void
+	public function testJobEvents(): void
 	{
 		$errorHandler = static function (): void {
 			// Noop
@@ -782,6 +782,53 @@ MSG,
 
 		$scheduler->run();
 		self::assertSame(3, $i);
+	}
+
+	public function testLockedJobEvent(): void
+	{
+		$lockFactory = new TestLockFactory(new InMemoryStore(), false);
+		$clock = new FrozenClock(1);
+		$scheduler = new SimpleScheduler(null, $lockFactory, null, $clock);
+
+		$now = $clock->now();
+		$cbs = new CallbackList();
+
+		$job = new CallbackJob(Closure::fromCallable([$cbs, 'job1']));
+		$scheduler->addJob($job, new CronExpression('* * * * *'));
+
+		$afterCollected = [];
+		$afterCb = static function (JobInfo $info, JobResult $result) use (&$afterCollected): void {
+			$afterCollected[] = [$info, $result];
+		};
+		$scheduler->addLockedJobCallback($afterCb);
+
+		$scheduler->run();
+		$scheduler->runJob(0);
+		self::assertCount(0, $afterCollected);
+
+		$lock = $lockFactory->createLock('Orisai.Scheduler.Job/0');
+		$lock->acquire();
+		$scheduler->run();
+		self::assertEquals(
+			[
+				[
+					new JobInfo(
+						0,
+						'Tests\Orisai\Scheduler\Doubles\CallbackList::job1()',
+						'* * * * *',
+						0,
+						0,
+						$now,
+					),
+					new JobResult(new CronExpression('* * * * *'), $now, JobResultState::skip()),
+				],
+			],
+			$afterCollected,
+		);
+		self::assertCount(1, $afterCollected);
+
+		$scheduler->runJob(0);
+		self::assertCount(2, $afterCollected);
 	}
 
 	public function testRepeat(): void
