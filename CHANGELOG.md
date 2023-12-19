@@ -28,7 +28,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - `ListCommand`
 	- prints `repeatAfterSeconds` parameter
 	- prints job's `timeZone` parameter
-	- adds `timezone` option to show execution times in specified timezone
+	- adds `--timezone` (`-tz`) option to show execution times in specified timezone
+	- adds `-n` shortcut for `--next` option
 
 ### Changed
 

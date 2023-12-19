@@ -58,8 +58,8 @@ final class ListCommand extends Command
 	{
 		/** @infection-ignore-all */
 		parent::configure();
-		$this->addOption('next', null, InputOption::VALUE_OPTIONAL, 'Sort jobs by their next execution time', false);
-		$this->addOption('timezone', null, InputOption::VALUE_REQUIRED, 'The timezone times should be displayed in');
+		$this->addOption('next', 'n', InputOption::VALUE_OPTIONAL, 'Sort jobs by their next execution time', false);
+		$this->addOption('timezone', 'tz', InputOption::VALUE_REQUIRED, 'The timezone times should be displayed in');
 	}
 
 	protected function execute(InputInterface $input, OutputInterface $output): int
