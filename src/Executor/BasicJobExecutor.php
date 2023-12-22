@@ -34,7 +34,11 @@ final class BasicJobExecutor implements JobExecutor
 		$this->runCb = $runCb;
 	}
 
-	public function runJobs(array $jobSchedulesBySecond, DateTimeImmutable $runStart): Generator
+	public function runJobs(
+		array $jobSchedulesBySecond,
+		DateTimeImmutable $runStart,
+		Closure $afterRunCallback
+	): Generator
 	{
 		$lastSecond = $jobSchedulesBySecond !== []
 			? max(array_keys($jobSchedulesBySecond))
@@ -59,6 +63,8 @@ final class BasicJobExecutor implements JobExecutor
 		}
 
 		$summary = new RunSummary($runStart, $this->clock->now(), $jobSummaries);
+
+		$afterRunCallback($summary);
 
 		if ($suppressedExceptions !== []) {
 			throw RunFailure::create($summary, $suppressedExceptions);

@@ -4,6 +4,7 @@ namespace Tests\Orisai\Scheduler\Unit;
 
 use Closure;
 use Cron\CronExpression;
+use Exception;
 use Orisai\Clock\FrozenClock;
 use Orisai\Scheduler\Executor\ProcessJobExecutor;
 use Orisai\Scheduler\Job\CallbackJob;
@@ -37,12 +38,29 @@ final class SchedulerProcessSetup
 		return self::create();
 	}
 
-	public static function createEmpty(): Scheduler
+	public static function createEmpty(): ManagedScheduler
 	{
 		$jobManager = new SimpleJobManager();
 		$clock = new FrozenClock(1);
 		$executor = new ProcessJobExecutor($clock);
 		$executor->setExecutable(__DIR__ . '/scheduler-process-binary-empty.php');
+
+		return new ManagedScheduler($jobManager, null, null, $executor, $clock);
+	}
+
+	public static function createWithThrowingJob(): ManagedScheduler
+	{
+		$jobManager = new SimpleJobManager();
+		$clock = new FrozenClock(1);
+		$executor = new ProcessJobExecutor($clock);
+		$executor->setExecutable(__DIR__ . '/scheduler-process-binary-with-throwing-job.php');
+
+		$jobManager->addJob(
+			new CallbackJob(static function (): void {
+				throw new Exception('');
+			}),
+			new CronExpression('* * * * *'),
+		);
 
 		return new ManagedScheduler($jobManager, null, null, $executor, $clock);
 	}

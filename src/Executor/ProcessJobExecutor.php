@@ -2,6 +2,7 @@
 
 namespace Orisai\Scheduler\Executor;
 
+use Closure;
 use Cron\CronExpression;
 use DateTimeImmutable;
 use Generator;
@@ -50,7 +51,11 @@ final class ProcessJobExecutor implements JobExecutor
 		$this->command = $command;
 	}
 
-	public function runJobs(array $jobSchedulesBySecond, DateTimeImmutable $runStart): Generator
+	public function runJobs(
+		array $jobSchedulesBySecond,
+		DateTimeImmutable $runStart,
+		Closure $afterRunCallback
+	): Generator
 	{
 		$jobExecutions = [];
 		$jobSummaries = [];
@@ -101,6 +106,8 @@ final class ProcessJobExecutor implements JobExecutor
 		}
 
 		$summary = new RunSummary($runStart, $this->clock->now(), $jobSummaries);
+
+		$afterRunCallback($summary);
 
 		if ($suppressedExceptions !== []) {
 			throw RunFailure::create($summary, $suppressedExceptions);

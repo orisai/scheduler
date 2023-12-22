@@ -2,6 +2,7 @@
 
 namespace Orisai\Scheduler\Executor;
 
+use Closure;
 use DateTimeImmutable;
 use Generator;
 use Orisai\Scheduler\Exception\RunFailure;
@@ -14,9 +15,14 @@ interface JobExecutor
 
 	/**
 	 * @param array<int, array<int|string, JobSchedule>> $jobSchedulesBySecond
+	 * @param Closure(RunSummary): void $afterRunCallback
 	 * @return Generator<int, JobSummary, void, RunSummary>
 	 * @throws RunFailure
 	 */
-	public function runJobs(array $jobSchedulesBySecond, DateTimeImmutable $runStart): Generator;
+	public function runJobs(
+		array $jobSchedulesBySecond,
+		DateTimeImmutable $runStart,
+		Closure $afterRunCallback
+	): Generator;
 
 }

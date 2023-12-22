@@ -51,6 +51,9 @@ class ManagedScheduler implements Scheduler
 	/** @var list<Closure(JobInfo, JobResult): void> */
 	private array $afterJobCallbacks = [];
 
+	/** @var list<Closure(RunSummary): void> */
+	private array $afterRunCallbacks = [];
+
 	/**
 	 * @param Closure(Throwable, JobInfo, JobResult): (void)|null $errorHandler
 	 */
@@ -161,7 +164,23 @@ class ManagedScheduler implements Scheduler
 			}
 		}
 
-		return $this->executor->runJobs($this->getJobSchedulesBySecond($ids), $runStart);
+		return $this->executor->runJobs(
+			$this->getJobSchedulesBySecond($ids),
+			$runStart,
+			$this->getAfterRunCallback(),
+		);
+	}
+
+	/**
+	 * @return Closure(RunSummary): void
+	 */
+	private function getAfterRunCallback(): Closure
+	{
+		return function (RunSummary $runSummary): void {
+			foreach ($this->afterRunCallbacks as $cb) {
+				$cb($runSummary);
+			}
+		};
 	}
 
 	public function run(): RunSummary
@@ -265,6 +284,14 @@ class ManagedScheduler implements Scheduler
 	public function addAfterJobCallback(Closure $callback): void
 	{
 		$this->afterJobCallbacks[] = $callback;
+	}
+
+	/**
+	 * @param Closure(RunSummary): void $callback
+	 */
+	public function addAfterRunCallback(Closure $callback): void
+	{
+		$this->afterRunCallbacks[] = $callback;
 	}
 
 }

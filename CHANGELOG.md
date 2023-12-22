@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 	- `addLazyJob()` replaces `CallbackJobManager`
 - `ManagedScheduler`
 	- `addLockedJobCallback()` - executes given callback when job is locked
+	- `addAfterRunCallback()` - executes given callback when run finishes
 - `JobInfo`
 	- `getRepeatAfterSeconds()`- returns the seconds part of expression
 	- `getExtendedExpression()` - returns cron expression including seconds

@@ -14,6 +14,7 @@ Cron job scheduler - with locks, parallelism and more
 	- [Before job event](#before-job-event)
 	- [After job event](#after-job-event)
 	- [Locked job event](#locked-job-event)
+	- [After run event](#after-run-event)
 - [Handling errors](#handling-errors)
 - [Locks and job overlapping](#locks-and-job-overlapping)
 - [Parallelization and process isolation](#parallelization-and-process-isolation)
@@ -258,6 +259,20 @@ use Orisai\Scheduler\Status\JobResult;
 $scheduler->addLockedJobCallback(
 	function(JobInfo $info, JobResult $result): void {
 		// Executes when lock for given job is acquired by another process
+	},
+);
+```
+
+### After run event
+
+Executes after every run (every minute), even if no jobs were executed
+
+```php
+use Orisai\Scheduler\Status\RunSummary;
+
+$scheduler->addAfterRunCallback(
+	function(RunSummary $summary): void {
+		// Executes after every run (every minute), even if no jobs were executed
 	},
 );
 ```

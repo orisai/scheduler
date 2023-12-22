@@ -6,6 +6,7 @@ use Closure;
 use Cron\CronExpression;
 use DateTimeImmutable;
 use DateTimeZone;
+use Exception;
 use Generator;
 use Orisai\Clock\FrozenClock;
 use Orisai\Exceptions\Logic\InvalidArgument;
@@ -426,6 +427,48 @@ MSG,
 		// On second run job is not executed because expression no longer matches
 		$scheduler->run();
 		self::assertSame(1, $i);
+	}
+
+	public function testAfterRunEvent(): void
+	{
+		$scheduler = new SimpleScheduler();
+
+		$summary = null;
+		$scheduler->addAfterRunCallback(static function (RunSummary $givenSummary) use (&$summary): void {
+			$summary = $givenSummary;
+		});
+		self::assertNull($summary);
+
+		$scheduler->run();
+		self::assertNotNull($summary);
+	}
+
+	public function testAfterRunEventAfterException(): void
+	{
+		$scheduler = new SimpleScheduler();
+
+		$scheduler->addJob(
+			new CallbackJob(static function (): void {
+				throw new Exception('');
+			}),
+			new CronExpression('* * * * *'),
+		);
+
+		$summary = null;
+		$scheduler->addAfterRunCallback(static function (RunSummary $givenSummary) use (&$summary): void {
+			$summary = $givenSummary;
+		});
+		self::assertNull($summary);
+
+		$exception = null;
+		try {
+			$scheduler->run();
+		} catch (Throwable $exception) {
+			// Handled bellow
+		}
+
+		self::assertNotNull($summary);
+		self::assertNotNull($exception);
 	}
 
 	public function testRunSummary(): void
@@ -937,6 +980,41 @@ MSG,
 			$e->getMessage(),
 		);
 		self::assertStringContainsString('Could not open input file: bin/console', $e->getMessage());
+	}
+
+	public function testProcessAfterRunEvent(): void
+	{
+		$scheduler = SchedulerProcessSetup::createEmpty();
+
+		$summary = null;
+		$scheduler->addAfterRunCallback(static function (RunSummary $givenSummary) use (&$summary): void {
+			$summary = $givenSummary;
+		});
+		self::assertNull($summary);
+
+		$scheduler->run();
+		self::assertNotNull($summary);
+	}
+
+	public function testProcessAfterRunEventAfterException(): void
+	{
+		$scheduler = SchedulerProcessSetup::createWithThrowingJob();
+
+		$summary = null;
+		$scheduler->addAfterRunCallback(static function (RunSummary $givenSummary) use (&$summary): void {
+			$summary = $givenSummary;
+		});
+		self::assertNull($summary);
+
+		$exception = null;
+		try {
+			$scheduler->run();
+		} catch (Throwable $exception) {
+			// Handled bellow
+		}
+
+		self::assertNotNull($summary);
+		self::assertNotNull($exception);
 	}
 
 }

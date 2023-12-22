@@ -91,6 +91,11 @@ parameters:
 			path: ../tests/Unit/SimpleSchedulerTest.php
 
 		-
+			message: "#^Call to static method PHPUnit\\\\Framework\\\\Assert\\:\\:assertNotNull\\(\\) with null will always evaluate to false\\.$#"
+			count: 4
+			path: ../tests/Unit/SimpleSchedulerTest.php
+
+		-
 			message: "#^Call to static method PHPUnit\\\\Framework\\\\Assert\\:\\:assertSame\\(\\) with 0 and 0 will always evaluate to true\\.$#"
 			count: 2
 			path: ../tests/Unit/SimpleSchedulerTest.php
