@@ -31,6 +31,16 @@ parameters:
 			path: ../src/Command/WorkerCommand.php
 
 		-
+			message: "#^Call to function assert\\(\\) with true will always evaluate to true\\.$#"
+			count: 1
+			path: ../src/Executor/ProcessJobExecutor.php
+
+		-
+			message: "#^Instanceof between Symfony\\\\Component\\\\Process\\\\Process and Symfony\\\\Component\\\\Process\\\\Process will always evaluate to true\\.$#"
+			count: 1
+			path: ../src/Executor/ProcessJobExecutor.php
+
+		-
 			message: "#^Parameter \\#2 \\$end of class Orisai\\\\Scheduler\\\\Status\\\\JobResult constructor expects DateTimeImmutable, DateTimeImmutable\\|false given\\.$#"
 			count: 1
 			path: ../src/Executor/ProcessJobExecutor.php

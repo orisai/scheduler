@@ -11,6 +11,7 @@ use Generator;
 use Orisai\Clock\FrozenClock;
 use Orisai\Exceptions\Logic\InvalidArgument;
 use Orisai\Scheduler\Exception\JobFailure;
+use Orisai\Scheduler\Exception\JobProcessFailure;
 use Orisai\Scheduler\Exception\RunFailure;
 use Orisai\Scheduler\Job\CallbackJob;
 use Orisai\Scheduler\Job\Job;
@@ -29,6 +30,7 @@ use Tests\Orisai\Scheduler\Doubles\CustomNameJob;
 use Tests\Orisai\Scheduler\Doubles\JobInnerFailure;
 use Tests\Orisai\Scheduler\Doubles\TestLockFactory;
 use Throwable;
+use function rtrim;
 
 final class SimpleSchedulerTest extends TestCase
 {
@@ -980,6 +982,20 @@ MSG,
 			$e->getMessage(),
 		);
 		self::assertStringContainsString('Could not open input file: bin/console', $e->getMessage());
+
+		self::assertNotSame([], $e->getSuppressed());
+		foreach ($e->getSuppressed() as $suppressed) {
+			self::assertInstanceOf(JobProcessFailure::class, $suppressed);
+			self::assertStringMatchesFormat(
+				<<<'MSG'
+Context: Running job via command '/usr/bin/php%f' 'bin/console'
+         'scheduler:run-job' '%a' '--json' '--parameters' '{"second":%d}'
+Problem: Job subprocess failed.
+stdout + stderr (standard + error output): Could not open input file: bin/console
+MSG,
+				rtrim($suppressed->getMessage()),
+			);
+		}
 	}
 
 	public function testProcessAfterRunEvent(): void

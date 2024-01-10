@@ -10,6 +10,7 @@ use JsonException;
 use Orisai\Clock\Adapter\ClockAdapterFactory;
 use Orisai\Clock\Clock;
 use Orisai\Clock\SystemClock;
+use Orisai\Exceptions\Message;
 use Orisai\Scheduler\Exception\JobProcessFailure;
 use Orisai\Scheduler\Exception\RunFailure;
 use Orisai\Scheduler\Job\JobSchedule;
@@ -84,6 +85,7 @@ final class ProcessJobExecutor implements JobExecutor
 
 			// Check running jobs
 			foreach ($jobExecutions as $i => [$execution, $cronExpression]) {
+				assert($execution instanceof Process);
 				if (!$execution->isRunning()) {
 					unset($jobExecutions[$i]);
 
@@ -95,8 +97,13 @@ final class ProcessJobExecutor implements JobExecutor
 
 						yield $jobSummaries[] = $this->createSummary($decoded, $cronExpression);
 					} catch (JsonException $e) {
+						$message = Message::create()
+							->withContext("Running job via command {$execution->getCommandLine()}")
+							->withProblem('Job subprocess failed.')
+							->with('stdout + stderr (standard + error output)', $output);
+
 						$suppressedExceptions[] = JobProcessFailure::create()
-							->withMessage("Job subprocess failed with following output:\n$output");
+							->withMessage($message);
 					}
 				}
 			}
