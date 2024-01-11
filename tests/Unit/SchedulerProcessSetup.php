@@ -15,6 +15,8 @@ use Orisai\Scheduler\Status\JobInfo;
 use Orisai\Scheduler\Status\JobResult;
 use Tests\Orisai\Scheduler\Doubles\CallbackList;
 use Throwable;
+use function fwrite;
+use const STDERR;
 
 final class SchedulerProcessSetup
 {
@@ -58,6 +60,40 @@ final class SchedulerProcessSetup
 		$jobManager->addJob(
 			new CallbackJob(static function (): void {
 				throw new Exception('');
+			}),
+			new CronExpression('* * * * *'),
+		);
+
+		return new ManagedScheduler($jobManager, null, null, $executor, $clock);
+	}
+
+	public static function createWithStderr(): ManagedScheduler
+	{
+		$jobManager = new SimpleJobManager();
+		$clock = new FrozenClock(1);
+		$executor = new ProcessJobExecutor($clock);
+		$executor->setExecutable(__DIR__ . '/scheduler-process-binary-sdterr.php');
+
+		$jobManager->addJob(
+			new CallbackJob(static function (): void {
+				// Just forces executable to run
+			}),
+			new CronExpression('* * * * *'),
+		);
+
+		return new ManagedScheduler($jobManager, null, null, $executor, $clock);
+	}
+
+	public static function createWithStderrJob(): ManagedScheduler
+	{
+		$jobManager = new SimpleJobManager();
+		$clock = new FrozenClock(1);
+		$executor = new ProcessJobExecutor($clock);
+		$executor->setExecutable(__DIR__ . '/scheduler-process-binary-with-stderr-job.php');
+
+		$jobManager->addJob(
+			new CallbackJob(static function (): void {
+				fwrite(STDERR, ' job error ');
 			}),
 			new CronExpression('* * * * *'),
 		);

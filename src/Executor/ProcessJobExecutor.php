@@ -26,6 +26,7 @@ use function assert;
 use function is_array;
 use function json_decode;
 use function json_encode;
+use function trim;
 use const JSON_THROW_ON_ERROR;
 use const PHP_BINARY;
 
@@ -86,26 +87,36 @@ final class ProcessJobExecutor implements JobExecutor
 			// Check running jobs
 			foreach ($jobExecutions as $i => [$execution, $cronExpression]) {
 				assert($execution instanceof Process);
-				if (!$execution->isRunning()) {
-					unset($jobExecutions[$i]);
-
-					$output = $execution->getOutput() . $execution->getErrorOutput();
-
-					try {
-						$decoded = json_decode($output, true, 512, JSON_THROW_ON_ERROR);
-						assert(is_array($decoded));
-
-						yield $jobSummaries[] = $this->createSummary($decoded, $cronExpression);
-					} catch (JsonException $e) {
-						$message = Message::create()
-							->withContext("Running job via command {$execution->getCommandLine()}")
-							->withProblem('Job subprocess failed.')
-							->with('stdout + stderr (standard + error output)', $output);
-
-						$suppressedExceptions[] = JobProcessFailure::create()
-							->withMessage($message);
-					}
+				if ($execution->isRunning()) {
+					continue;
 				}
+
+				unset($jobExecutions[$i]);
+
+				$output = $execution->getOutput();
+				$errorOutput = trim($execution->getErrorOutput());
+
+				try {
+					$decoded = json_decode($output, true, 512, JSON_THROW_ON_ERROR);
+					assert(is_array($decoded));
+				} catch (JsonException $e) {
+					$suppressedExceptions[] = $this->createSubprocessFail(
+						$execution,
+						$output,
+						$errorOutput,
+					);
+
+					continue;
+				}
+
+				if ($errorOutput !== '') {
+					$suppressedExceptions[] = $this->createStderrFail(
+						$execution,
+						$errorOutput,
+					);
+				}
+
+				yield $jobSummaries[] = $this->createSummary($decoded, $cronExpression);
 			}
 
 			// Nothing to do, wait
@@ -168,6 +179,29 @@ final class ProcessJobExecutor implements JobExecutor
 				JobResultState::from($raw['result']['state']),
 			),
 		);
+	}
+
+	private function createSubprocessFail(Process $execution, string $output, string $errorOutput): JobProcessFailure
+	{
+		$message = Message::create()
+			->withContext("Running job via command {$execution->getCommandLine()}")
+			->withProblem('Job subprocess failed.')
+			->with('stdout', trim($output))
+			->with('stderr', $errorOutput);
+
+		return JobProcessFailure::create()
+			->withMessage($message);
+	}
+
+	private function createStderrFail(Process $execution, string $errorOutput): JobProcessFailure
+	{
+		$message = Message::create()
+			->withContext("Running job via command {$execution->getCommandLine()}")
+			->withProblem('Job subprocess produced stderr output.')
+			->with('stderr', $errorOutput);
+
+		return JobProcessFailure::create()
+			->withMessage($message);
 	}
 
 }

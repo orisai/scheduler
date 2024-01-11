@@ -988,10 +988,79 @@ MSG,
 			self::assertInstanceOf(JobProcessFailure::class, $suppressed);
 			self::assertStringMatchesFormat(
 				<<<'MSG'
-Context: Running job via command '/usr/bin/php%f' 'bin/console'
-         'scheduler:run-job' '%a' '--json' '--parameters' '{"second":%d}'
+Context: Running job via command %a
 Problem: Job subprocess failed.
-stdout + stderr (standard + error output): Could not open input file: bin/console
+stdout: Could not open input file: bin/console
+stderr:
+MSG,
+				rtrim($suppressed->getMessage()),
+			);
+		}
+	}
+
+	public function testProcessStderr(): void
+	{
+		$scheduler = SchedulerProcessSetup::createWithStderr();
+
+		$e = null;
+		try {
+			$scheduler->run();
+		} catch (RunFailure $e) {
+			// Handled bellow
+		}
+
+		self::assertNotNull($e);
+		self::assertStringStartsWith(
+			<<<'MSG'
+Run failed
+Suppressed errors:
+MSG,
+			$e->getMessage(),
+		);
+
+		self::assertNotSame([], $e->getSuppressed());
+		foreach ($e->getSuppressed() as $suppressed) {
+			self::assertInstanceOf(JobProcessFailure::class, $suppressed);
+			self::assertStringMatchesFormat(
+				<<<'MSG'
+Context: Running job via command %a
+Problem: Job subprocess failed.
+stdout:%c
+stderr: error
+MSG,
+				rtrim($suppressed->getMessage()),
+			);
+		}
+	}
+
+	public function testProcessJobStderr(): void
+	{
+		$scheduler = SchedulerProcessSetup::createWithStderrJob();
+
+		$e = null;
+		try {
+			$scheduler->run();
+		} catch (RunFailure $e) {
+			// Handled bellow
+		}
+
+		self::assertNotNull($e);
+		self::assertStringStartsWith(
+			<<<'MSG'
+Run failed
+Suppressed errors:
+MSG,
+			$e->getMessage(),
+		);
+
+		self::assertNotSame([], $e->getSuppressed());
+		foreach ($e->getSuppressed() as $suppressed) {
+			self::assertInstanceOf(JobProcessFailure::class, $suppressed);
+			self::assertStringMatchesFormat(
+				<<<'MSG'
+Context: Running job via command %a
+Problem: Job subprocess produced stderr output.
+stderr: job error
 MSG,
 				rtrim($suppressed->getMessage()),
 			);

@@ -52,6 +52,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - `ProcessJobExecutor`
 	- uses microseconds instead of milliseconds for start and end times
 	- better exception message in case subprocess call failed
+	- handles stdout and stderr separately
+		- stderr output does not make the job processing fail
+		- if stderr output is produced, an exception is still thrown (explaining unexpected stderr instead of a job failure)
 - `ManagedScheduler`
 	- acquired job locks are scoped just to their id - changing run frequency or job name will not make process loose
 	  the lock
