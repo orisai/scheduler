@@ -22,11 +22,14 @@ use Orisai\Scheduler\Status\RunParameters;
 use Orisai\Scheduler\Status\RunSummary;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Process\Process;
+use Throwable;
 use function assert;
 use function is_array;
 use function json_decode;
 use function json_encode;
+use function trigger_error;
 use function trim;
+use const E_USER_NOTICE;
 use const JSON_THROW_ON_ERROR;
 use const PHP_BINARY;
 
@@ -107,6 +110,17 @@ final class ProcessJobExecutor implements JobExecutor
 					);
 
 					continue;
+				}
+
+				$stdout = $decoded['stdout'];
+				if ($stdout !== '') {
+					try {
+						$this->triggerUnexpectedStdout($execution, $stdout);
+					} catch (Throwable $e) {
+						$suppressedExceptions[] = $e;
+
+						continue;
+					}
 				}
 
 				if ($errorOutput !== '') {
@@ -202,6 +216,16 @@ final class ProcessJobExecutor implements JobExecutor
 
 		return JobProcessFailure::create()
 			->withMessage($message);
+	}
+
+	private function triggerUnexpectedStdout(Process $execution, string $stdout): void
+	{
+		$message = Message::create()
+			->withContext("Running job via command {$execution->getCommandLine()}")
+			->withProblem('Job subprocess produced unsupported stdout output.')
+			->with('stdout', $stdout);
+
+		trigger_error($message->toString(), E_USER_NOTICE);
 	}
 
 }

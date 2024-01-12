@@ -101,6 +101,24 @@ final class SchedulerProcessSetup
 		return new ManagedScheduler($jobManager, null, null, $executor, $clock);
 	}
 
+	public static function createWithStdoutJob(): ManagedScheduler
+	{
+		$jobManager = new SimpleJobManager();
+		$clock = new FrozenClock(1);
+		$executor = new ProcessJobExecutor($clock);
+		$executor->setExecutable(__DIR__ . '/scheduler-process-binary-with-stdout-job.php');
+
+		$jobManager->addJob(
+			new CallbackJob(static function (): void {
+				// STDOUT ignores output buffers and is pointless to test
+				echo ' echo ';
+			}),
+			new CronExpression('* * * * *'),
+		);
+
+		return new ManagedScheduler($jobManager, null, null, $executor, $clock);
+	}
+
 	/**
 	 * @param Closure(Throwable, JobInfo, JobResult): (void)|null $errorHandler
 	 */

@@ -4,6 +4,7 @@
 		 beStrictAboutOutputDuringTests="true"
 		 cacheResultFile="../var/tools/PHPUnit/results.dat"
 		 colors="true"
+		 convertNoticesToExceptions="false"
 		 failOnRisky="true"
 		 failOnWarning="true"
 		 stderr="true"

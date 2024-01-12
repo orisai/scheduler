@@ -33,6 +33,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 	- prints job's `timeZone` parameter
 	- adds `--timezone` (`-tz`) option to show execution times in specified timezone
 	- adds `-n` shortcut for `--next` option
+- `RunJobCommand`
+	- stdout is caught in a buffer and printed to output in a standardized manner (to above job result by default and
+	  into key `stdout` in case `--json` option is used)
 
 ### Changed
 
@@ -54,7 +57,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 	- better exception message in case subprocess call failed
 	- handles stdout and stderr separately
 		- stderr output does not make the job processing fail
-		- if stderr output is produced, an exception is still thrown (explaining unexpected stderr instead of a job failure)
+		- if stderr output is produced, an exception is still thrown (explaining unexpected stderr instead of a job
+		  failure)
+		- stdout output is captured and converted to notice (with strict error handler it will still cause an exception,
+		  but will not block execution of other jobs)
 - `ManagedScheduler`
 	- acquired job locks are scoped just to their id - changing run frequency or job name will not make process loose
 	  the lock

@@ -67,7 +67,7 @@ parameters:
 
 		-
 			message: "#^Parameter \\#2 \\$str of function explode expects string, string\\|null given\\.$#"
-			count: 2
+			count: 4
 			path: ../tests/Unit/Command/RunJobCommandTest.php
 
 		-

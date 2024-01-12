@@ -304,7 +304,79 @@ MSG,
     "result": {
         "end": "61.000000",
         "state": "done"
-    }
+    },
+    "stdout": ""
+}
+
+MSG,
+			implode(
+				PHP_EOL,
+				array_map(
+					static fn (string $s): string => rtrim($s),
+					explode(PHP_EOL, preg_replace('~\R~u', PHP_EOL, $tester->getDisplay())),
+				),
+			),
+		);
+		self::assertSame($command::SUCCESS, $code);
+	}
+
+	public function testEchoingJob(): void
+	{
+		$clock = new FrozenClock(1, new DateTimeZone('Europe/Prague'));
+		$scheduler = new SimpleScheduler(null, null, null, $clock);
+
+		$cbs = new CallbackList();
+		$scheduler->addJob(
+			new CallbackJob(Closure::fromCallable([$cbs, 'echoingJob'])),
+			new CronExpression('* * * * *'),
+		);
+
+		$command = new RunJobCommand($scheduler);
+		$tester = new CommandTester($command);
+
+		putenv('COLUMNS=80');
+
+		$code = $tester->execute([
+			'id' => 0,
+		]);
+
+		self::assertSame(
+			<<<'MSG'
+output
+1970-01-01 01:00:01 Running [0] Tests\Orisai\Scheduler\Doubles\CallbackList::echoingJob() 0ms DONE
+
+MSG,
+			implode(
+				PHP_EOL,
+				array_map(
+					static fn (string $s): string => rtrim($s),
+					explode(PHP_EOL, preg_replace('~\R~u', PHP_EOL, $tester->getDisplay())),
+				),
+			),
+		);
+		self::assertSame($command::SUCCESS, $code);
+
+		$code = $tester->execute([
+			'id' => 0,
+			'--json' => true,
+		]);
+
+		self::assertSame(
+			<<<'MSG'
+{
+    "info": {
+        "id": 0,
+        "name": "Tests\\Orisai\\Scheduler\\Doubles\\CallbackList::echoingJob()",
+        "expression": "* * * * *",
+        "repeatAfterSeconds": 0,
+        "runSecond": 0,
+        "start": "1.000000"
+    },
+    "result": {
+        "end": "1.000000",
+        "state": "done"
+    },
+    "stdout": "output"
 }
 
 MSG,

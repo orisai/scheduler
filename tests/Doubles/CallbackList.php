@@ -44,6 +44,11 @@ final class CallbackList
 		throw new Error('test');
 	}
 
+	public function echoingJob(): void
+	{
+		echo 'output';
+	}
+
 	public function __invoke(): void
 	{
 		// Noop

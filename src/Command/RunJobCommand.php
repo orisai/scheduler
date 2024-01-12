@@ -10,8 +10,12 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+use Throwable;
 use function json_decode;
 use function json_encode;
+use function ob_end_clean;
+use function ob_get_clean;
+use function ob_start;
 use const JSON_PRETTY_PRINT;
 use const JSON_THROW_ON_ERROR;
 
@@ -53,13 +57,23 @@ final class RunJobCommand extends BaseRunCommand
 	{
 		$json = $input->getOption('json');
 		$params = $input->getOption('parameters');
-		$summary = $this->scheduler->runJob(
-			$input->getArgument('id'),
-			!$input->getOption('no-force'),
-			$params === null
-				? null
-				: RunParameters::fromArray(json_decode($params, true, 512, JSON_THROW_ON_ERROR)),
-		);
+
+		ob_start(static fn () => null);
+		try {
+			$summary = $this->scheduler->runJob(
+				$input->getArgument('id'),
+				!$input->getOption('no-force'),
+				$params === null
+					? null
+					: RunParameters::fromArray(json_decode($params, true, 512, JSON_THROW_ON_ERROR)),
+			);
+
+			$stdout = ($tmp = ob_get_clean()) === false ? '' : $tmp;
+		} catch (Throwable $e) {
+			ob_end_clean();
+
+			throw $e;
+		}
 
 		if ($summary === null) {
 			if ($json) {
@@ -72,8 +86,12 @@ final class RunJobCommand extends BaseRunCommand
 		}
 
 		if ($json) {
-			$this->renderJobAsJson($summary, $output);
+			$this->renderJobAsJson($summary, $stdout, $output);
 		} else {
+			if ($stdout !== '') {
+				$output->writeln($stdout);
+			}
+
 			$this->renderJob($summary, $this->getTerminalWidth(), $output);
 		}
 
@@ -82,10 +100,12 @@ final class RunJobCommand extends BaseRunCommand
 			: self::SUCCESS;
 	}
 
-	private function renderJobAsJson(JobSummary $summary, OutputInterface $output): void
+	private function renderJobAsJson(JobSummary $summary, string $stdout, OutputInterface $output): void
 	{
+		$jobData = $summary->toArray() + ['stdout' => $stdout];
+
 		$output->writeln(
-			json_encode($summary->toArray(), JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT),
+			json_encode($jobData, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT),
 		);
 	}
 
