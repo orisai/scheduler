@@ -4,6 +4,8 @@ namespace Orisai\Scheduler\Command;
 
 use Closure;
 use DateTimeImmutable;
+use Orisai\Clock\Adapter\ClockAdapterFactory;
+use Orisai\Clock\Clock;
 use Orisai\Clock\SystemClock;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Console\Command\Command;
@@ -11,10 +13,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Process\Process;
-use function array_map;
 use function assert;
-use function escapeshellarg;
-use function implode;
 use function ltrim;
 use function usleep;
 use const PHP_BINARY;
@@ -25,7 +24,7 @@ use const PHP_BINARY;
 final class WorkerCommand extends Command
 {
 
-	private ClockInterface $clock;
+	private Clock $clock;
 
 	private ?int $testRuns = null;
 
@@ -39,7 +38,7 @@ final class WorkerCommand extends Command
 	public function __construct(?ClockInterface $clock = null)
 	{
 		parent::__construct();
-		$this->clock = $clock ?? new SystemClock();
+		$this->clock = ClockAdapterFactory::create($clock ?? new SystemClock());
 	}
 
 	public function setExecutable(string $script, string $command = 'scheduler:run'): void
@@ -79,12 +78,6 @@ final class WorkerCommand extends Command
 	{
 		$output->writeln('<info>Running scheduled tasks every minute.</info>');
 
-		$command = implode(' ', array_map(static fn (string $arg) => escapeshellarg($arg), [
-			PHP_BINARY,
-			$input->getOption('script') ?? $this->script,
-			$input->getOption('command') ?? $this->command,
-		]));
-
 		$lastExecutionStartedAt = $this->nullSeconds($this->clock->now()->modify('-1 minute'));
 		$executions = [];
 		while (true) {
@@ -97,7 +90,11 @@ final class WorkerCommand extends Command
 				&& $this->nullSeconds($currentTime) != $lastExecutionStartedAt
 				&& $this->testRuns !== 0
 			) {
-				$executions[] = $execution = Process::fromShellCommandline($command);
+				$executions[] = $execution = new Process([
+					PHP_BINARY,
+					$input->getOption('script') ?? $this->script,
+					$input->getOption('command') ?? $this->command,
+				]);
 
 				// @codeCoverageIgnoreStart
 				if (Process::isTtySupported()) {
