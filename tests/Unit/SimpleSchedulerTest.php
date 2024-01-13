@@ -5,6 +5,7 @@ namespace Tests\Orisai\Scheduler\Unit;
 use Closure;
 use Cron\CronExpression;
 use DateTimeImmutable;
+use DateTimeInterface;
 use DateTimeZone;
 use ErrorException;
 use Exception;
@@ -577,7 +578,7 @@ MSG,
 		yield [new RunParameters(30), 30];
 	}
 
-	public function testTimeZone(): void
+	public function testTimeZoneExecution(): void
 	{
 		$defaultTz = new DateTimeZone('UTC');
 		$otherTz = new DateTimeZone('Europe/Prague');
@@ -622,6 +623,32 @@ MSG,
 		$scheduler->runJob('default', false);
 		self::assertSame(2, $i1);
 		self::assertSame(2, $i2);
+	}
+
+	public function testTimeZoneInfo(): void
+	{
+		$defaultTz = new DateTimeZone('UTC');
+		$otherTz = new DateTimeZone('Europe/Prague');
+		$clock = new FrozenClock(0, $defaultTz);
+
+		$scheduler = new SimpleScheduler(null, null, null, $clock);
+		$expression = new CronExpression('* * * * *');
+
+		$job = new CallbackJob(static function (): void {
+			// Noop
+		});
+		$scheduler->addJob($job, $expression, null, 0, $otherTz);
+
+		$summaries = $scheduler->run()->getJobSummaries();
+		$summary = $summaries[0];
+
+		$start = $summary->getInfo()->getStart();
+		self::assertEquals($otherTz, $start->getTimezone());
+		self::assertSame('1970-01-01T01:00:00+01:00', $start->format(DateTimeInterface::ATOM));
+
+		$end = $summary->getResult()->getEnd();
+		self::assertEquals($otherTz, $end->getTimezone());
+		self::assertSame('1970-01-01T01:00:00+01:00', $end->format(DateTimeInterface::ATOM));
 	}
 
 	public function testLockAlreadyAcquired(): void

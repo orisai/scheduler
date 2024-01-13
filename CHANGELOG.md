@@ -49,6 +49,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 		- returns array of `JobSchedule` instead of an array of arrays
 - `RunSummary`
 	- `getJobs()` -> `getJobSummaries()`
+- `JobInfo`
+	- `getStart()->getTimeZone()` - returns timezone specified by the job
+- `JobResult`
+	- `getEnd()->getTimeZone()` - returns timezone specified by the job
 - `JobExecutor`
 	- `runJobs()` accepts list of `JobSchedule` grouped by seconds instead of list of ids
 	- `runJobs()` returns `Generator<int, JobSummary, void, RunSummary>` instead of `RunSummary`

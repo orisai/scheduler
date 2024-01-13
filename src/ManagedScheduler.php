@@ -3,6 +3,7 @@
 namespace Orisai\Scheduler;
 
 use Closure;
+use DateTimeImmutable;
 use Generator;
 use Orisai\Clock\Adapter\ClockAdapterFactory;
 use Orisai\Clock\Clock;
@@ -208,7 +209,7 @@ class ManagedScheduler implements Scheduler
 			$expression->getExpression(),
 			$jobSchedule->getRepeatAfterSeconds(),
 			$runSecond,
-			$this->clock->now(),
+			$this->getCurrentTime($jobSchedule),
 		);
 
 		$lock = $this->lockFactory->createLock("Orisai.Scheduler.Job/$id");
@@ -240,7 +241,7 @@ class ManagedScheduler implements Scheduler
 
 			$result = new JobResult(
 				$expression,
-				$this->clock->now(),
+				$this->getCurrentTime($jobSchedule),
 				$throwable === null ? JobResultState::done() : JobResultState::fail(),
 			);
 
@@ -260,6 +261,16 @@ class ManagedScheduler implements Scheduler
 			new JobSummary($info, $result),
 			$throwable,
 		];
+	}
+
+	private function getCurrentTime(JobSchedule $schedule): DateTimeImmutable
+	{
+		$now = $this->clock->now();
+		$timezone = $schedule->getTimeZone();
+
+		return $timezone !== null
+			? $now->setTimezone($timezone)
+			: $now;
 	}
 
 	/**
