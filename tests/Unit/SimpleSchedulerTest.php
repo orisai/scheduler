@@ -994,6 +994,8 @@ MSG,
 				<<<'MSG'
 Context: Running job via command %a
 Problem: Job subprocess failed.
+Tip: Make sure that job is executable by the command and that you have the error
+     handler set.
 stdout: Could not open input file: bin/console
 stderr:
 MSG,
@@ -1029,6 +1031,8 @@ MSG,
 				<<<'MSG'
 Context: Running job via command %a
 Problem: Job subprocess failed.
+Tip: Make sure that job is executable by the command and that you have the error
+     handler set.
 stdout:%c
 stderr: error
 MSG,
