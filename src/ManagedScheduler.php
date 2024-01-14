@@ -26,7 +26,6 @@ use Psr\Clock\ClockInterface;
 use Symfony\Component\Lock\LockFactory;
 use Symfony\Component\Lock\Store\InMemoryStore;
 use Throwable;
-use function assert;
 use function iterator_to_array;
 
 class ManagedScheduler implements Scheduler
@@ -126,16 +125,13 @@ class ManagedScheduler implements Scheduler
 	}
 
 	/**
-	 * @param list<int|string> $ids
+	 * @param array<int|string, JobSchedule> $jobSchedules
 	 * @return array<int, array<int|string, JobSchedule>>
 	 */
-	private function getJobSchedulesBySecond(array $ids): array
+	private function groupJobSchedulesBySecond(array $jobSchedules): array
 	{
 		$scheduledJobsBySecond = [];
-		foreach ($ids as $id) {
-			$jobSchedule = $this->jobManager->getJobSchedule($id);
-			assert($jobSchedule !== null);
-
+		foreach ($jobSchedules as $id => $jobSchedule) {
 			$repeatAfterSeconds = $jobSchedule->getRepeatAfterSeconds();
 
 			if ($repeatAfterSeconds === 0) {
@@ -153,7 +149,7 @@ class ManagedScheduler implements Scheduler
 	public function runPromise(): Generator
 	{
 		$runStart = $this->clock->now();
-		$ids = [];
+		$jobSchedules = [];
 		foreach ($this->jobManager->getJobSchedules() as $id => $schedule) {
 			$timeZone = $schedule->getTimeZone();
 			$jobDueTime = $timeZone !== null
@@ -161,12 +157,12 @@ class ManagedScheduler implements Scheduler
 				: $runStart;
 
 			if ($schedule->getExpression()->isDue($jobDueTime)) {
-				$ids[] = $id;
+				$jobSchedules[$id] = $schedule;
 			}
 		}
 
 		return $this->executor->runJobs(
-			$this->getJobSchedulesBySecond($ids),
+			$this->groupJobSchedulesBySecond($jobSchedules),
 			$runStart,
 			$this->getAfterRunCallback(),
 		);
