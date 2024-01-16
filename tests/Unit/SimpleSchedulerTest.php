@@ -23,6 +23,7 @@ use Orisai\Scheduler\Status\JobInfo;
 use Orisai\Scheduler\Status\JobResult;
 use Orisai\Scheduler\Status\JobResultState;
 use Orisai\Scheduler\Status\JobSummary;
+use Orisai\Scheduler\Status\RunInfo;
 use Orisai\Scheduler\Status\RunParameters;
 use Orisai\Scheduler\Status\RunSummary;
 use PHPUnit\Framework\TestCase;
@@ -32,6 +33,7 @@ use Tests\Orisai\Scheduler\Doubles\CustomNameJob;
 use Tests\Orisai\Scheduler\Doubles\JobInnerFailure;
 use Tests\Orisai\Scheduler\Doubles\TestLockFactory;
 use Throwable;
+use function count;
 use function rtrim;
 use function set_error_handler;
 use const E_ALL;
@@ -434,6 +436,72 @@ MSG,
 		// On second run job is not executed because expression no longer matches
 		$scheduler->run();
 		self::assertSame(1, $i);
+	}
+
+	public function testBeforeRunEvent(): void
+	{
+		$clock = new FrozenClock(10, new DateTimeZone('UTC'));
+		$scheduler = new SimpleScheduler(null, null, null, $clock);
+
+		$list = new CallbackList();
+		$scheduler->addJob(
+			new CallbackJob(Closure::fromCallable([$list, 'job1'])),
+			new CronExpression('0-59 * * * *'),
+			'one',
+			30,
+			new DateTimeZone('Europe/Prague'),
+		);
+		$scheduler->addJob(
+			new CallbackJob(Closure::fromCallable([$list, 'job2'])),
+			new CronExpression('* * * * *'),
+			'two',
+		);
+		$scheduler->addJob(
+			new CallbackJob(static function (): void {
+				throw new Exception('Nope');
+			}),
+			new CronExpression('* * * 10 *'),
+			'not-executed',
+		);
+
+		$info = null;
+		$scheduler->addBeforeRunCallback(static function (RunInfo $givenInfo) use (&$info): void {
+			$info = $givenInfo;
+		});
+		self::assertNull($info);
+
+		$runStart = $clock->now();
+		$scheduler->run();
+		self::assertNotNull($info);
+		self::assertEquals($runStart, $info->getStart());
+		self::assertCount(2, $info->getJobInfos());
+
+		foreach ($info->getJobInfos() as $jobInfo) {
+			self::assertContains($jobInfo->getId(), ['one', 'two']);
+			if ($jobInfo->getId() === 'one') {
+				self::assertSame(
+					'Tests\Orisai\Scheduler\Doubles\CallbackList::job1()',
+					$jobInfo->getName(),
+				);
+				self::assertSame('0-59 * * * *', $jobInfo->getExpression());
+				self::assertSame(30, $jobInfo->getRepeatAfterSeconds());
+				self::assertEquals(
+					new DateTimeZone('Europe/Prague'),
+					$jobInfo->getEstimatedStartTimes()[0]->getTimezone(),
+				);
+			} else {
+				self::assertSame(
+					'Tests\Orisai\Scheduler\Doubles\CallbackList::job2()',
+					$jobInfo->getName(),
+				);
+				self::assertSame('* * * * *', $jobInfo->getExpression());
+				self::assertSame(0, $jobInfo->getRepeatAfterSeconds());
+				self::assertEquals(
+					new DateTimeZone('UTC'),
+					$jobInfo->getEstimatedStartTimes()[0]->getTimezone(),
+				);
+			}
+		}
 	}
 
 	public function testAfterRunEvent(): void
@@ -1178,6 +1246,21 @@ MSG,
 				$suppressed->getMessage(),
 			);
 		}
+	}
+
+	public function testProcessBeforeRunEvent(): void
+	{
+		$scheduler = SchedulerProcessSetup::createWithErrorHandler();
+
+		$info = null;
+		$scheduler->addBeforeRunCallback(static function (RunInfo $givenInfo) use (&$info): void {
+			$info = $givenInfo;
+		});
+		self::assertNull($info);
+
+		$scheduler->run();
+		self::assertNotNull($info);
+		self::assertGreaterThan(0, count($info->getJobInfos()));
 	}
 
 	public function testProcessAfterRunEvent(): void

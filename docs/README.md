@@ -14,6 +14,7 @@ Cron job scheduler - with locks, parallelism and more
 	- [Before job event](#before-job-event)
 	- [After job event](#after-job-event)
 	- [Locked job event](#locked-job-event)
+	- [Before run event](#before-run-event)
 	- [After run event](#after-run-event)
 - [Handling errors](#handling-errors)
 - [Locks and job overlapping](#locks-and-job-overlapping)
@@ -259,6 +260,30 @@ use Orisai\Scheduler\Status\JobResult;
 $scheduler->addLockedJobCallback(
 	function(JobInfo $info, JobResult $result): void {
 		// Executes when lock for given job is acquired by another process
+	},
+);
+```
+
+### Before run event
+
+Executes before every run (every minute), even if no jobs were executed
+
+```php
+use Orisai\Scheduler\Status\RunInfo;
+
+$scheduler->addBeforeRunCallback(
+	function(RunInfo $info): void {
+		$info->getStart(); // DateTimeImmutable
+
+		foreach ($info->getJobInfos() as $jobInfo) {
+			$jobInfo->getId(); // int|string
+			$jobInfo->getName(); // string
+			$jobInfo->getExpression(); // string, e.g. * * * * *
+			$jobInfo->getExtendedExpression(); // string, e.g. * * * * * / 30
+			$jobInfo->getRepeatAfterSeconds(); // int<0, 30>
+			$jobInfo->getRunsCountPerMinute(); // int<1, max>
+			$jobInfo->getEstimatedStartTimes(); // list<DateTimeImmutable>
+		}
 	},
 );
 ```

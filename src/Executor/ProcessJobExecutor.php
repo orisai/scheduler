@@ -59,9 +59,12 @@ final class ProcessJobExecutor implements JobExecutor
 	public function runJobs(
 		array $jobSchedulesBySecond,
 		DateTimeImmutable $runStart,
+		Closure $beforeRunCallback,
 		Closure $afterRunCallback
 	): Generator
 	{
+		$beforeRunCallback();
+
 		$jobExecutions = [];
 		$jobSummaries = [];
 		$suppressedExceptions = [];

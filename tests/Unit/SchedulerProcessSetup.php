@@ -10,7 +10,6 @@ use Orisai\Scheduler\Executor\ProcessJobExecutor;
 use Orisai\Scheduler\Job\CallbackJob;
 use Orisai\Scheduler\ManagedScheduler;
 use Orisai\Scheduler\Manager\SimpleJobManager;
-use Orisai\Scheduler\Scheduler;
 use Orisai\Scheduler\Status\JobInfo;
 use Orisai\Scheduler\Status\JobResult;
 use Tests\Orisai\Scheduler\Doubles\CallbackList;
@@ -21,7 +20,7 @@ use const STDERR;
 final class SchedulerProcessSetup
 {
 
-	public static function createWithErrorHandler(): Scheduler
+	public static function createWithErrorHandler(): ManagedScheduler
 	{
 		$errorHandler = static function (): void {
 			// Noop
@@ -30,12 +29,12 @@ final class SchedulerProcessSetup
 		return self::create($errorHandler, __DIR__ . '/scheduler-process-binary-with-error-handler.php');
 	}
 
-	public static function createWithoutErrorHandler(): Scheduler
+	public static function createWithoutErrorHandler(): ManagedScheduler
 	{
 		return self::create(null, __DIR__ . '/scheduler-process-binary-without-error-handler.php');
 	}
 
-	public static function createWithDefaultExecutable(): Scheduler
+	public static function createWithDefaultExecutable(): ManagedScheduler
 	{
 		return self::create();
 	}
@@ -122,7 +121,7 @@ final class SchedulerProcessSetup
 	/**
 	 * @param Closure(Throwable, JobInfo, JobResult): (void)|null $errorHandler
 	 */
-	private static function create(?Closure $errorHandler = null, ?string $script = null): Scheduler
+	private static function create(?Closure $errorHandler = null, ?string $script = null): ManagedScheduler
 	{
 		$cbs = new CallbackList();
 		$jobManager = new SimpleJobManager();

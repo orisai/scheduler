@@ -20,6 +20,8 @@ use Orisai\Scheduler\Status\JobInfo;
 use Orisai\Scheduler\Status\JobResult;
 use Orisai\Scheduler\Status\JobResultState;
 use Orisai\Scheduler\Status\JobSummary;
+use Orisai\Scheduler\Status\PlannedJobInfo;
+use Orisai\Scheduler\Status\RunInfo;
 use Orisai\Scheduler\Status\RunParameters;
 use Orisai\Scheduler\Status\RunSummary;
 use Psr\Clock\ClockInterface;
@@ -50,6 +52,9 @@ class ManagedScheduler implements Scheduler
 
 	/** @var list<Closure(JobInfo, JobResult): void> */
 	private array $afterJobCallbacks = [];
+
+	/** @var list<Closure(RunInfo): void> */
+	private array $beforeRunCallbacks = [];
 
 	/** @var list<Closure(RunSummary): void> */
 	private array $afterRunCallbacks = [];
@@ -164,8 +169,44 @@ class ManagedScheduler implements Scheduler
 		return $this->executor->runJobs(
 			$this->groupJobSchedulesBySecond($jobSchedules),
 			$runStart,
+			$this->getBeforeRunCallback($runStart, $jobSchedules),
 			$this->getAfterRunCallback(),
 		);
+	}
+
+	/**
+	 * @param array<int|string, JobSchedule> $jobSchedules
+	 * @return Closure(): void
+	 */
+	private function getBeforeRunCallback(DateTimeImmutable $runStart, array $jobSchedules): Closure
+	{
+		return function () use ($runStart, $jobSchedules): void {
+			if ($this->beforeRunCallbacks === []) {
+				return;
+			}
+
+			$jobInfos = [];
+			foreach ($jobSchedules as $id => $jobSchedule) {
+				$job = $jobSchedule->getJob();
+				$timezone = $jobSchedule->getTimeZone();
+				$jobStart = $timezone !== null
+					? $runStart->setTimezone($timezone)
+					: $runStart;
+				$jobInfos[] = new PlannedJobInfo(
+					$id,
+					$job->getName(),
+					$jobSchedule->getExpression()->getExpression(),
+					$jobSchedule->getRepeatAfterSeconds(),
+					$jobStart,
+				);
+			}
+
+			$info = new RunInfo($runStart, $jobInfos);
+
+			foreach ($this->beforeRunCallbacks as $cb) {
+				$cb($info);
+			}
+		};
 	}
 
 	/**
@@ -291,6 +332,14 @@ class ManagedScheduler implements Scheduler
 	public function addAfterJobCallback(Closure $callback): void
 	{
 		$this->afterJobCallbacks[] = $callback;
+	}
+
+	/**
+	 * @param Closure(RunInfo): void $callback
+	 */
+	public function addBeforeRunCallback(Closure $callback): void
+	{
+		$this->beforeRunCallbacks[] = $callback;
 	}
 
 	/**

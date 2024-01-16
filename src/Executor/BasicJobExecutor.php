@@ -37,9 +37,12 @@ final class BasicJobExecutor implements JobExecutor
 	public function runJobs(
 		array $jobSchedulesBySecond,
 		DateTimeImmutable $runStart,
+		Closure $beforeRunCallback,
 		Closure $afterRunCallback
 	): Generator
 	{
+		$beforeRunCallback();
+
 		$lastSecond = $jobSchedulesBySecond !== []
 			? max(array_keys($jobSchedulesBySecond))
 			: 0;

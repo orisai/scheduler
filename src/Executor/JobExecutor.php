@@ -15,6 +15,7 @@ interface JobExecutor
 
 	/**
 	 * @param array<int, array<int|string, JobSchedule>> $jobSchedulesBySecond
+	 * @param Closure(): void $beforeRunCallback
 	 * @param Closure(RunSummary): void $afterRunCallback
 	 * @return Generator<int, JobSummary, void, RunSummary>
 	 * @throws RunFailure
@@ -22,6 +23,7 @@ interface JobExecutor
 	public function runJobs(
 		array $jobSchedulesBySecond,
 		DateTimeImmutable $runStart,
+		Closure $beforeRunCallback,
 		Closure $afterRunCallback
 	): Generator;
 
