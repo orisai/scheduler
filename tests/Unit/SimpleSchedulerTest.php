@@ -758,7 +758,7 @@ MSG,
 			[
 				new JobSummary(
 					new JobInfo(0, 'job1', '* * * * *', 0, 0, $clock->now()),
-					new JobResult(new CronExpression('* * * * *'), $clock->now(), JobResultState::skip()),
+					new JobResult(new CronExpression('* * * * *'), $clock->now(), JobResultState::lock()),
 				),
 				new JobSummary(
 					new JobInfo(1, 'job2', '* * * * *', 0, 0, $clock->now()),
@@ -964,7 +964,7 @@ MSG,
 						0,
 						$now,
 					),
-					new JobResult(new CronExpression('* * * * *'), $now, JobResultState::skip()),
+					new JobResult(new CronExpression('* * * * *'), $now, JobResultState::lock()),
 				],
 			],
 			$afterCollected,

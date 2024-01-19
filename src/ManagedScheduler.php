@@ -252,7 +252,7 @@ class ManagedScheduler implements Scheduler
 		$lock = $this->lockFactory->createLock("Orisai.Scheduler.Job/$id");
 
 		if (!$lock->acquire()) {
-			$result = new JobResult($expression, $info->getStart(), JobResultState::skip());
+			$result = new JobResult($expression, $info->getStart(), JobResultState::lock());
 
 			foreach ($this->lockedJobCallbacks as $cb) {
 				$cb($info, $result);

@@ -2,18 +2,19 @@
 
 namespace Orisai\Scheduler\Command;
 
-use Orisai\Exceptions\Logic\ShouldNotHappen;
 use Orisai\Scheduler\Status\JobResultState;
 use Orisai\Scheduler\Status\JobSummary;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Terminal;
+use function assert;
 use function max;
 use function mb_strlen;
 use function number_format;
 use function sprintf;
 use function str_repeat;
 use function strip_tags;
+use function strtoupper;
 
 abstract class BaseRunCommand extends Command
 {
@@ -36,25 +37,24 @@ abstract class BaseRunCommand extends Command
 		$diff = (int) $result->getEnd()->format('Uv') - (int) $info->getStart()->format('Uv');
 		$runTime = number_format($diff) . 'ms';
 
-		switch ($result->getState()) {
+		$state = $result->getState();
+		$stateName = strtoupper($state->value);
+		switch ($state) {
 			case JobResultState::done():
-				$status = '<fg=#16a34a>DONE</>';
+				$status = "<fg=#16a34a>$stateName</>";
 
 				break;
 			case JobResultState::fail():
-				$status = '<fg=#ef4444>FAIL</>';
+				$status = "<fg=#ef4444>$stateName</>";
 
 				break;
-			case JobResultState::skip():
-				$status = '<fg=#ca8a04>SKIP</>';
+			case JobResultState::lock():
+				$status = "<fg=#ca8a04>$stateName</>";
 
 				break;
-			default:
-				// @codeCoverageIgnoreStart
-				/* @infection-ignore-all */
-				throw ShouldNotHappen::create();
-			// @codeCoverageIgnoreEnd
 		}
+
+		assert(isset($status));
 
 		$dots = str_repeat(
 			'.',

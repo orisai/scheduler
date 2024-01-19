@@ -148,7 +148,7 @@ MSG,
 		self::assertSame($command::FAILURE, $code);
 	}
 
-	public function testSkip(): void
+	public function testLock(): void
 	{
 		$lockFactory = new TestLockFactory(new InMemoryStore(), false);
 		$clock = new FrozenClock(1, new DateTimeZone('Europe/Prague'));
@@ -176,7 +176,7 @@ MSG,
 
 		self::assertSame(
 			<<<'MSG'
-1970-01-01 01:00:01 Running [0] job1................................... 0ms SKIP
+1970-01-01 01:00:01 Running [0] job1................................... 0ms LOCK
 
 MSG,
 			implode(

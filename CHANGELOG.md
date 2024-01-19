@@ -54,6 +54,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 	- `getStart()->getTimeZone()` - returns timezone specified by the job
 - `JobResult`
 	- `getEnd()->getTimeZone()` - returns timezone specified by the job
+- `JobResultState`
+	- `skip()` renamed to `lock()`
 - `JobExecutor`
 	- `runJobs()` accepts list of `JobSchedule` grouped by seconds instead of list of ids
 	- `runJobs()` returns `Generator<int, JobSummary, void, RunSummary>` instead of `RunSummary`

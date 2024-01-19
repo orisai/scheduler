@@ -9,12 +9,12 @@ final class JobResultState
 
 	private const Done = 'done',
 		Fail = 'fail',
-		Skip = 'skip';
+		Lock = 'lock';
 
 	private const ValuesAndNames = [
 		self::Done => 'Done',
 		self::Fail => 'Fail',
-		self::Skip => 'Skip',
+		self::Lock => 'Lock',
 	];
 
 	/** @readonly */
@@ -42,9 +42,9 @@ final class JobResultState
 		return self::from(self::Fail);
 	}
 
-	public static function skip(): self
+	public static function lock(): self
 	{
-		return self::from(self::Skip);
+		return self::from(self::Lock);
 	}
 
 	public static function tryFrom(string $value): ?self

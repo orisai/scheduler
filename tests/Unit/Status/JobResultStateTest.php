@@ -15,14 +15,14 @@ final class JobResultStateTest extends TestCase
 		self::assertSame('Done', JobResultState::done()->name);
 		self::assertSame('fail', JobResultState::fail()->value);
 		self::assertSame('Fail', JobResultState::fail()->name);
-		self::assertSame('skip', JobResultState::skip()->value);
-		self::assertSame('Skip', JobResultState::skip()->name);
+		self::assertSame('lock', JobResultState::lock()->value);
+		self::assertSame('Lock', JobResultState::lock()->name);
 
 		self::assertSame(
 			[
 				JobResultState::done(),
 				JobResultState::fail(),
-				JobResultState::skip(),
+				JobResultState::lock(),
 			],
 			JobResultState::cases(),
 		);
