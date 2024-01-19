@@ -140,7 +140,7 @@ final class SimpleSchedulerTest extends TestCase
 			<<<'MSG'
 Context: Running job with ID '0'
 Problem: Job is not registered by scheduler.
-Tip: Inspect keys in 'Scheduler->getScheduledJobs()' or run command
+Tip: Inspect keys in 'Scheduler->getJobSchedules()' or run command
      'scheduler:list' to find correct job ID.
 MSG,
 		);

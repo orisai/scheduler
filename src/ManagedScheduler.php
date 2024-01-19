@@ -101,7 +101,7 @@ class ManagedScheduler implements Scheduler
 				->withProblem('Job is not registered by scheduler.')
 				->with(
 					'Tip',
-					"Inspect keys in 'Scheduler->getScheduledJobs()' or run command 'scheduler:list' to find correct job ID.",
+					"Inspect keys in 'Scheduler->getJobSchedules()' or run command 'scheduler:list' to find correct job ID.",
 				);
 
 			throw InvalidArgument::create()
