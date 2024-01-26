@@ -613,7 +613,7 @@ List all scheduled jobs (in `expression / second (timezone) [id] name... next-du
 
 `bin/console scheduler:list`
 
-- use `--next` (or `-n`) to sort jobs by their next execution time
+- use `--next` to sort jobs by their next execution time
 	- `--next=N` lists only *N* next jobs (e.g. `--next=3` prints maximally 3)
 - use `-v` to display absolute times
 - use `--timezone` (or `-tz`) to display times in specified timezone instead of one used by application
