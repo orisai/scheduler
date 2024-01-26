@@ -21,6 +21,11 @@ final class JobSchedule
 
 	private ?DateTimeZone $timeZone;
 
+	private function __construct()
+	{
+		// Private
+	}
+
 	/**
 	 * @param int<0, 30> $repeatAfterSeconds
 	 */
