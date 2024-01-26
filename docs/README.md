@@ -60,7 +60,7 @@ On top of that you get:
 - [locking](#locks-and-job-overlapping) - each job should run only once at a time, without overlapping
 - [per-second scheduling](#seconds) - run jobs multiple times in a minute
 - [timezones](#timezones) - interpret job schedule within specified timezone
-- [before/after job events](#events) for accessing job status
+- [events](#events) for accessing job status
 - [overview of all jobs](#list-command), including estimated time of next run
 - running jobs either [once](#run-command) or [periodically](#worker-command) during development
 - running just a [single](#run-single-job) job, either ignoring or respecting due times
@@ -218,11 +218,12 @@ Myanmar Standard Time is UTC+06:30.
 
 Run callbacks to collect statistics, etc.
 
-Check [job info and result](#job-info-and-result) for available status info
-
 ### Before job event
 
 Executes before job start
+
+- has [JobInfo](#job-info-and-result) available as a parameter
+- does not execute if job is [locked](#locks-and-job-overlapping), see [locked job event](#locked-job-event)
 
 ```php
 use Orisai\Scheduler\Status\JobInfo;
@@ -238,6 +239,9 @@ $scheduler->addBeforeJobCallback(
 
 Executes after job finish
 
+- has [JobInfo and JobResult](#job-info-and-result) available as a parameter
+- executes even if job failed with an exception
+
 ```php
 use Orisai\Scheduler\Status\JobInfo;
 use Orisai\Scheduler\Status\JobResult;
@@ -251,7 +255,10 @@ $scheduler->addAfterJobCallback(
 
 ### Locked job event
 
-Executes when [lock](#locks-and-job-overlapping) for given job is acquired by another process
+Executes when [lock](#locks-and-job-overlapping) for given job is acquired by another process and therefore job does not
+execute
+
+- has [JobInfo and JobResult](#job-info-and-result) available as a parameter
 
 ```php
 use Orisai\Scheduler\Status\JobInfo;
@@ -266,7 +273,9 @@ $scheduler->addLockedJobCallback(
 
 ### Before run event
 
-Executes before every run (every minute), even if no jobs were executed
+Executes before every run (every minute), even if no jobs will be executed
+
+- has RunInfo available as a parameter
 
 ```php
 use Orisai\Scheduler\Status\RunInfo;
@@ -291,6 +300,8 @@ $scheduler->addBeforeRunCallback(
 ### After run event
 
 Executes after every run (every minute), even if no jobs were executed
+
+- has [RunSummary](#run-summary) available as a parameter
 
 ```php
 use Orisai\Scheduler\Status\RunSummary;
