@@ -134,7 +134,7 @@ To validate your cron, you can also utilize [crontab.guru](https://crontab.guru)
 -   -   -   -   -
 |   |   |   |   |
 |   |   |   |   |
-|   |   |   |   +----- day of week (0-6) (or SUN-SAT) (0=Sunday)
+|   |   |   |   +----- day of week (0-7) (Sunday = 0 or 7) (or SUN-SAT)
 |   |   |   +--------- month (1-12) (or JAN-DEC)
 |   |   +------------- day of month (1-31)
 |   +----------------- hour (0-23)
@@ -143,18 +143,25 @@ To validate your cron, you can also utilize [crontab.guru](https://crontab.guru)
 
 Each part of expression can also use wildcard, lists, ranges and steps:
 
-- wildcard - `* * * * *` - At every minute.
-- lists - e.g. `15,30 * * * *` - At minute 15 and 30.
-- ranges - e.g. `1-9 * * * *` - At every minute from 1 through 9.
-- steps - e.g. `*/5 * * * *` - At every 5th minute.
+- wildcard - match always
+	- `* * * * *` - At every minute.
+- lists - match list of values, ranges and steps
+	- e.g. `15,30 * * * *` - At minute 15 and 30.
+- ranges - match values in range
+	- e.g. `1-9 * * * *` - At every minute from 1 through 9.
+- steps - match every nth value in range
+	- e.g. `*/5 * * * *` - At every 5th minute.
+	- e.g. `0-30/5 * * * *` - At every 5th minute from 0 through 30.
+- combinations
+	- e.g. `0-14,30-44 * * * *` - At every minute from 0 through 14 and every minute from 30 through 44.
 
 You can also use macro instead of an expression:
 
-- `@yearly`, `@annually` - Run once a year, midnight, Jan. 1 - `0 0 1 1 *`
-- `@monthly` - Run once a month, midnight, first of month - `0 0 1 * *`
-- `@weekly` - Run once a week, midnight on Sun - `0 0 * * 0`
-- `@daily`, `@midnight` - Run once a day, midnight - `0 0 * * *`
-- `@hourly` - Run once an hour, first minute - `0 * * * *`
+- `@yearly`, `@annually` - Run once a year, midnight, Jan. 1 (same as `0 0 1 1 *`)
+- `@monthly` - Run once a month, midnight, first of month (same as `0 0 1 * *`)
+- `@weekly` - Run once a week, midnight on Sun (same as `0 0 * * 0`)
+- `@daily`, `@midnight` - Run once a day, midnight (same as `0 0 * * *`)
+- `@hourly` - Run once an hour, first minute (same as `0 * * * *`)
 
 ### Seconds
 
