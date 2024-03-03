@@ -50,7 +50,6 @@ This release most notably contains:
 	- prints `repeatAfterSeconds` parameter
 	- prints job's `timeZone` parameter
 	- adds `--timezone` (`-tz`) option to show execution times in specified timezone
-	- adds `-n` shortcut for `--next` option
 - `RunJobCommand`
 	- stdout is caught in a buffer and printed to output in a standardized manner (to above job result by default and
 	  into key `stdout` in case `--json` option is used)
