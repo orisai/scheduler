@@ -7,6 +7,8 @@ use DateTimeImmutable;
 use DateTimeInterface;
 use DateTimeZone;
 use Orisai\Clock\SystemClock;
+use Orisai\CronExpressionExplainer\CronExpressionExplainer;
+use Orisai\CronExpressionExplainer\DefaultCronExpressionExplainer;
 use Orisai\Exceptions\Logic\InvalidArgument;
 use Orisai\Scheduler\Job\JobSchedule;
 use Orisai\Scheduler\Scheduler;
@@ -17,8 +19,10 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Terminal;
 use function abs;
+use function assert;
 use function floor;
 use function in_array;
+use function is_bool;
 use function max;
 use function mb_strlen;
 use function preg_match;
@@ -37,11 +41,18 @@ final class ListCommand extends Command
 
 	private ClockInterface $clock;
 
-	public function __construct(Scheduler $scheduler, ?ClockInterface $clock = null)
+	private CronExpressionExplainer $explainer;
+
+	public function __construct(
+		Scheduler $scheduler,
+		?ClockInterface $clock = null,
+		?CronExpressionExplainer $explainer = null
+	)
 	{
 		parent::__construct();
 		$this->scheduler = $scheduler;
 		$this->clock = $clock ?? new SystemClock();
+		$this->explainer = $explainer ?? new DefaultCronExpressionExplainer();
 	}
 
 	public static function getDefaultName(): string
@@ -60,12 +71,14 @@ final class ListCommand extends Command
 		parent::configure();
 		$this->addOption('next', null, InputOption::VALUE_OPTIONAL, 'Sort jobs by their next execution time', false);
 		$this->addOption('timezone', 'tz', InputOption::VALUE_REQUIRED, 'The timezone times should be displayed in');
+		$this->addOption('explain', null, InputOption::VALUE_NONE, 'Explain expression');
 	}
 
 	protected function execute(InputInterface $input, OutputInterface $output): int
 	{
 		$nextOption = $this->validateOptionNext($input);
 		$timeZone = $this->validateOptionTimeZone($input);
+		$explain = $this->validateOptionExplain($input);
 
 		$jobSchedules = $this->scheduler->getJobSchedules();
 
@@ -86,7 +99,8 @@ final class ListCommand extends Command
 				$jobSchedule->getRepeatAfterSeconds(),
 				$repeatAfterSecondsSpacing,
 			);
-			$timeZoneString = $this->formatTimeZone($jobSchedule, $timeZone, $timeZoneSpacing);
+			$computedTimeZone = $this->computeTimeZone($jobSchedule, $timeZone);
+			$timeZoneString = $this->formatTimeZone($computedTimeZone, $timeZoneSpacing);
 
 			$name = $jobSchedule->getJob()->getName();
 
@@ -118,6 +132,14 @@ final class ListCommand extends Command
 				$nextDueDateLabel,
 				$nextDueDate,
 			));
+
+			if ($explain) {
+				$output->writeln($this->explainer->explain(
+					$jobSchedule->getExpression()->getExpression(),
+					$jobSchedule->getRepeatAfterSeconds(),
+					$computedTimeZone,
+				));
+			}
 		}
 
 		return self::SUCCESS;
@@ -168,6 +190,14 @@ final class ListCommand extends Command
 		}
 
 		return new DateTimeZone($option);
+	}
+
+	private function validateOptionExplain(InputInterface $input): bool
+	{
+		$option = $input->getOption('explain');
+		assert(is_bool($option));
+
+		return $option;
 	}
 
 	/**
@@ -368,6 +398,26 @@ final class ListCommand extends Command
 		return str_pad(" / $repeatAfterSeconds", $spacing);
 	}
 
+	private function computeTimeZone(JobSchedule $jobSchedule, DateTimeZone $renderedTimeZone): ?DateTimeZone
+	{
+		$timeZone = $jobSchedule->getTimeZone();
+		$clockTimeZone = $this->clock->now()->getTimezone();
+
+		if ($timeZone === null && $renderedTimeZone->getName() !== $clockTimeZone->getName()) {
+			$timeZone = $clockTimeZone;
+		}
+
+		if ($timeZone === null) {
+			return null;
+		}
+
+		if ($timeZone->getName() === $renderedTimeZone->getName()) {
+			return null;
+		}
+
+		return $timeZone;
+	}
+
 	/**
 	 * @param array<int|string, JobSchedule> $jobSchedules
 	 *
@@ -376,19 +426,10 @@ final class ListCommand extends Command
 	private function getTimeZoneSpacing(array $jobSchedules, DateTimeZone $renderedTimeZone): int
 	{
 		$max = 0;
-		$clockTimeZone = $this->clock->now()->getTimezone();
-
 		foreach ($jobSchedules as $jobSchedule) {
-			$timeZone = $jobSchedule->getTimeZone();
-			if ($timeZone === null && $renderedTimeZone->getName() !== $clockTimeZone->getName()) {
-				$timeZone = $clockTimeZone;
-			}
+			$timeZone = $this->computeTimeZone($jobSchedule, $renderedTimeZone);
 
 			if ($timeZone === null) {
-				continue;
-			}
-
-			if ($timeZone->getName() === $renderedTimeZone->getName()) {
 				continue;
 			}
 
@@ -405,20 +446,9 @@ final class ListCommand extends Command
 		return $max;
 	}
 
-	private function formatTimeZone(JobSchedule $schedule, DateTimeZone $renderedTimeZone, int $spacing): string
+	private function formatTimeZone(?DateTimeZone $timeZone, int $spacing): string
 	{
-		$timeZone = $schedule->getTimeZone();
-		$clockTimeZone = $this->clock->now()->getTimezone();
-
-		if ($timeZone === null && $renderedTimeZone->getName() !== $clockTimeZone->getName()) {
-			$timeZone = $clockTimeZone;
-		}
-
 		if ($timeZone === null) {
-			return str_pad('', $spacing);
-		}
-
-		if ($timeZone->getName() === $renderedTimeZone->getName()) {
 			return str_pad('', $spacing);
 		}
 

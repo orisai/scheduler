@@ -401,4 +401,60 @@ MSG,
 		self::assertSame($command::SUCCESS, $code);
 	}
 
+	public function testExplain(): void
+	{
+		$clock = new FrozenClock(1, new DateTimeZone('Europe/Prague'));
+		$scheduler = new SimpleScheduler(null, null, null, $clock);
+
+		$cbs = new CallbackList();
+		$scheduler->addJob(
+			new CallbackJob(Closure::fromCallable([$cbs, 'job1'])),
+			new CronExpression('* * * * *'),
+			null,
+			0,
+			new DateTimeZone('Europe/Prague'),
+		);
+		$scheduler->addJob(
+			new CallbackJob(Closure::fromCallable([$cbs, 'job1'])),
+			new CronExpression('*/30 7-15 * * 1-5'),
+			null,
+			0,
+			new DateTimeZone('America/New_York'),
+		);
+		$scheduler->addJob(
+			new CallbackJob(Closure::fromCallable($cbs)),
+			new CronExpression('* * * 4 *'),
+			null,
+			10,
+		);
+
+		$command = new ListCommand($scheduler, $clock);
+		$tester = new CommandTester($command);
+
+		putenv('COLUMNS=80');
+		$code = $tester->execute([
+			'--explain' => true,
+		]);
+
+		self::assertSame(
+			<<<'MSG'
+          * * * 4 * / 10                     [2] Tests\Orisai\Scheduler\Doubles\CallbackList::__invoke() Next Due: 2 months
+At every 10 seconds in April.
+          * * * * *                          [0] Tests\Orisai\Scheduler\Doubles\CallbackList::job1() Next Due: 59 seconds
+At every minute.
+  */30 7-15 * * 1-5      (America/New_York)  [1] Tests\Orisai\Scheduler\Doubles\CallbackList::job1() Next Due: 5 hours
+At every 30th minute past every hour from 7 through 15 on every day-of-week from Monday through Friday in America/New_York time zone.
+
+MSG,
+			implode(
+				PHP_EOL,
+				array_map(
+					static fn (string $s): string => rtrim($s),
+					explode(PHP_EOL, $tester->getDisplay()),
+				),
+			),
+		);
+		self::assertSame($command::SUCCESS, $code);
+	}
+
 }

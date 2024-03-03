@@ -618,6 +618,7 @@ List all scheduled jobs (in `expression / second (timezone) [id] name... next-du
 - use `-v` to display absolute times
 - use `--timezone` (or `-tz`) to display times in specified timezone instead of one used by application
 	- e.g. `--tz=UTC`
+- use `--explain` to explain whole expression, including [seconds](#seconds) and [timezones](#timezones)
 
 ### Worker command
 
