@@ -30,6 +30,7 @@ Cron job scheduler - with locks, parallelism and more
 	- [Run job command - run single job](#run-job-command)
 	- [List command - show all jobs](#list-command)
 	- [Worker command - run jobs periodically](#worker-command)
+	- [Explain command - explain cron expression syntax](#explain-command)
 - [Lazy loading](#lazy-loading)
 - [Integrations and extensions](#integrations-and-extensions)
 
@@ -570,6 +571,7 @@ For symfony/console you may use our commands:
 - [Run job](#run-job-command)
 - [List](#list-command)
 - [Worker](#worker-command)
+- [Explain](#explain-command)
 
 > Examples assume you run console via executable php script `bin/console`
 
@@ -577,6 +579,7 @@ Assuming you don't use some DI library for handling services, register commands 
 
 ```php
 use Symfony\Component\Console\Application;
+use Orisai\Scheduler\Command\ExplainCommand;
 use Orisai\Scheduler\Command\ListCommand;
 use Orisai\Scheduler\Command\RunCommand;
 use Orisai\Scheduler\Command\RunJobCommand;
@@ -584,6 +587,7 @@ use Orisai\Scheduler\Command\WorkerCommand;
 
 $app = new Application();
 $app->addCommands([
+	new ExplainCommand(),
 	new ListCommand($scheduler),
 	new RunCommand($scheduler),
 	new RunJobCommand($scheduler),
@@ -637,6 +641,12 @@ Run scheduler repeatedly, once every minute
 - if your executable script is not `bin/console` or if you are using multiple scheduler setups, specify the executable:
 	- via `your/console scheduler:worker -s=your/console -c=scheduler:run`
 	- or via setter `$workerCommand->setExecutable('your/console', 'scheduler:run')`
+
+### Explain command
+
+Explain cron expression syntax
+
+`bin/console scheduler:explain`
 
 ## Lazy loading
 
