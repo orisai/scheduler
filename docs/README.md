@@ -587,7 +587,7 @@ use Orisai\Scheduler\Command\WorkerCommand;
 
 $app = new Application();
 $app->addCommands([
-	new ExplainCommand(),
+	new ExplainCommand($scheduler),
 	new ListCommand($scheduler),
 	new RunCommand($scheduler),
 	new RunJobCommand($scheduler),
@@ -630,6 +630,7 @@ List all scheduled jobs (in `expression / second (timezone) [id] name... next-du
 - use `--timezone` (or `-tz`) to display times in specified timezone instead of one used by application
 	- e.g. `--tz=UTC`
 - use `--explain` to explain whole expression, including [seconds](#seconds) and [timezones](#timezones)
+	- [Explain command](#explain-command) with `--id` parameter can be used to explain specific job
 
 ### Worker command
 
@@ -646,7 +647,13 @@ Run scheduler repeatedly, once every minute
 
 Explain cron expression syntax
 
-`bin/console scheduler:explain`
+```shell
+bin/console scheduler:explain
+bin/console scheduler:explain --id="job id"
+```
+
+- use `--id=<id>` option to explain specific job
+	- [List command](#list-command) with `--explain` parameter can be used to explain all jobs
 
 ## Lazy loading
 

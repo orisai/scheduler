@@ -3,6 +3,11 @@ parameters:
 		-
 			message: "#^Parameter \\#1 \\$expression of method Orisai\\\\CronExpressionExplainer\\\\CronExpressionExplainer\\:\\:explain\\(\\) expects string, string\\|null given\\.$#"
 			count: 1
+			path: ../src/Command/ExplainCommand.php
+
+		-
+			message: "#^Parameter \\#1 \\$expression of method Orisai\\\\CronExpressionExplainer\\\\CronExpressionExplainer\\:\\:explain\\(\\) expects string, string\\|null given\\.$#"
+			count: 1
 			path: ../src/Command/ListCommand.php
 
 		-

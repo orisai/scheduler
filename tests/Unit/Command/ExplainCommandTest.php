@@ -2,13 +2,19 @@
 
 namespace Tests\Orisai\Scheduler\Unit\Command;
 
+use Closure;
+use Cron\CronExpression;
+use DateTimeZone;
+use Orisai\Clock\FrozenClock;
 use Orisai\Scheduler\Command\ExplainCommand;
+use Orisai\Scheduler\Job\CallbackJob;
+use Orisai\Scheduler\SimpleScheduler;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Tester\CommandTester;
+use Tests\Orisai\Scheduler\Doubles\CallbackList;
 use function array_map;
 use function explode;
 use function implode;
-use function putenv;
 use function rtrim;
 use const PHP_EOL;
 
@@ -17,10 +23,12 @@ final class ExplainCommandTest extends TestCase
 
 	public function testBasicExplain(): void
 	{
-		$command = new ExplainCommand();
+		$clock = new FrozenClock(1, new DateTimeZone('Europe/Prague'));
+		$scheduler = new SimpleScheduler(null, null, null, $clock);
+
+		$command = new ExplainCommand($scheduler);
 		$tester = new CommandTester($command);
 
-		putenv('COLUMNS=80');
 		$code = $tester->execute([]);
 
 		self::assertSame(
@@ -61,6 +69,113 @@ Although they are not part of cron expression syntax, you can also add to job:
 
 - seconds - repeat job every n seconds
 - timezone - run only when cron expression matches within given timezone
+
+MSG,
+			implode(
+				PHP_EOL,
+				array_map(
+					static fn (string $s): string => rtrim($s),
+					explode(PHP_EOL, $tester->getDisplay()),
+				),
+			),
+		);
+		self::assertSame($command::SUCCESS, $code);
+	}
+
+	public function testExplainId(): void
+	{
+		$clock = new FrozenClock(1, new DateTimeZone('Europe/Prague'));
+		$scheduler = new SimpleScheduler(null, null, null, $clock);
+
+		$cbs = new CallbackList();
+		$scheduler->addJob(
+			new CallbackJob(Closure::fromCallable([$cbs, 'job1'])),
+			new CronExpression('* * * * *'),
+			'one',
+			0,
+			new DateTimeZone('Europe/Prague'),
+		);
+		$scheduler->addJob(
+			new CallbackJob(Closure::fromCallable([$cbs, 'job1'])),
+			new CronExpression('*/30 7-15 * * 1-5'),
+			'two',
+			0,
+			new DateTimeZone('America/New_York'),
+		);
+		$scheduler->addJob(
+			new CallbackJob(Closure::fromCallable($cbs)),
+			new CronExpression('* * * 4 *'),
+			'three',
+			10,
+		);
+
+		$command = new ExplainCommand($scheduler, null, $clock);
+		$tester = new CommandTester($command);
+
+		$code = $tester->execute([
+			'--id' => 'non-existent',
+		]);
+
+		self::assertSame(
+			<<<'MSG'
+Job with id 'non-existent' does not exist.
+
+MSG,
+			implode(
+				PHP_EOL,
+				array_map(
+					static fn (string $s): string => rtrim($s),
+					explode(PHP_EOL, $tester->getDisplay()),
+				),
+			),
+		);
+		self::assertSame($command::FAILURE, $code);
+
+		$code = $tester->execute([
+			'--id' => 'one',
+		]);
+
+		self::assertSame(
+			<<<'MSG'
+At every minute.
+
+MSG,
+			implode(
+				PHP_EOL,
+				array_map(
+					static fn (string $s): string => rtrim($s),
+					explode(PHP_EOL, $tester->getDisplay()),
+				),
+			),
+		);
+		self::assertSame($command::SUCCESS, $code);
+
+		$code = $tester->execute([
+			'--id' => 'two',
+		]);
+
+		self::assertSame(
+			<<<'MSG'
+At every 30th minute past every hour from 7 through 15 on every day-of-week from Monday through Friday in America/New_York time zone.
+
+MSG,
+			implode(
+				PHP_EOL,
+				array_map(
+					static fn (string $s): string => rtrim($s),
+					explode(PHP_EOL, $tester->getDisplay()),
+				),
+			),
+		);
+		self::assertSame($command::SUCCESS, $code);
+
+		$code = $tester->execute([
+			'--id' => 'three',
+		]);
+
+		self::assertSame(
+			<<<'MSG'
+At every 10 seconds in April.
 
 MSG,
 			implode(
