@@ -65,7 +65,7 @@ MSG,
 		$tester = new CommandTester($command);
 
 		putenv('COLUMNS=80');
-		$code = $tester->execute([
+		$tester->execute([
 			'id' => 0,
 		]);
 
@@ -76,10 +76,10 @@ MSG,
 MSG,
 			CommandOutputHelper::getCommandOutput($tester),
 		);
-		self::assertSame($command::SUCCESS, $code);
+		self::assertSame($command::SUCCESS, $tester->getStatusCode());
 
 		putenv('COLUMNS=100');
-		$code = $tester->execute([
+		$tester->execute([
 			'id' => 0,
 		]);
 
@@ -90,7 +90,7 @@ MSG,
 MSG,
 			CommandOutputHelper::getCommandOutput($tester),
 		);
-		self::assertSame($command::SUCCESS, $code);
+		self::assertSame($command::SUCCESS, $tester->getStatusCode());
 	}
 
 	public function testFailure(): void
@@ -111,7 +111,7 @@ MSG,
 		$tester = new CommandTester($command);
 
 		putenv('COLUMNS=80');
-		$code = $tester->execute([
+		$tester->execute([
 			'id' => 0,
 		]);
 
@@ -122,7 +122,7 @@ MSG,
 MSG,
 			CommandOutputHelper::getCommandOutput($tester),
 		);
-		self::assertSame($command::FAILURE, $code);
+		self::assertSame($command::FAILURE, $tester->getStatusCode());
 	}
 
 	public function testLock(): void
@@ -147,7 +147,7 @@ MSG,
 		$tester = new CommandTester($command);
 
 		putenv('COLUMNS=80');
-		$code = $tester->execute([
+		$tester->execute([
 			'id' => 0,
 		]);
 
@@ -158,7 +158,7 @@ MSG,
 MSG,
 			CommandOutputHelper::getCommandOutput($tester),
 		);
-		self::assertSame($command::SUCCESS, $code);
+		self::assertSame($command::SUCCESS, $tester->getStatusCode());
 	}
 
 	public function testNoForce(): void
@@ -176,7 +176,7 @@ MSG,
 		$tester = new CommandTester($command);
 
 		putenv('COLUMNS=80');
-		$code = $tester->execute([
+		$tester->execute([
 			'id' => 0,
 			'--no-force' => true,
 		]);
@@ -188,10 +188,10 @@ MSG,
 MSG,
 			CommandOutputHelper::getCommandOutput($tester),
 		);
-		self::assertSame($command::SUCCESS, $code);
+		self::assertSame($command::SUCCESS, $tester->getStatusCode());
 
 		$clock->sleep(60);
-		$code = $tester->execute([
+		$tester->execute([
 			'id' => 0,
 			'--no-force' => true,
 		]);
@@ -203,7 +203,7 @@ Command was not executed because it is not its due time
 MSG,
 			CommandOutputHelper::getCommandOutput($tester),
 		);
-		self::assertSame($command::SUCCESS, $code);
+		self::assertSame($command::SUCCESS, $tester->getStatusCode());
 	}
 
 	public function testJson(): void
@@ -221,7 +221,7 @@ MSG,
 		$tester = new CommandTester($command);
 
 		putenv('COLUMNS=80');
-		$code = $tester->execute([
+		$tester->execute([
 			'id' => 0,
 			'--no-force' => true,
 			'--json' => true,
@@ -234,10 +234,10 @@ null
 MSG,
 			CommandOutputHelper::getCommandOutput($tester),
 		);
-		self::assertSame($command::SUCCESS, $code);
+		self::assertSame($command::SUCCESS, $tester->getStatusCode());
 
 		$clock->sleep(60);
-		$code = $tester->execute([
+		$tester->execute([
 			'id' => 0,
 			'--json' => true,
 			'--parameters' => json_encode((new RunParameters(30))->toArray(), JSON_THROW_ON_ERROR),
@@ -264,7 +264,7 @@ MSG,
 MSG,
 			CommandOutputHelper::getCommandOutput($tester),
 		);
-		self::assertSame($command::SUCCESS, $code);
+		self::assertSame($command::SUCCESS, $tester->getStatusCode());
 	}
 
 	public function testEchoingJob(): void
@@ -283,7 +283,7 @@ MSG,
 
 		putenv('COLUMNS=80');
 
-		$code = $tester->execute([
+		$tester->execute([
 			'id' => 0,
 		]);
 
@@ -295,9 +295,9 @@ output
 MSG,
 			CommandOutputHelper::getCommandOutput($tester),
 		);
-		self::assertSame($command::SUCCESS, $code);
+		self::assertSame($command::SUCCESS, $tester->getStatusCode());
 
-		$code = $tester->execute([
+		$tester->execute([
 			'id' => 0,
 			'--json' => true,
 		]);
@@ -323,7 +323,7 @@ MSG,
 MSG,
 			CommandOutputHelper::getCommandOutput($tester),
 		);
-		self::assertSame($command::SUCCESS, $code);
+		self::assertSame($command::SUCCESS, $tester->getStatusCode());
 	}
 
 }

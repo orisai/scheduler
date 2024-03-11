@@ -24,7 +24,7 @@ final class WorkerCommandTest extends TestCase
 		$tester = new CommandTester($command);
 
 		putenv('COLUMNS=80');
-		$code = $tester->execute([]);
+		$tester->execute([]);
 
 		self::assertSame(
 			<<<'MSG'
@@ -33,7 +33,7 @@ Running scheduled tasks every minute.
 MSG,
 			CommandOutputHelper::getCommandOutput($tester),
 		);
-		self::assertSame($command::SUCCESS, $code);
+		self::assertSame($command::SUCCESS, $tester->getStatusCode());
 	}
 
 	public function testSingleRun(): void
@@ -45,11 +45,11 @@ MSG,
 		$tester = new CommandTester($command);
 
 		putenv('COLUMNS=80');
-		$code = $tester->execute([
+		$tester->execute([
 			'--script' => 'tests/Unit/Command/worker-binary.php',
 		]);
 
-		self::assertSame($command::SUCCESS, $code);
+		self::assertSame($command::SUCCESS, $tester->getStatusCode());
 		self::assertCount(4, explode(PHP_EOL, $tester->getDisplay()));
 	}
 
@@ -63,9 +63,9 @@ MSG,
 		$tester = new CommandTester($command);
 
 		putenv('COLUMNS=80');
-		$code = $tester->execute([]);
+		$tester->execute([]);
 
-		self::assertSame($command::SUCCESS, $code);
+		self::assertSame($command::SUCCESS, $tester->getStatusCode());
 		self::assertCount(4, explode(PHP_EOL, $tester->getDisplay()));
 	}
 
@@ -78,11 +78,11 @@ MSG,
 		$tester = new CommandTester($command);
 
 		putenv('COLUMNS=80');
-		$code = $tester->execute([
+		$tester->execute([
 			'--script' => 'tests/Unit/Command/worker-binary.php',
 		]);
 
-		self::assertSame($command::SUCCESS, $code);
+		self::assertSame($command::SUCCESS, $tester->getStatusCode());
 		self::assertCount(6, explode(PHP_EOL, $tester->getDisplay()));
 	}
 
@@ -95,11 +95,11 @@ MSG,
 		$tester = new CommandTester($command);
 
 		putenv('COLUMNS=80');
-		$code = $tester->execute([
+		$tester->execute([
 			'--script' => 'tests/Unit/Command/worker-binary-no-matching-jobs.php',
 		]);
 
-		self::assertSame($command::SUCCESS, $code);
+		self::assertSame($command::SUCCESS, $tester->getStatusCode());
 		self::assertSame(
 			<<<'MSG'
 Running scheduled tasks every minute.
@@ -118,7 +118,7 @@ MSG,
 		$tester = new CommandTester($command);
 
 		putenv('COLUMNS=80');
-		$code = $tester->execute([]);
+		$tester->execute([]);
 
 		self::assertSame(
 			<<<'MSG'
@@ -129,7 +129,7 @@ Could not open input file: bin/console
 MSG,
 			CommandOutputHelper::getCommandOutput($tester),
 		);
-		self::assertSame($command::SUCCESS, $code);
+		self::assertSame($command::SUCCESS, $tester->getStatusCode());
 	}
 
 }

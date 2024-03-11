@@ -35,7 +35,7 @@ final class RunCommandTest extends TestCase
 		$command = new RunCommand($scheduler);
 		$tester = new CommandTester($command);
 
-		$code = $tester->execute([]);
+		$tester->execute([]);
 
 		self::assertSame(
 			<<<'MSG'
@@ -43,7 +43,7 @@ final class RunCommandTest extends TestCase
 MSG,
 			CommandOutputHelper::getCommandOutput($tester),
 		);
-		self::assertSame($command::SUCCESS, $code);
+		self::assertSame($command::SUCCESS, $tester->getStatusCode());
 	}
 
 	public function testSuccess(): void
@@ -66,7 +66,7 @@ MSG,
 
 		putenv('COLUMNS=80');
 
-		$code = $tester->execute([]);
+		$tester->execute([]);
 		self::assertSame(
 			<<<'MSG'
 1970-01-01 01:00:01 Running [0] Tests\Orisai\Scheduler\Doubles\CallbackList::job1() 0ms DONE
@@ -75,11 +75,11 @@ MSG,
 MSG,
 			CommandOutputHelper::getCommandOutput($tester),
 		);
-		self::assertSame($command::SUCCESS, $code);
+		self::assertSame($command::SUCCESS, $tester->getStatusCode());
 
 		putenv('COLUMNS=100');
 
-		$code = $tester->execute([]);
+		$tester->execute([]);
 		self::assertSame(
 			<<<'MSG'
 1970-01-01 01:00:01 Running [0] Tests\Orisai\Scheduler\Doubles\CallbackList::job1()........ 0ms DONE
@@ -88,9 +88,9 @@ MSG,
 MSG,
 			CommandOutputHelper::getCommandOutput($tester),
 		);
-		self::assertSame($command::SUCCESS, $code);
+		self::assertSame($command::SUCCESS, $tester->getStatusCode());
 
-		$code = $tester->execute([
+		$tester->execute([
 			'--json' => true,
 		]);
 		self::assertSame(
@@ -129,7 +129,7 @@ MSG,
 MSG,
 			CommandOutputHelper::getCommandOutput($tester),
 		);
-		self::assertSame($command::SUCCESS, $code);
+		self::assertSame($command::SUCCESS, $tester->getStatusCode());
 	}
 
 	public function testFailure(): void
@@ -155,7 +155,7 @@ MSG,
 
 		putenv('COLUMNS=80');
 
-		$code = $tester->execute([]);
+		$tester->execute([]);
 		self::assertSame(
 			<<<'MSG'
 1970-01-01 01:00:01 Running [0] Tests\Orisai\Scheduler\Doubles\CallbackList::job1() 0ms DONE
@@ -164,9 +164,9 @@ MSG,
 MSG,
 			CommandOutputHelper::getCommandOutput($tester),
 		);
-		self::assertSame($command::FAILURE, $code);
+		self::assertSame($command::FAILURE, $tester->getStatusCode());
 
-		$code = $tester->execute([
+		$tester->execute([
 			'--json' => true,
 		]);
 		self::assertSame(
@@ -205,7 +205,7 @@ MSG,
 MSG,
 			CommandOutputHelper::getCommandOutput($tester),
 		);
-		self::assertSame($command::FAILURE, $code);
+		self::assertSame($command::FAILURE, $tester->getStatusCode());
 	}
 
 	public function testLock(): void
@@ -231,7 +231,7 @@ MSG,
 
 		putenv('COLUMNS=80');
 
-		$code = $tester->execute([]);
+		$tester->execute([]);
 		self::assertSame(
 			<<<'MSG'
 1970-01-01 01:00:01 Running [0] job1................................... 0ms LOCK
@@ -239,7 +239,7 @@ MSG,
 MSG,
 			CommandOutputHelper::getCommandOutput($tester),
 		);
-		self::assertSame($command::SUCCESS, $code);
+		self::assertSame($command::SUCCESS, $tester->getStatusCode());
 	}
 
 	public function testProcessExecutor(): void
@@ -251,7 +251,7 @@ MSG,
 
 		putenv('COLUMNS=80');
 
-		$code = $tester->execute([]);
+		$tester->execute([]);
 		$displayLines = explode(PHP_EOL, $tester->getDisplay());
 		sort($displayLines);
 
@@ -265,7 +265,7 @@ MSG,
 			],
 			$displayLines,
 		);
-		self::assertSame($command::FAILURE, $code);
+		self::assertSame($command::FAILURE, $tester->getStatusCode());
 	}
 
 }

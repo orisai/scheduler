@@ -31,7 +31,7 @@ final class ListCommandTest extends TestCase
 		$command = new ListCommand($scheduler);
 		$tester = new CommandTester($command);
 
-		$code = $tester->execute([]);
+		$tester->execute([]);
 
 		self::assertSame(
 			<<<'MSG'
@@ -40,7 +40,7 @@ No scheduled jobs have been defined.
 MSG,
 			CommandOutputHelper::getCommandOutput($tester),
 		);
-		self::assertSame($command::SUCCESS, $code);
+		self::assertSame($command::SUCCESS, $tester->getStatusCode());
 	}
 
 	public function testList(): void
@@ -70,7 +70,7 @@ MSG,
 		$tester = new CommandTester($command);
 
 		putenv('COLUMNS=80');
-		$code = $tester->execute([]);
+		$tester->execute([]);
 
 		self::assertSame(
 			<<<'MSG'
@@ -82,10 +82,10 @@ MSG,
 MSG,
 			CommandOutputHelper::getCommandOutput($tester),
 		);
-		self::assertSame($command::SUCCESS, $code);
+		self::assertSame($command::SUCCESS, $tester->getStatusCode());
 
 		putenv('COLUMNS=110');
-		$code = $tester->execute([]);
+		$tester->execute([]);
 
 		self::assertSame(
 			<<<'MSG'
@@ -97,10 +97,10 @@ MSG,
 MSG,
 			CommandOutputHelper::getCommandOutput($tester),
 		);
-		self::assertSame($command::SUCCESS, $code);
+		self::assertSame($command::SUCCESS, $tester->getStatusCode());
 
 		putenv('COLUMNS=120');
-		$code = $tester->execute([], [
+		$tester->execute([], [
 			'verbosity' => OutputInterface::VERBOSITY_VERBOSE,
 		]);
 
@@ -114,7 +114,7 @@ MSG,
 MSG,
 			CommandOutputHelper::getCommandOutput($tester),
 		);
-		self::assertSame($command::SUCCESS, $code);
+		self::assertSame($command::SUCCESS, $tester->getStatusCode());
 	}
 
 	public function testListWithSeconds(): void
@@ -154,7 +154,7 @@ MSG,
 		$tester = new CommandTester($command);
 
 		putenv('COLUMNS=120');
-		$code = $tester->execute([], [
+		$tester->execute([], [
 			'verbosity' => OutputInterface::VERBOSITY_VERBOSE,
 		]);
 
@@ -169,7 +169,7 @@ MSG,
 MSG,
 			CommandOutputHelper::getCommandOutput($tester),
 		);
-		self::assertSame($command::SUCCESS, $code);
+		self::assertSame($command::SUCCESS, $tester->getStatusCode());
 	}
 
 	public function testNext(): void
@@ -191,7 +191,7 @@ MSG,
 		$tester = new CommandTester($command);
 
 		putenv('COLUMNS=100');
-		$code = $tester->execute([
+		$tester->execute([
 			'--next' => null,
 		]);
 
@@ -208,9 +208,9 @@ MSG,
 MSG,
 			CommandOutputHelper::getCommandOutput($tester),
 		);
-		self::assertSame($command::SUCCESS, $code);
+		self::assertSame($command::SUCCESS, $tester->getStatusCode());
 
-		$code = $tester->execute([
+		$tester->execute([
 			'--next' => '4',
 		]);
 
@@ -224,7 +224,7 @@ MSG,
 MSG,
 			CommandOutputHelper::getCommandOutput($tester),
 		);
-		self::assertSame($command::SUCCESS, $code);
+		self::assertSame($command::SUCCESS, $tester->getStatusCode());
 	}
 
 	public function testNextOverlap(): void
@@ -240,7 +240,7 @@ MSG,
 		$tester = new CommandTester($command);
 
 		putenv('COLUMNS=100');
-		$code = $tester->execute([], [
+		$tester->execute([], [
 			'verbosity' => OutputInterface::VERBOSITY_VERBOSE,
 		]);
 
@@ -251,7 +251,7 @@ MSG,
 MSG,
 			CommandOutputHelper::getCommandOutput($tester),
 		);
-		self::assertSame($command::SUCCESS, $code);
+		self::assertSame($command::SUCCESS, $tester->getStatusCode());
 	}
 
 	/**
@@ -310,7 +310,7 @@ MSG,
 		$tester = new CommandTester($command);
 
 		putenv('COLUMNS=80');
-		$code = $tester->execute([], [
+		$tester->execute([], [
 			'verbosity' => OutputInterface::VERBOSITY_VERBOSE,
 		]);
 
@@ -323,9 +323,9 @@ MSG,
 MSG,
 			CommandOutputHelper::getCommandOutput($tester),
 		);
-		self::assertSame($command::SUCCESS, $code);
+		self::assertSame($command::SUCCESS, $tester->getStatusCode());
 
-		$code = $tester->execute([
+		$tester->execute([
 			'--timezone' => 'Europe/Prague',
 		], [
 			'verbosity' => OutputInterface::VERBOSITY_VERBOSE,
@@ -340,7 +340,7 @@ MSG,
 MSG,
 			CommandOutputHelper::getCommandOutput($tester),
 		);
-		self::assertSame($command::SUCCESS, $code);
+		self::assertSame($command::SUCCESS, $tester->getStatusCode());
 	}
 
 	public function testExplain(): void
@@ -374,7 +374,7 @@ MSG,
 		$tester = new CommandTester($command);
 
 		putenv('COLUMNS=80');
-		$code = $tester->execute([
+		$tester->execute([
 			'--explain' => true,
 		]);
 
@@ -390,7 +390,7 @@ At every 30th minute past every hour from 7 through 15 on every day-of-week from
 MSG,
 			CommandOutputHelper::getCommandOutput($tester),
 		);
-		self::assertSame($command::SUCCESS, $code);
+		self::assertSame($command::SUCCESS, $tester->getStatusCode());
 	}
 
 }

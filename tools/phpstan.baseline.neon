@@ -81,6 +81,11 @@ parameters:
 			path: ../src/Status/PlannedJobInfo.php
 
 		-
+			message: "#^Parameter \\#1 \\$expected of static method PHPUnit\\\\Framework\\\\Assert\\:\\:assertSame\\(\\) contains unresolvable type\\.$#"
+			count: 2
+			path: ../tests/Unit/Command/ExplainCommandTest.php
+
+		-
 			message: "#^Call to static method PHPUnit\\\\Framework\\\\Assert\\:\\:assertSame\\(\\) with 2 and 1 will always evaluate to false\\.$#"
 			count: 1
 			path: ../tests/Unit/Job/CallbackJobTest.php

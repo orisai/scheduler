@@ -26,7 +26,7 @@ final class ExplainCommandTest extends TestCase
 		$command = new ExplainCommand($scheduler);
 		$tester = new CommandTester($command);
 
-		$code = $tester->execute([]);
+		$tester->execute([]);
 
 		self::assertSame(
 			<<<'MSG'
@@ -70,7 +70,7 @@ Although they are not part of cron expression syntax, you can also add to job:
 MSG,
 			CommandOutputHelper::getCommandOutput($tester),
 		);
-		self::assertSame($command::SUCCESS, $code);
+		self::assertSame($command::SUCCESS, $tester->getStatusCode());
 	}
 
 	public function testExplainId(): void
@@ -103,7 +103,7 @@ MSG,
 		$command = new ExplainCommand($scheduler, null, $clock);
 		$tester = new CommandTester($command);
 
-		$code = $tester->execute([
+		$tester->execute([
 			'--id' => 'non-existent',
 		]);
 
@@ -114,9 +114,9 @@ Job with id 'non-existent' does not exist.
 MSG,
 			CommandOutputHelper::getCommandOutput($tester),
 		);
-		self::assertSame($command::FAILURE, $code);
+		self::assertSame($command::FAILURE, $tester->getStatusCode());
 
-		$code = $tester->execute([
+		$tester->execute([
 			'--id' => 'one',
 		]);
 
@@ -127,9 +127,9 @@ At every minute.
 MSG,
 			CommandOutputHelper::getCommandOutput($tester),
 		);
-		self::assertSame($command::SUCCESS, $code);
+		self::assertSame($command::SUCCESS, $tester->getStatusCode());
 
-		$code = $tester->execute([
+		$tester->execute([
 			'--id' => 'two',
 		]);
 
@@ -140,9 +140,9 @@ At every 30th minute past every hour from 7 through 15 on every day-of-week from
 MSG,
 			CommandOutputHelper::getCommandOutput($tester),
 		);
-		self::assertSame($command::SUCCESS, $code);
+		self::assertSame($command::SUCCESS, $tester->getStatusCode());
 
-		$code = $tester->execute([
+		$tester->execute([
 			'--id' => 'three',
 		]);
 
@@ -153,7 +153,7 @@ At every 10 seconds in April.
 MSG,
 			CommandOutputHelper::getCommandOutput($tester),
 		);
-		self::assertSame($command::SUCCESS, $code);
+		self::assertSame($command::SUCCESS, $tester->getStatusCode());
 	}
 
 	/**
