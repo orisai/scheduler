@@ -6,13 +6,11 @@ use Cron\CronExpression;
 use DateTimeImmutable;
 use DateTimeInterface;
 use DateTimeZone;
-use Orisai\Clock\SystemClock;
 use Orisai\CronExpressionExplainer\CronExpressionExplainer;
 use Orisai\CronExpressionExplainer\DefaultCronExpressionExplainer;
 use Orisai\Scheduler\Job\JobSchedule;
 use Orisai\Scheduler\Scheduler;
 use Psr\Clock\ClockInterface;
-use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -36,12 +34,10 @@ use function timezone_identifiers_list;
 use function uasort;
 use const STR_PAD_LEFT;
 
-final class ListCommand extends Command
+final class ListCommand extends BaseExplainCommand
 {
 
 	private Scheduler $scheduler;
-
-	private ClockInterface $clock;
 
 	private CronExpressionExplainer $explainer;
 
@@ -51,9 +47,8 @@ final class ListCommand extends Command
 		?CronExpressionExplainer $explainer = null
 	)
 	{
-		parent::__construct();
+		parent::__construct($clock);
 		$this->scheduler = $scheduler;
-		$this->clock = $clock ?? new SystemClock();
 		$this->explainer = $explainer ?? new DefaultCronExpressionExplainer();
 	}
 
@@ -403,26 +398,6 @@ final class ListCommand extends Command
 		}
 
 		return str_pad(" / $repeatAfterSeconds", $spacing);
-	}
-
-	private function computeTimeZone(JobSchedule $jobSchedule, DateTimeZone $renderedTimeZone): ?DateTimeZone
-	{
-		$timeZone = $jobSchedule->getTimeZone();
-		$clockTimeZone = $this->clock->now()->getTimezone();
-
-		if ($timeZone === null && $renderedTimeZone->getName() !== $clockTimeZone->getName()) {
-			$timeZone = $clockTimeZone;
-		}
-
-		if ($timeZone === null) {
-			return null;
-		}
-
-		if ($timeZone->getName() === $renderedTimeZone->getName()) {
-			return null;
-		}
-
-		return $timeZone;
 	}
 
 	/**

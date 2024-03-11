@@ -3,14 +3,11 @@
 namespace Orisai\Scheduler\Command;
 
 use DateTimeZone;
-use Orisai\Clock\SystemClock;
 use Orisai\CronExpressionExplainer\CronExpressionExplainer;
 use Orisai\CronExpressionExplainer\DefaultCronExpressionExplainer;
 use Orisai\CronExpressionExplainer\Exception\InvalidExpression;
-use Orisai\Scheduler\Job\JobSchedule;
 use Orisai\Scheduler\Scheduler;
 use Psr\Clock\ClockInterface;
-use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -20,14 +17,12 @@ use function is_string;
 use function preg_match;
 use function timezone_identifiers_list;
 
-final class ExplainCommand extends Command
+final class ExplainCommand extends BaseExplainCommand
 {
 
 	private Scheduler $scheduler;
 
 	private CronExpressionExplainer $explainer;
-
-	private ClockInterface $clock;
 
 	public function __construct(
 		Scheduler $scheduler,
@@ -35,10 +30,9 @@ final class ExplainCommand extends Command
 		?ClockInterface $clock = null
 	)
 	{
-		parent::__construct();
+		parent::__construct($clock);
 		$this->scheduler = $scheduler;
 		$this->explainer = $explainer ?? new DefaultCronExpressionExplainer();
-		$this->clock = $clock ?? new SystemClock();
 	}
 
 	public static function getDefaultName(): string
@@ -206,26 +200,6 @@ final class ExplainCommand extends Command
 		));
 
 		return self::SUCCESS;
-	}
-
-	private function computeTimeZone(JobSchedule $jobSchedule, DateTimeZone $renderedTimeZone): ?DateTimeZone
-	{
-		$timeZone = $jobSchedule->getTimeZone();
-		$clockTimeZone = $this->clock->now()->getTimezone();
-
-		if ($timeZone === null && $renderedTimeZone->getName() !== $clockTimeZone->getName()) {
-			$timeZone = $clockTimeZone;
-		}
-
-		if ($timeZone === null) {
-			return null;
-		}
-
-		if ($timeZone->getName() === $renderedTimeZone->getName()) {
-			return null;
-		}
-
-		return $timeZone;
 	}
 
 	private function explainSyntax(OutputInterface $output): int
