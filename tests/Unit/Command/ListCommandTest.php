@@ -254,35 +254,76 @@ MSG,
 	}
 
 	/**
-	 * @dataProvider provideInvalidNext
+	 * @param array<string, mixed> $input
+	 *
+	 * @dataProvider provideInputError
 	 */
-	public function testInvalidNext(string $next): void
+	public function testInputError(array $input, string $output): void
 	{
 		$scheduler = new SimpleScheduler();
 
 		$command = new ListCommand($scheduler);
 		$tester = new CommandTester($command);
 
-		$tester->execute([
-			'--next' => $next,
-		]);
+		$tester->execute($input);
 
-		self::assertSame(
-			<<<MSG
-Option --next expects an int<1, max>, '$next' given.
-
-MSG,
-			CommandOutputHelper::getCommandOutput($tester),
-		);
+		self::assertSame($output, CommandOutputHelper::getCommandOutput($tester));
 		self::assertSame($command::FAILURE, $tester->getStatusCode());
 	}
 
-	public function provideInvalidNext(): Generator
+	public function provideInputError(): Generator
 	{
-		yield ['not-a-number'];
-		yield ['1.0'];
-		yield ['0'];
-		yield ['0.9'];
+		yield [
+			[
+				'--next' => 'not-a-number',
+			],
+			<<<'MSG'
+Option --next expects an int<1, max>, 'not-a-number' given.
+
+MSG,
+		];
+
+		yield [
+			[
+				'--next' => '1.0',
+			],
+			<<<'MSG'
+Option --next expects an int<1, max>, '1.0' given.
+
+MSG,
+		];
+
+		yield [
+			[
+				'--next' => '0',
+			],
+			<<<'MSG'
+Option --next expects an int<1, max>, '0' given.
+
+MSG,
+		];
+
+		yield [
+			[
+				'--timezone' => 'bad-timezone',
+			],
+			<<<'MSG'
+Option --timezone expects a valid timezone, 'bad-timezone' given.
+
+MSG,
+		];
+
+		yield [
+			[
+				'--next' => '0',
+				'--timezone' => 'bad-timezone',
+			],
+			<<<'MSG'
+Option --next expects an int<1, max>, '0' given.
+Option --timezone expects a valid timezone, 'bad-timezone' given.
+
+MSG,
+		];
 	}
 
 	public function testTimeZone(): void

@@ -22,6 +22,7 @@ use function assert;
 use function floor;
 use function in_array;
 use function is_bool;
+use function is_int;
 use function is_string;
 use function max;
 use function mb_strlen;
@@ -196,7 +197,7 @@ final class ListCommand extends Command
 		}
 
 		// Happens only when $hasErrors = true
-		assert(!is_string($next));
+		assert(is_bool($next) || (is_int($next) && $next >= 1));
 		assert(!is_string($timezone));
 
 		return [
