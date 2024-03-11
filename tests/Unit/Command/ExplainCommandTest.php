@@ -5,6 +5,7 @@ namespace Tests\Orisai\Scheduler\Unit\Command;
 use Closure;
 use Cron\CronExpression;
 use DateTimeZone;
+use Generator;
 use Orisai\Clock\FrozenClock;
 use Orisai\Scheduler\Command\ExplainCommand;
 use Orisai\Scheduler\Job\CallbackJob;
@@ -153,6 +154,219 @@ MSG,
 			CommandOutputHelper::getCommandOutput($tester),
 		);
 		self::assertSame($command::SUCCESS, $code);
+	}
+
+	/**
+	 * @param array<string, mixed> $input
+	 *
+	 * @dataProvider provideExplainExpression
+	 */
+	public function testExplainExpression(array $input, string $output): void
+	{
+		$clock = new FrozenClock(1, new DateTimeZone('Europe/Prague'));
+		$scheduler = new SimpleScheduler(null, null, null, $clock);
+
+		$command = new ExplainCommand($scheduler, null, $clock);
+		$tester = new CommandTester($command);
+
+		$tester->execute($input);
+
+		self::assertSame($output, CommandOutputHelper::getCommandOutput($tester));
+		self::assertSame($command::SUCCESS, $tester->getStatusCode());
+	}
+
+	public function provideExplainExpression(): Generator
+	{
+		yield [
+			[
+				'--expression' => '* * * * *',
+			],
+			<<<'MSG'
+At every minute.
+
+MSG,
+		];
+
+		yield [
+			[
+				'--expression' => '* * * * *',
+				'--seconds' => '0',
+			],
+			<<<'MSG'
+At every minute.
+
+MSG,
+		];
+
+		yield [
+			[
+				'--expression' => '* * * * *',
+				'--seconds' => '1',
+			],
+			<<<'MSG'
+At every second.
+
+MSG,
+		];
+
+		yield [
+			[
+				'--expression' => '* * * * *',
+				'--timezone' => 'Europe/Prague',
+			],
+			<<<'MSG'
+At every minute in Europe/Prague time zone.
+
+MSG,
+		];
+
+		yield [
+			[
+				'--expression' => '* * * * *',
+				'--seconds' => '59',
+				'--timezone' => 'UTC',
+			],
+			<<<'MSG'
+At every 59 seconds in UTC time zone.
+
+MSG,
+		];
+
+		yield [
+			[
+				'-e' => '* * * * *',
+				'-s' => '59',
+				'-tz' => 'UTC',
+			],
+			<<<'MSG'
+At every 59 seconds in UTC time zone.
+
+MSG,
+		];
+	}
+
+	/**
+	 * @param array<string, mixed> $input
+	 *
+	 * @dataProvider provideInputError
+	 */
+	public function testInputError(array $input, string $output): void
+	{
+		$clock = new FrozenClock(1, new DateTimeZone('Europe/Prague'));
+		$scheduler = new SimpleScheduler(null, null, null, $clock);
+
+		$command = new ExplainCommand($scheduler, null, $clock);
+		$tester = new CommandTester($command);
+
+		$tester->execute($input);
+
+		self::assertSame($output, CommandOutputHelper::getCommandOutput($tester));
+		self::assertSame($command::FAILURE, $tester->getStatusCode());
+	}
+
+	public function provideInputError(): Generator
+	{
+		yield [
+			[
+				'--id' => 'id',
+				'--expression' => '* * * * *',
+			],
+			<<<'MSG'
+Options --id and --expression cannot be combined.
+
+MSG,
+		];
+
+		yield [
+			[
+				'--expression' => 'bad-expression',
+			],
+			<<<'MSG'
+bad-expression is not a valid CRON expression
+
+MSG,
+		];
+
+		yield [
+			[
+				'--expression' => '* * * * *',
+				'--seconds' => '1.2',
+			],
+			<<<'MSG'
+Option --seconds expects an int<0, 59>, '1.2' given.
+
+MSG,
+		];
+
+		yield [
+			[
+				'--expression' => '* * * * *',
+				'--seconds' => '-1',
+			],
+			<<<'MSG'
+Option --seconds expects an int<0, 59>, '-1' given.
+
+MSG,
+		];
+
+		yield [
+			[
+				'--expression' => '* * * * *',
+				'--seconds' => '60',
+			],
+			<<<'MSG'
+Option --seconds expects an int<0, 59>, '60' given.
+
+MSG,
+		];
+
+		yield [
+			[
+				'--seconds' => '5',
+			],
+			<<<'MSG'
+Option --seconds must be used with --expression.
+
+MSG,
+		];
+
+		yield [
+			[
+				'--expression' => '* * * * *',
+				'--timezone' => 'bad-timezone',
+			],
+			<<<'MSG'
+Option --timezone expects a valid timezone, 'bad-timezone' given.
+
+MSG,
+		];
+
+		yield [
+			[
+				'--timezone' => 'Europe/Prague',
+			],
+			<<<'MSG'
+Option --timezone must be used with --expression.
+
+MSG,
+		];
+
+		yield [
+			[
+				'--id' => 'id',
+				'--seconds' => 'bad seconds',
+				'--timezone' => 'bad timezone',
+			],
+			<<<'MSG'
+Option --seconds expects an int<0, 59>, 'bad seconds' given.
+Option --seconds cannot be used with --id.
+Option --seconds must be used with --expression.
+Option --timezone expects a valid timezone, 'bad timezone' given.
+Option --timezone cannot be used with --id.
+Option --timezone must be used with --expression.
+
+MSG,
+		];
 	}
 
 }

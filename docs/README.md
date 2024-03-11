@@ -650,10 +650,18 @@ Explain cron expression syntax
 ```shell
 bin/console scheduler:explain
 bin/console scheduler:explain --id="job id"
+bin/console scheduler:explain --expression="0 22 * 12 *"
+bin/console scheduler:explain --expression="* 8 * * *" --seconds=10 --timezone="Europe/Prague"
+bin/console scheduler:explain -e="* 8 * * *" -s=10 -tz="Europe/Prague"
 ```
 
-- use `--id=<id>` option to explain specific job
+Options:
+
+- `--id=<id>` - explain specific job
 	- [List command](#list-command) with `--explain` parameter can be used to explain all jobs
+- `--expression=<expression>` (or `-e`) - explain expression
+- `--seconds=<seconds>` (or `-s`) - repeat every n seconds
+- `--timezone=<timezone>` (or `-tz`) - the timezone time should be displayed in
 
 ## Lazy loading
 
