@@ -65,7 +65,7 @@ final class ExplainCommand extends Command
 	{
 		$options = $this->validateOptions($input, $output);
 		if ($options === null) {
-			return 1;
+			return self::FAILURE;
 		}
 
 		$id = $options['id'];
@@ -182,10 +182,10 @@ final class ExplainCommand extends Command
 		} catch (InvalidExpression $exception) {
 			$output->writeln("<error>{$exception->getMessage()}</error>");
 
-			return 1;
+			return self::FAILURE;
 		}
 
-		return 0;
+		return self::SUCCESS;
 	}
 
 	private function explainJobWithId(string $id, OutputInterface $output): int
@@ -196,7 +196,7 @@ final class ExplainCommand extends Command
 		if ($jobSchedule === null) {
 			$output->writeln("<error>Job with id '$id' does not exist.</error>");
 
-			return 1;
+			return self::FAILURE;
 		}
 
 		$output->writeln($this->explainer->explain(
@@ -205,7 +205,7 @@ final class ExplainCommand extends Command
 			$this->computeTimeZone($jobSchedule, $this->clock->now()->getTimezone()),
 		));
 
-		return 0;
+		return self::SUCCESS;
 	}
 
 	private function computeTimeZone(JobSchedule $jobSchedule, DateTimeZone $renderedTimeZone): ?DateTimeZone
@@ -271,7 +271,7 @@ Although they are not part of cron expression syntax, you can also add to job:
 CMD,
 		);
 
-		return 0;
+		return self::SUCCESS;
 	}
 
 }
