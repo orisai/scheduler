@@ -81,21 +81,6 @@ parameters:
 			path: ../src/Status/PlannedJobInfo.php
 
 		-
-			message: "#^Parameter \\#2 \\$str of function explode expects string, string\\|null given\\.$#"
-			count: 1
-			path: ../tests/Unit/Command/RunCommandTest.php
-
-		-
-			message: "#^Parameter \\#2 \\$str of function explode expects string, string\\|null given\\.$#"
-			count: 4
-			path: ../tests/Unit/Command/RunJobCommandTest.php
-
-		-
-			message: "#^Parameter \\#2 \\$str of function explode expects string, string\\|null given\\.$#"
-			count: 1
-			path: ../tests/Unit/Command/WorkerCommandTest.php
-
-		-
 			message: "#^Call to static method PHPUnit\\\\Framework\\\\Assert\\:\\:assertSame\\(\\) with 2 and 1 will always evaluate to false\\.$#"
 			count: 1
 			path: ../tests/Unit/Job/CallbackJobTest.php

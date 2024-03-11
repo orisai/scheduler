@@ -12,11 +12,7 @@ use Orisai\Scheduler\SimpleScheduler;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Tester\CommandTester;
 use Tests\Orisai\Scheduler\Doubles\CallbackList;
-use function array_map;
-use function explode;
-use function implode;
-use function rtrim;
-use const PHP_EOL;
+use Tests\Orisai\Scheduler\Helpers\CommandOutputHelper;
 
 final class ExplainCommandTest extends TestCase
 {
@@ -71,13 +67,7 @@ Although they are not part of cron expression syntax, you can also add to job:
 - timezone - run only when cron expression matches within given timezone
 
 MSG,
-			implode(
-				PHP_EOL,
-				array_map(
-					static fn (string $s): string => rtrim($s),
-					explode(PHP_EOL, $tester->getDisplay()),
-				),
-			),
+			CommandOutputHelper::getCommandOutput($tester),
 		);
 		self::assertSame($command::SUCCESS, $code);
 	}
@@ -121,13 +111,7 @@ MSG,
 Job with id 'non-existent' does not exist.
 
 MSG,
-			implode(
-				PHP_EOL,
-				array_map(
-					static fn (string $s): string => rtrim($s),
-					explode(PHP_EOL, $tester->getDisplay()),
-				),
-			),
+			CommandOutputHelper::getCommandOutput($tester),
 		);
 		self::assertSame($command::FAILURE, $code);
 
@@ -140,13 +124,7 @@ MSG,
 At every minute.
 
 MSG,
-			implode(
-				PHP_EOL,
-				array_map(
-					static fn (string $s): string => rtrim($s),
-					explode(PHP_EOL, $tester->getDisplay()),
-				),
-			),
+			CommandOutputHelper::getCommandOutput($tester),
 		);
 		self::assertSame($command::SUCCESS, $code);
 
@@ -159,13 +137,7 @@ MSG,
 At every 30th minute past every hour from 7 through 15 on every day-of-week from Monday through Friday in America/New_York time zone.
 
 MSG,
-			implode(
-				PHP_EOL,
-				array_map(
-					static fn (string $s): string => rtrim($s),
-					explode(PHP_EOL, $tester->getDisplay()),
-				),
-			),
+			CommandOutputHelper::getCommandOutput($tester),
 		);
 		self::assertSame($command::SUCCESS, $code);
 
@@ -178,13 +150,7 @@ MSG,
 At every 10 seconds in April.
 
 MSG,
-			implode(
-				PHP_EOL,
-				array_map(
-					static fn (string $s): string => rtrim($s),
-					explode(PHP_EOL, $tester->getDisplay()),
-				),
-			),
+			CommandOutputHelper::getCommandOutput($tester),
 		);
 		self::assertSame($command::SUCCESS, $code);
 	}

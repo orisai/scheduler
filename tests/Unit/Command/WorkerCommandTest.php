@@ -7,12 +7,9 @@ use Orisai\Clock\FrozenClock;
 use Orisai\Scheduler\Command\WorkerCommand;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Tester\CommandTester;
-use function array_map;
+use Tests\Orisai\Scheduler\Helpers\CommandOutputHelper;
 use function explode;
-use function implode;
-use function preg_replace;
 use function putenv;
-use function rtrim;
 use const PHP_EOL;
 
 final class WorkerCommandTest extends TestCase
@@ -34,13 +31,7 @@ final class WorkerCommandTest extends TestCase
 Running scheduled tasks every minute.
 
 MSG,
-			implode(
-				PHP_EOL,
-				array_map(
-					static fn (string $s): string => rtrim($s),
-					explode(PHP_EOL, $tester->getDisplay()),
-				),
-			),
+			CommandOutputHelper::getCommandOutput($tester),
 		);
 		self::assertSame($command::SUCCESS, $code);
 	}
@@ -114,13 +105,7 @@ MSG,
 Running scheduled tasks every minute.
 
 MSG,
-			implode(
-				PHP_EOL,
-				array_map(
-					static fn (string $s): string => rtrim($s),
-					explode(PHP_EOL, $tester->getDisplay()),
-				),
-			),
+			CommandOutputHelper::getCommandOutput($tester),
 		);
 	}
 
@@ -142,13 +127,7 @@ Could not open input file: bin/console
 Could not open input file: bin/console
 
 MSG,
-			implode(
-				PHP_EOL,
-				array_map(
-					static fn (string $s): string => rtrim($s),
-					explode(PHP_EOL, preg_replace('~\R~u', PHP_EOL, $tester->getDisplay())),
-				),
-			),
+			CommandOutputHelper::getCommandOutput($tester),
 		);
 		self::assertSame($command::SUCCESS, $code);
 	}

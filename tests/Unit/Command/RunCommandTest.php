@@ -15,13 +15,10 @@ use Symfony\Component\Lock\Store\InMemoryStore;
 use Tests\Orisai\Scheduler\Doubles\CallbackList;
 use Tests\Orisai\Scheduler\Doubles\CustomNameJob;
 use Tests\Orisai\Scheduler\Doubles\TestLockFactory;
+use Tests\Orisai\Scheduler\Helpers\CommandOutputHelper;
 use Tests\Orisai\Scheduler\Unit\SchedulerProcessSetup;
-use function array_map;
 use function explode;
-use function implode;
-use function preg_replace;
 use function putenv;
-use function rtrim;
 use function sort;
 use const PHP_EOL;
 
@@ -44,7 +41,7 @@ final class RunCommandTest extends TestCase
 			<<<'MSG'
 
 MSG,
-			$tester->getDisplay(),
+			CommandOutputHelper::getCommandOutput($tester),
 		);
 		self::assertSame($command::SUCCESS, $code);
 	}
@@ -76,7 +73,7 @@ MSG,
 1970-01-01 01:00:01 Running [1] Tests\Orisai\Scheduler\Doubles\CallbackList::job2() 0ms DONE
 
 MSG,
-			$this->getNormalizedLines($tester),
+			CommandOutputHelper::getCommandOutput($tester),
 		);
 		self::assertSame($command::SUCCESS, $code);
 
@@ -89,7 +86,7 @@ MSG,
 1970-01-01 01:00:01 Running [1] Tests\Orisai\Scheduler\Doubles\CallbackList::job2()........ 0ms DONE
 
 MSG,
-			$this->getNormalizedLines($tester),
+			CommandOutputHelper::getCommandOutput($tester),
 		);
 		self::assertSame($command::SUCCESS, $code);
 
@@ -130,7 +127,7 @@ MSG,
 ]
 
 MSG,
-			$this->getNormalizedLines($tester),
+			CommandOutputHelper::getCommandOutput($tester),
 		);
 		self::assertSame($command::SUCCESS, $code);
 	}
@@ -165,7 +162,7 @@ MSG,
 1970-01-01 01:00:01 Running [1] Tests\Orisai\Scheduler\Doubles\CallbackList::exceptionJob() 0ms FAIL
 
 MSG,
-			$this->getNormalizedLines($tester),
+			CommandOutputHelper::getCommandOutput($tester),
 		);
 		self::assertSame($command::FAILURE, $code);
 
@@ -206,7 +203,7 @@ MSG,
 ]
 
 MSG,
-			$this->getNormalizedLines($tester),
+			CommandOutputHelper::getCommandOutput($tester),
 		);
 		self::assertSame($command::FAILURE, $code);
 	}
@@ -240,7 +237,7 @@ MSG,
 1970-01-01 01:00:01 Running [0] job1................................... 0ms LOCK
 
 MSG,
-			$this->getNormalizedLines($tester),
+			CommandOutputHelper::getCommandOutput($tester),
 		);
 		self::assertSame($command::SUCCESS, $code);
 	}
@@ -269,17 +266,6 @@ MSG,
 			$displayLines,
 		);
 		self::assertSame($command::FAILURE, $code);
-	}
-
-	public function getNormalizedLines(CommandTester $tester): string
-	{
-		return implode(
-			PHP_EOL,
-			array_map(
-				static fn (string $s): string => rtrim($s),
-				explode(PHP_EOL, preg_replace('~\R~u', PHP_EOL, $tester->getDisplay())),
-			),
-		);
 	}
 
 }

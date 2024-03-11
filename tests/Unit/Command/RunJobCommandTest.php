@@ -17,15 +17,10 @@ use Symfony\Component\Lock\Store\InMemoryStore;
 use Tests\Orisai\Scheduler\Doubles\CallbackList;
 use Tests\Orisai\Scheduler\Doubles\CustomNameJob;
 use Tests\Orisai\Scheduler\Doubles\TestLockFactory;
-use function array_map;
-use function explode;
-use function implode;
+use Tests\Orisai\Scheduler\Helpers\CommandOutputHelper;
 use function json_encode;
-use function preg_replace;
 use function putenv;
-use function rtrim;
 use const JSON_THROW_ON_ERROR;
-use const PHP_EOL;
 
 /**
  * @runTestsInSeparateProcesses
@@ -79,13 +74,7 @@ MSG,
 1970-01-01 01:00:01 Running [0] Tests\Orisai\Scheduler\Doubles\CallbackList::job1() 0ms DONE
 
 MSG,
-			implode(
-				PHP_EOL,
-				array_map(
-					static fn (string $s): string => rtrim($s),
-					explode(PHP_EOL, $tester->getDisplay()),
-				),
-			),
+			CommandOutputHelper::getCommandOutput($tester),
 		);
 		self::assertSame($command::SUCCESS, $code);
 
@@ -99,13 +88,7 @@ MSG,
 1970-01-01 01:00:01 Running [0] Tests\Orisai\Scheduler\Doubles\CallbackList::job1()........ 0ms DONE
 
 MSG,
-			implode(
-				PHP_EOL,
-				array_map(
-					static fn (string $s): string => rtrim($s),
-					explode(PHP_EOL, $tester->getDisplay()),
-				),
-			),
+			CommandOutputHelper::getCommandOutput($tester),
 		);
 		self::assertSame($command::SUCCESS, $code);
 	}
@@ -137,13 +120,7 @@ MSG,
 1970-01-01 01:00:01 Running [0] Tests\Orisai\Scheduler\Doubles\CallbackList::exceptionJob() 0ms FAIL
 
 MSG,
-			implode(
-				PHP_EOL,
-				array_map(
-					static fn (string $s): string => rtrim($s),
-					explode(PHP_EOL, $tester->getDisplay()),
-				),
-			),
+			CommandOutputHelper::getCommandOutput($tester),
 		);
 		self::assertSame($command::FAILURE, $code);
 	}
@@ -179,13 +156,7 @@ MSG,
 1970-01-01 01:00:01 Running [0] job1................................... 0ms LOCK
 
 MSG,
-			implode(
-				PHP_EOL,
-				array_map(
-					static fn (string $s): string => rtrim($s),
-					explode(PHP_EOL, $tester->getDisplay()),
-				),
-			),
+			CommandOutputHelper::getCommandOutput($tester),
 		);
 		self::assertSame($command::SUCCESS, $code);
 	}
@@ -215,13 +186,7 @@ MSG,
 1970-01-01 01:00:01 Running [0] Tests\Orisai\Scheduler\Doubles\CallbackList::job1() 0ms DONE
 
 MSG,
-			implode(
-				PHP_EOL,
-				array_map(
-					static fn (string $s): string => rtrim($s),
-					explode(PHP_EOL, $tester->getDisplay()),
-				),
-			),
+			CommandOutputHelper::getCommandOutput($tester),
 		);
 		self::assertSame($command::SUCCESS, $code);
 
@@ -236,13 +201,7 @@ MSG,
 Command was not executed because it is not its due time
 
 MSG,
-			implode(
-				PHP_EOL,
-				array_map(
-					static fn (string $s): string => rtrim($s),
-					explode(PHP_EOL, $tester->getDisplay()),
-				),
-			),
+			CommandOutputHelper::getCommandOutput($tester),
 		);
 		self::assertSame($command::SUCCESS, $code);
 	}
@@ -273,13 +232,7 @@ MSG,
 null
 
 MSG,
-			implode(
-				PHP_EOL,
-				array_map(
-					static fn (string $s): string => rtrim($s),
-					explode(PHP_EOL, preg_replace('~\R~u', PHP_EOL, $tester->getDisplay())),
-				),
-			),
+			CommandOutputHelper::getCommandOutput($tester),
 		);
 		self::assertSame($command::SUCCESS, $code);
 
@@ -309,13 +262,7 @@ MSG,
 }
 
 MSG,
-			implode(
-				PHP_EOL,
-				array_map(
-					static fn (string $s): string => rtrim($s),
-					explode(PHP_EOL, preg_replace('~\R~u', PHP_EOL, $tester->getDisplay())),
-				),
-			),
+			CommandOutputHelper::getCommandOutput($tester),
 		);
 		self::assertSame($command::SUCCESS, $code);
 	}
@@ -346,13 +293,7 @@ output
 1970-01-01 01:00:01 Running [0] Tests\Orisai\Scheduler\Doubles\CallbackList::echoingJob() 0ms DONE
 
 MSG,
-			implode(
-				PHP_EOL,
-				array_map(
-					static fn (string $s): string => rtrim($s),
-					explode(PHP_EOL, preg_replace('~\R~u', PHP_EOL, $tester->getDisplay())),
-				),
-			),
+			CommandOutputHelper::getCommandOutput($tester),
 		);
 		self::assertSame($command::SUCCESS, $code);
 
@@ -380,13 +321,7 @@ MSG,
 }
 
 MSG,
-			implode(
-				PHP_EOL,
-				array_map(
-					static fn (string $s): string => rtrim($s),
-					explode(PHP_EOL, preg_replace('~\R~u', PHP_EOL, $tester->getDisplay())),
-				),
-			),
+			CommandOutputHelper::getCommandOutput($tester),
 		);
 		self::assertSame($command::SUCCESS, $code);
 	}

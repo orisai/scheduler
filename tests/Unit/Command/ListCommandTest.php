@@ -15,12 +15,8 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Tester\CommandTester;
 use Tests\Orisai\Scheduler\Doubles\CallbackList;
-use function array_map;
-use function explode;
-use function implode;
+use Tests\Orisai\Scheduler\Helpers\CommandOutputHelper;
 use function putenv;
-use function rtrim;
-use const PHP_EOL;
 
 /**
  * @runTestsInSeparateProcesses
@@ -42,7 +38,7 @@ final class ListCommandTest extends TestCase
 No scheduled jobs have been defined.
 
 MSG,
-			$tester->getDisplay(),
+			CommandOutputHelper::getCommandOutput($tester),
 		);
 		self::assertSame($command::SUCCESS, $code);
 	}
@@ -84,13 +80,7 @@ MSG,
        30 * 12 10 *  [3] tests/Doubles/CallbackList.php:32.. Next Due: 9 months
 
 MSG,
-			implode(
-				PHP_EOL,
-				array_map(
-					static fn (string $s): string => rtrim($s),
-					explode(PHP_EOL, $tester->getDisplay()),
-				),
-			),
+			CommandOutputHelper::getCommandOutput($tester),
 		);
 		self::assertSame($command::SUCCESS, $code);
 
@@ -105,13 +95,7 @@ MSG,
        30 * 12 10 *  [3] tests/Doubles/CallbackList.php:32................................ Next Due: 9 months
 
 MSG,
-			implode(
-				PHP_EOL,
-				array_map(
-					static fn (string $s): string => rtrim($s),
-					explode(PHP_EOL, $tester->getDisplay()),
-				),
-			),
+			CommandOutputHelper::getCommandOutput($tester),
 		);
 		self::assertSame($command::SUCCESS, $code);
 
@@ -128,13 +112,7 @@ MSG,
        30 * 12 10 *  [3] tests/Doubles/CallbackList.php:32......................... Next Due: 1970-10-12 00:30:00 +01:00
 
 MSG,
-			implode(
-				PHP_EOL,
-				array_map(
-					static fn (string $s): string => rtrim($s),
-					explode(PHP_EOL, $tester->getDisplay()),
-				),
-			),
+			CommandOutputHelper::getCommandOutput($tester),
 		);
 		self::assertSame($command::SUCCESS, $code);
 	}
@@ -189,13 +167,7 @@ MSG,
        30 * 12 10 * / 30  [4] tests/Doubles/CallbackList.php:32.................... Next Due: 1970-10-12 00:30:00 +01:00
 
 MSG,
-			implode(
-				PHP_EOL,
-				array_map(
-					static fn (string $s): string => rtrim($s),
-					explode(PHP_EOL, $tester->getDisplay()),
-				),
-			),
+			CommandOutputHelper::getCommandOutput($tester),
 		);
 		self::assertSame($command::SUCCESS, $code);
 	}
@@ -234,13 +206,7 @@ MSG,
   * * * 2 *      [0] Tests\Orisai\Scheduler\Doubles\CallbackList::job1()......... Next Due: 1 month
 
 MSG,
-			implode(
-				PHP_EOL,
-				array_map(
-					static fn (string $s): string => rtrim($s),
-					explode(PHP_EOL, $tester->getDisplay()),
-				),
-			),
+			CommandOutputHelper::getCommandOutput($tester),
 		);
 		self::assertSame($command::SUCCESS, $code);
 
@@ -256,13 +222,7 @@ MSG,
   2 * * * *      [3] Tests\Orisai\Scheduler\Doubles\CallbackList::job1()........ Next Due: 1 minute
 
 MSG,
-			implode(
-				PHP_EOL,
-				array_map(
-					static fn (string $s): string => rtrim($s),
-					explode(PHP_EOL, $tester->getDisplay()),
-				),
-			),
+			CommandOutputHelper::getCommandOutput($tester),
 		);
 		self::assertSame($command::SUCCESS, $code);
 	}
@@ -289,13 +249,7 @@ MSG,
   * * * * * / 1  [0] Tests\Orisai\Scheduler\Doubles\CallbackList::job1() Next Due: 1970-01-01 01:01:00 +01:00
 
 MSG,
-			implode(
-				PHP_EOL,
-				array_map(
-					static fn (string $s): string => rtrim($s),
-					explode(PHP_EOL, $tester->getDisplay()),
-				),
-			),
+			CommandOutputHelper::getCommandOutput($tester),
 		);
 		self::assertSame($command::SUCCESS, $code);
 	}
@@ -367,13 +321,7 @@ MSG,
   0 1 * * * (Australia/Sydney)  [2] Tests\Orisai\Scheduler\Doubles\CallbackList::__invoke() Next Due: 1970-01-01 01:00:00 +00:00
 
 MSG,
-			implode(
-				PHP_EOL,
-				array_map(
-					static fn (string $s): string => rtrim($s),
-					explode(PHP_EOL, $tester->getDisplay()),
-				),
-			),
+			CommandOutputHelper::getCommandOutput($tester),
 		);
 		self::assertSame($command::SUCCESS, $code);
 
@@ -390,13 +338,7 @@ MSG,
   0 1 * * * (Australia/Sydney)  [2] Tests\Orisai\Scheduler\Doubles\CallbackList::__invoke() Next Due: 1970-01-02 01:00:00 +01:00
 
 MSG,
-			implode(
-				PHP_EOL,
-				array_map(
-					static fn (string $s): string => rtrim($s),
-					explode(PHP_EOL, $tester->getDisplay()),
-				),
-			),
+			CommandOutputHelper::getCommandOutput($tester),
 		);
 		self::assertSame($command::SUCCESS, $code);
 	}
@@ -446,13 +388,7 @@ At every minute.
 At every 30th minute past every hour from 7 through 15 on every day-of-week from Monday through Friday in America/New_York time zone.
 
 MSG,
-			implode(
-				PHP_EOL,
-				array_map(
-					static fn (string $s): string => rtrim($s),
-					explode(PHP_EOL, $tester->getDisplay()),
-				),
-			),
+			CommandOutputHelper::getCommandOutput($tester),
 		);
 		self::assertSame($command::SUCCESS, $code);
 	}
