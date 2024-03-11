@@ -72,6 +72,7 @@ final class PlannedJobInfoTest extends TestCase
 
 		self::assertSame($runsCount, $info->getRunsCountPerMinute());
 		self::assertEquals($estimatedTimes, $info->getEstimatedStartTimes());
+		self::assertSame($info->getEstimatedStartTimes(), $info->getEstimatedStartTimes());
 	}
 
 	public function provideEstimatedStartTimes(): Generator
