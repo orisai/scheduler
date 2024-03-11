@@ -601,7 +601,9 @@ Run scheduler once, executing jobs scheduled for the current minute
 
 `bin/console scheduler:run`
 
-- use `--json` to output json with job info and result
+Options:
+
+- `--json` - output json with job info and result
 
 You can also change crontab settings to use command instead:
 
@@ -615,21 +617,30 @@ Run single job, ignoring scheduled time
 
 `bin/console scheduler:run-job <id>`
 
-- use `--no-force` to respect due time and only run job if it is due
-- use `--json` to output json with job info and result
+Options:
+
+- `--no-force` - respect due time and only run job if it is due
+- `--json` - output json with job info and result
 
 ### List command
 
 List all scheduled jobs (in `expression / second (timezone) [id] name... next-due` format)
 
-`bin/console scheduler:list`
+```shell
+bin/console scheduler:list
+bin/console scheduler:list --next=3
+bin/console scheduler:list --timezone=Europe/Prague
+bin/console scheduler:list --explain
+```
 
-- use `--next` to sort jobs by their next execution time
+Options:
+
+- `--next` - sort jobs by their next execution time
 	- `--next=N` lists only *N* next jobs (e.g. `--next=3` prints maximally 3)
-- use `-v` to display absolute times
-- use `--timezone` (or `-tz`) to display times in specified timezone instead of one used by application
+- `-v` - display absolute times
+- `--timezone` (or `-tz`) - display times in specified timezone instead of one used by application
 	- e.g. `--tz=UTC`
-- use `--explain` to explain whole expression, including [seconds](#seconds) and [timezones](#timezones)
+- `--explain` - explain whole expression, including [seconds](#seconds) and [timezones](#timezones)
 	- [Explain command](#explain-command) with `--id` parameter can be used to explain specific job
 
 ### Worker command
