@@ -7,7 +7,6 @@ use Cron\CronExpression;
 use DateTimeZone;
 use Generator;
 use Orisai\Clock\FrozenClock;
-use Orisai\Exceptions\Logic\InvalidArgument;
 use Orisai\Scheduler\Command\ListCommand;
 use Orisai\Scheduler\Job\CallbackJob;
 use Orisai\Scheduler\SimpleScheduler;
@@ -264,14 +263,18 @@ MSG,
 		$command = new ListCommand($scheduler);
 		$tester = new CommandTester($command);
 
-		$this->expectException(InvalidArgument::class);
-		$this->expectExceptionMessage(
-			"Command 'scheduler:list' option --next expects an int value larger than 0, '$next' given.",
-		);
-
 		$tester->execute([
 			'--next' => $next,
 		]);
+
+		self::assertSame(
+			<<<MSG
+Option --next expects an int<1, max>, '$next' given.
+
+MSG,
+			CommandOutputHelper::getCommandOutput($tester),
+		);
+		self::assertSame($command::FAILURE, $tester->getStatusCode());
 	}
 
 	public function provideInvalidNext(): Generator
@@ -279,6 +282,7 @@ MSG,
 		yield ['not-a-number'];
 		yield ['1.0'];
 		yield ['0'];
+		yield ['0.9'];
 	}
 
 	public function testTimeZone(): void

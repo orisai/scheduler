@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - `ListCommand`
 	- adds `--explain` option to explain whole expression
 
+### Fixed
+
+- `ListCommand`
+	- on invalid input option - writes error to output instead of throwing exception
+
 ## [2.0.0](https://github.com/orisai/scheduler/compare/1.0.0...2.0.0) - 2024-01-26
 
 This release most notably contains:

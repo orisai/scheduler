@@ -9,7 +9,6 @@ use DateTimeZone;
 use Orisai\Clock\SystemClock;
 use Orisai\CronExpressionExplainer\CronExpressionExplainer;
 use Orisai\CronExpressionExplainer\DefaultCronExpressionExplainer;
-use Orisai\Exceptions\Logic\InvalidArgument;
 use Orisai\Scheduler\Job\JobSchedule;
 use Orisai\Scheduler\Scheduler;
 use Psr\Clock\ClockInterface;
@@ -23,6 +22,7 @@ use function assert;
 use function floor;
 use function in_array;
 use function is_bool;
+use function is_string;
 use function max;
 use function mb_strlen;
 use function preg_match;
@@ -31,6 +31,7 @@ use function str_pad;
 use function str_repeat;
 use function strlen;
 use function strnatcmp;
+use function timezone_identifiers_list;
 use function uasort;
 use const STR_PAD_LEFT;
 
@@ -76,9 +77,14 @@ final class ListCommand extends Command
 
 	protected function execute(InputInterface $input, OutputInterface $output): int
 	{
-		$nextOption = $this->validateOptionNext($input);
-		$timeZone = $this->validateOptionTimeZone($input);
-		$explain = $this->validateOptionExplain($input);
+		$options = $this->validateOptions($input, $output);
+		if ($options === null) {
+			return self::FAILURE;
+		}
+
+		$nextOption = $options['next'];
+		$timeZone = $options['timezone'];
+		$explain = $options['explain'];
 
 		$jobSchedules = $this->scheduler->getJobSchedules();
 
@@ -146,58 +152,58 @@ final class ListCommand extends Command
 	}
 
 	/**
-	 * @return bool|int<1, max>
+	 * @return array{next: int<1, max>|bool, timezone: DateTimeZone, explain: bool}|null
 	 */
-	private function validateOptionNext(InputInterface $input)
+	private function validateOptions(InputInterface $input, OutputInterface $output): ?array
 	{
+		$hasErrors = false;
+
 		$next = $input->getOption('next');
-
-		if ($next === false) {
-			return false;
-		}
-
+		assert(is_string($next) || $next === false || $next === null);
 		if ($next === null) {
-			return true;
-		}
-
-		if (
+			$next = true;
+		} elseif (
 			/** @infection-ignore-all */
-			preg_match('#^[+-]?[0-9]+$#D', $next) !== 1
-			|| ($nextInt = (int) $next) <= 0
+			is_string($next)
+			&&
+			(
+				preg_match('#^[+-]?[0-9]+$#D', $next) !== 1
+				|| ($next = (int) $next) < 1
+			)
 		) {
-			throw InvalidArgument::create()
-				->withMessage(
-					"Command '{$this->getName()}' option --next expects an int value larger than 0, '$next' given.",
-				);
+			$hasErrors = true;
+			$output->writeln("<error>Option --next expects an int<1, max>, '$next' given.</error>");
 		}
 
-		return $nextInt;
-	}
-
-	private function validateOptionTimeZone(InputInterface $input): DateTimeZone
-	{
-		$option = $input->getOption('timezone');
-
-		if ($option === null) {
-			return $this->clock->now()->getTimezone();
+		$timezone = $input->getOption('timezone');
+		assert(is_string($timezone) || $timezone === null);
+		if ($timezone !== null) {
+			if (!in_array($timezone, timezone_identifiers_list(), true)) {
+				$hasErrors = true;
+				$output->writeln("<error>Option --timezone expects a valid timezone, '$timezone' given.</error>");
+			} else {
+				$timezone = new DateTimeZone($timezone);
+			}
+		} else {
+			$timezone = $this->clock->now()->getTimezone();
 		}
 
-		if (!in_array($option, DateTimeZone::listIdentifiers(), true)) {
-			throw InvalidArgument::create()
-				->withMessage(
-					"Command '{$this->getName()}' option --timezone expects a timezone name, '$option' given.",
-				);
+		$explain = $input->getOption('explain');
+		assert(is_bool($explain));
+
+		if ($hasErrors) {
+			return null;
 		}
 
-		return new DateTimeZone($option);
-	}
+		// Happens only when $hasErrors = true
+		assert(!is_string($next));
+		assert(!is_string($timezone));
 
-	private function validateOptionExplain(InputInterface $input): bool
-	{
-		$option = $input->getOption('explain');
-		assert(is_bool($option));
-
-		return $option;
+		return [
+			'next' => $next,
+			'timezone' => $timezone,
+			'explain' => $explain,
+		];
 	}
 
 	/**
