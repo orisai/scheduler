@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 	- explains cron expression syntax
 - `ListCommand`
 	- adds `--explain` option to explain whole expression
+- `SymfonyCommandJob`
 
 ### Fixed
 

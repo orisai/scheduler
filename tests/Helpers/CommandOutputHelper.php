@@ -14,9 +14,16 @@ use const PHP_EOL;
 final class CommandOutputHelper
 {
 
-	public static function getCommandOutput(CommandTester $tester): string
+	/**
+	 * @param string|CommandTester $output
+	 */
+	public static function getCommandOutput($output): string
 	{
-		$display = preg_replace('~\R~u', PHP_EOL, $tester->getDisplay());
+		if ($output instanceof CommandTester) {
+			$output = $output->getDisplay();
+		}
+
+		$display = preg_replace('~\R~u', PHP_EOL, $output);
 		assert($display !== null);
 
 		return implode(

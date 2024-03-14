@@ -514,6 +514,35 @@ $scheduler->addJob(
 );
 ```
 
+### Symfony command job
+
+Run [symfony/console](https://github.com/symfony/console) command as a job
+
+- if job succeeds (returns zero code), command output is ignored
+- if job fails (returns non-zero code), exception is thrown, including command return code, output and if thrown by the
+  command, the exception
+
+```php
+use Orisai\Scheduler\Job\SymfonyCommandJob;
+
+$job = new SymfonyCommandJob($command, $application);
+$scheduler->addJob(
+	$job,
+	/* ... */,
+);
+
+```
+
+Command can be parametrized:
+
+```php
+$job->setCommandParameters([
+	'argument' => 'value',
+	'--option' => 'value',
+	'--boolean-option' => true,
+]);
+```
+
 ## Job info and result
 
 Status information available via [events](#events) and [run summary](#run-summary)
@@ -582,7 +611,7 @@ thrown `JobFailure`.
 
 ## CLI commands
 
-For symfony/console you may use our commands:
+For [symfony/console](https://github.com/symfony/console) you may use our commands:
 
 - [Run](#run-command)
 - [Run job](#run-job-command)
