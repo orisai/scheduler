@@ -13,6 +13,7 @@ use Symfony\Component\Lock\NoLock;
 use Tests\Orisai\Scheduler\Doubles\TestExceptionCommand;
 use Tests\Orisai\Scheduler\Doubles\TestFailNoOutputCommand;
 use Tests\Orisai\Scheduler\Doubles\TestFailOutputCommand;
+use Tests\Orisai\Scheduler\Doubles\TestLock;
 use Tests\Orisai\Scheduler\Doubles\TestParametrizedCommand;
 use Tests\Orisai\Scheduler\Doubles\TestSuccessCommand;
 use Tests\Orisai\Scheduler\Helpers\CommandOutputHelper;
@@ -205,6 +206,25 @@ MSG,
 
 		// No output, no need to assert
 		$job->run(new JobLock(new NoLock()));
+	}
+
+	public function testLockTtl(): void
+	{
+		$command = new TestSuccessCommand();
+		$application = new Application();
+		$application->add($command);
+		$job = new SymfonyCommandJob($command, $application);
+		$job->setLockTtl(0.1);
+
+		$lock = new TestLock();
+		$job->run(new JobLock($lock));
+
+		self::assertSame(
+			[
+				['refresh', 0.1],
+			],
+			$lock->calls,
+		);
 	}
 
 }

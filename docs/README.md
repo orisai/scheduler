@@ -543,6 +543,13 @@ $job->setCommandParameters([
 ]);
 ```
 
+When running command as a job, [lock](#locks-and-job-overlapping) cannot be simply refreshed as with other jobs.
+Instead, you can change lock's default time to live to ensure lock was not released before the job finished.
+
+```php
+$job->setLockTtl(600); // Time in seconds
+```
+
 ## Job info and result
 
 Status information available via [events](#events) and [run summary](#run-summary)

@@ -23,6 +23,8 @@ final class SymfonyCommandJob implements Job
 	/** @var array<int|string, mixed> */
 	private array $parameters = [];
 
+	private ?float $lockTtl = null;
+
 	public function __construct(Command $command, Application $application)
 	{
 		$this->command = $command;
@@ -37,6 +39,14 @@ final class SymfonyCommandJob implements Job
 		$this->parameters = $parameters;
 	}
 
+	/**
+	 * Set lock time to live in seconds
+	 */
+	public function setLockTtl(float $lockTtl): void
+	{
+		$this->lockTtl = $lockTtl;
+	}
+
 	public function getName(): string
 	{
 		$name = $this->command->getName();
@@ -47,6 +57,10 @@ final class SymfonyCommandJob implements Job
 
 	public function run(JobLock $lock): void
 	{
+		if ($this->lockTtl !== null) {
+			$lock->refresh($this->lockTtl);
+		}
+
 		$input = $this->createInput();
 		$output = new BufferedOutput();
 
