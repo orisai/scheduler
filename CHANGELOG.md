@@ -15,6 +15,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 	- adds `--explain` option to explain whole expression
 - `SymfonyCommandJob`
 
+### Changed
+
+- `ProcessJobExecutor`
+	- subprocess errors include exit code
+
 ### Fixed
 
 - `ListCommand`

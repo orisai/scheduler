@@ -1088,9 +1088,10 @@ MSG,
 			self::assertStringMatchesFormat(
 				<<<'MSG'
 Context: Running job via command %a
-Problem: Job subprocess failed.
+Problem: Job subprocess did not correctly write job result to stdout.
 Tip: Make sure that job is executable by the command and that you have the error
      handler set.
+Exit code: 1
 stdout: Could not open input file: bin/console
 stderr:
 MSG,
@@ -1125,9 +1126,10 @@ MSG,
 			self::assertStringMatchesFormat(
 				<<<'MSG'
 Context: Running job via command %a
-Problem: Job subprocess failed.
+Problem: Job subprocess did not correctly write job result to stdout.
 Tip: Make sure that job is executable by the command and that you have the error
      handler set.
+Exit code: 0
 stdout:%c
 stderr: error
 MSG,
@@ -1163,6 +1165,7 @@ MSG,
 				<<<'MSG'
 Context: Running job via command %a
 Problem: Job subprocess produced stderr output.
+Exit code: 0
 stderr: job error
 MSG,
 				rtrim($suppressed->getMessage()),
@@ -1197,6 +1200,7 @@ MSG,
 				<<<'MSG'
 Context: Running job via command %a
 Problem: Job subprocess produced unsupported stdout output.
+Exit code: 0
 stdout:  echo%c
 MSG,
 				$message,
@@ -1241,6 +1245,7 @@ MSG,
 				<<<'MSG'
 Context: Running job via command %a
 Problem: Job subprocess produced unsupported stdout output.
+Exit code: 0
 stdout:  echo%c
 MSG,
 				$suppressed->getMessage(),

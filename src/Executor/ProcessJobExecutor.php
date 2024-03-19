@@ -99,7 +99,7 @@ final class ProcessJobExecutor implements JobExecutor
 
 				unset($jobExecutions[$i]);
 
-				$output = $execution->getOutput();
+				$output = trim($execution->getOutput());
 				$errorOutput = trim($execution->getErrorOutput());
 
 				try {
@@ -202,9 +202,10 @@ final class ProcessJobExecutor implements JobExecutor
 	{
 		$message = Message::create()
 			->withContext("Running job via command {$execution->getCommandLine()}")
-			->withProblem('Job subprocess failed.')
+			->withProblem('Job subprocess did not correctly write job result to stdout.')
 			->with('Tip', 'Make sure that job is executable by the command and that you have the error handler set.')
-			->with('stdout', trim($output))
+			->with('Exit code', (string) $execution->getExitCode())
+			->with('stdout', $output)
 			->with('stderr', $errorOutput);
 
 		return JobProcessFailure::create()
@@ -216,6 +217,7 @@ final class ProcessJobExecutor implements JobExecutor
 		$message = Message::create()
 			->withContext("Running job via command {$execution->getCommandLine()}")
 			->withProblem('Job subprocess produced stderr output.')
+			->with('Exit code', (string) $execution->getExitCode())
 			->with('stderr', $errorOutput);
 
 		return JobProcessFailure::create()
@@ -227,6 +229,7 @@ final class ProcessJobExecutor implements JobExecutor
 		$message = Message::create()
 			->withContext("Running job via command {$execution->getCommandLine()}")
 			->withProblem('Job subprocess produced unsupported stdout output.')
+			->with('Exit code', (string) $execution->getExitCode())
 			->with('stdout', $stdout);
 
 		trigger_error($message->toString(), E_USER_NOTICE);
