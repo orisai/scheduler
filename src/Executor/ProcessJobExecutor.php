@@ -203,7 +203,7 @@ final class ProcessJobExecutor implements JobExecutor
 		$message = Message::create()
 			->withContext("Running job via command {$execution->getCommandLine()}")
 			->withProblem('Job subprocess did not correctly write job result to stdout.')
-			->with('Tip', 'Make sure that job is executable by the command and that you have the error handler set.')
+			->with('Tip', 'Check the documentation for troubleshooting guide.')
 			->with('Exit code', (string) $execution->getExitCode())
 			->with('stdout', $output)
 			->with('stderr', $errorOutput);

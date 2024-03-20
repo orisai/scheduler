@@ -33,6 +33,11 @@ Cron job scheduler - with locks, parallelism and more
 	- [Explain command - explain cron expression syntax](#explain-command)
 - [Lazy loading](#lazy-loading)
 - [Integrations and extensions](#integrations-and-extensions)
+- [Troubleshooting guide](#troubleshooting-guide)
+	- [Running a job throws JobProcessFailure exception](#running-a-job-throws-jobprocessfailure-exception)
+	- [Job starts too late](#job-starts-too-late)
+	- [Job does not start at scheduled time](#job-does-not-start-at-scheduled-time)
+	- [Job executions overlap](#job-executions-overlap)
 
 ## Why do you need it?
 
@@ -769,3 +774,61 @@ $scheduler = new ManagedScheduler($manager);
 ## Integrations and extensions
 
 - [Nette](https://github.com/nette) integration - [orisai/nette-scheduler](https://github.com/orisai/nette-scheduler)
+
+## Troubleshooting guide
+
+Common errors and how to solve them.
+
+### Running a job throws JobProcessFailure exception
+
+Process can fail due to various reasons. Here are covered the most common (and known) ones.
+
+*Stdout is empty:*
+
+Stdout is used to return job result as a json. Being empty means that either executed command is completely wrong and
+does not run the job or that job was terminated prematurely. Premature termination may happen when job or one of its
+before/after events call the `exit()` (or `die()`) function or when the process is killed on system level.
+
+*Stdout contains different output than json with job result:*
+
+If the message says something like *Could not open input file: bin/console* then either executable file does not exist
+(you can change path to executable, as described [here](#parallelization-and-process-isolation)) or permissions are set
+up badly, and you don't have rights to execute the file.
+
+In case of other stdout outputs you may run completely wrong command or the command writes to stdout. While we are able
+to catch most output to `php://output` (like `print` and `echo`) and handle it properly, it is not always possible.
+Output may still be produced outside the PHP script, you may have defined output buffer with higher priority than the
+one from job runner or terminated the job.
+
+*Stderr contains a suppressed error:*
+
+That means you don't have an [error handler](#handling-errors) set or that the error handler throws an exception. Set an
+error handler and make sure that it does not throw any exception.
+
+### Job starts too late
+
+Make sure to set up [parallel job executor](#parallelization-and-process-isolation). Otherwise, jobs are executed one
+after the other and every preceding job will delay execution of the next job.
+
+Before run/job events must finish before any jobs are started. Optimize them well and never use functions
+like `sleep()`.
+
+### Job does not start at scheduled time
+
+Cron expressions are quite complex and interpreting them may not be always easy. Use `--explain` parameter of
+the [list command](#list-command) or the [explain command](#explain-command) to explain the expression.
+
+You can also check the next run date computed from cron expression
+
+```php
+$scheduler->getJobSchedules()['job-id']->getExpression()->getNextRunDate();
+```
+
+### Job executions overlap
+
+Set up [locking](#locks-and-job-overlapping) and make sure the lock storage is sufficient for your setup. E.g. flock (
+lock files on the disk) will not work for applications running across multiple servers.
+
+Default lock timeout is set to 5 minutes. If your lock storage supports expiration and job takes over 5 minutes, lock
+will be released before job finishes. In such case it is up to you to prolong the expiration time.
+Each [job type](#job-types) allows you to control the lock.
