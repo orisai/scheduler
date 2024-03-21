@@ -9,6 +9,7 @@ use Orisai\Scheduler\Executor\JobExecutor;
 use Orisai\Scheduler\Job\Job;
 use Orisai\Scheduler\Manager\SimpleJobManager;
 use Psr\Clock\ClockInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\Lock\LockFactory;
 
 final class SimpleScheduler extends ManagedScheduler
@@ -20,7 +21,8 @@ final class SimpleScheduler extends ManagedScheduler
 		?Closure $errorHandler = null,
 		?LockFactory $lockFactory = null,
 		?JobExecutor $executor = null,
-		?ClockInterface $clock = null
+		?ClockInterface $clock = null,
+		?LoggerInterface $logger = null
 	)
 	{
 		$this->jobManager = new SimpleJobManager();
@@ -31,6 +33,7 @@ final class SimpleScheduler extends ManagedScheduler
 			$lockFactory,
 			$executor,
 			$clock,
+			$logger,
 		);
 	}
 

@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Added
 
+- `ManagedScheduler`
+	- warns in case lock was released before job finished (via optional logger)
 - `ExplainCommand`
 	- explains cron expression syntax
 - `ListCommand`

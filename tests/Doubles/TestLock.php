@@ -2,9 +2,9 @@
 
 namespace Tests\Orisai\Scheduler\Doubles;
 
-use Symfony\Component\Lock\LockInterface;
+use Symfony\Component\Lock\SharedLockInterface;
 
-final class TestLock implements LockInterface
+final class TestLock implements SharedLockInterface
 {
 
 	/** @var list<mixed> */
@@ -19,6 +19,13 @@ final class TestLock implements LockInterface
 	public function acquire(bool $blocking = false): bool
 	{
 		$this->calls[] = ['acquire', $blocking];
+
+		return true;
+	}
+
+	public function acquireRead(bool $blocking = false): bool
+	{
+		$this->calls[] = ['acquireRead', $blocking];
 
 		return true;
 	}

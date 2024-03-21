@@ -31,7 +31,9 @@ use Symfony\Component\Lock\Store\InMemoryStore;
 use Tests\Orisai\Scheduler\Doubles\CallbackList;
 use Tests\Orisai\Scheduler\Doubles\CustomNameJob;
 use Tests\Orisai\Scheduler\Doubles\JobInnerFailure;
+use Tests\Orisai\Scheduler\Doubles\TestExpiredLockFactory;
 use Tests\Orisai\Scheduler\Doubles\TestLockFactory;
+use Tests\Orisai\Scheduler\Doubles\TestLogger;
 use Throwable;
 use function count;
 use function rtrim;
@@ -973,6 +975,43 @@ MSG,
 
 		$scheduler->runJob(0);
 		self::assertCount(2, $afterCollected);
+	}
+
+	public function testLockExpirationIsLogged(): void
+	{
+		$lockFactory = new TestExpiredLockFactory();
+		$clock = new FrozenClock(1);
+		$logger = new TestLogger();
+		$scheduler = new SimpleScheduler(null, $lockFactory, null, $clock, $logger);
+
+		$job = new CallbackJob(
+			static function (): void {
+				// Noop
+			},
+		);
+		$scheduler->addJob($job, new CronExpression('* * * * *'), 'first');
+		$scheduler->addJob($job, new CronExpression('* * * * *'), 'second');
+
+		$scheduler->run();
+		self::assertSame(
+			[
+				[
+					'warning',
+					"Lock of job 'first' expired before the job finished.",
+					[
+						'id' => 'first',
+					],
+				],
+				[
+					'warning',
+					"Lock of job 'second' expired before the job finished.",
+					[
+						'id' => 'second',
+					],
+				],
+			],
+			$logger->logs,
+		);
 	}
 
 	public function testRepeat(): void

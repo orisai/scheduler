@@ -17,6 +17,7 @@ Cron job scheduler - with locks, parallelism and more
 	- [Before run event](#before-run-event)
 	- [After run event](#after-run-event)
 - [Handling errors](#handling-errors)
+- [Logging potential problems](#logging-potential-problems)
 - [Locks and job overlapping](#locks-and-job-overlapping)
 - [Parallelization and process isolation](#parallelization-and-process-isolation)
 - [Job types](#job-types)
@@ -356,6 +357,21 @@ $errorHandler = function(Throwable $throwable, JobInfo $info, JobResult $result)
 	]);
 },
 $scheduler = new SimpleScheduler($errorHandler);
+```
+
+## Logging potential problems
+
+Using a [PSR-3](https://www.php-fig.org/psr/psr-3/)-compatible logger
+(like [Monolog](https://github.com/Seldaek/monolog)) you may log some situations which do not fail the job, but are most
+certainly unwanted:
+
+- [Lock](#locks-and-job-overlapping) was released before the job finished. Your job has access to the lock and should
+  extend the lock time so this does not happen.
+
+```php
+use Orisai\Scheduler\SimpleScheduler;
+
+$scheduler = new SimpleScheduler(null, null, null, null, $logger);
 ```
 
 ## Locks and job overlapping

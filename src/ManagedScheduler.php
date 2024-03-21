@@ -25,6 +25,8 @@ use Orisai\Scheduler\Status\RunInfo;
 use Orisai\Scheduler\Status\RunParameters;
 use Orisai\Scheduler\Status\RunSummary;
 use Psr\Clock\ClockInterface;
+use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
 use Symfony\Component\Lock\LockFactory;
 use Symfony\Component\Lock\Store\InMemoryStore;
 use Throwable;
@@ -43,6 +45,8 @@ class ManagedScheduler implements Scheduler
 	private JobExecutor $executor;
 
 	private Clock $clock;
+
+	private LoggerInterface $logger;
 
 	/** @var list<Closure(JobInfo, JobResult): void> */
 	private array $lockedJobCallbacks = [];
@@ -67,13 +71,15 @@ class ManagedScheduler implements Scheduler
 		?Closure $errorHandler = null,
 		?LockFactory $lockFactory = null,
 		?JobExecutor $executor = null,
-		?ClockInterface $clock = null
+		?ClockInterface $clock = null,
+		?LoggerInterface $logger = null
 	)
 	{
 		$this->jobManager = $jobManager;
 		$this->errorHandler = $errorHandler;
 		$this->lockFactory = $lockFactory ?? new LockFactory(new InMemoryStore());
 		$this->clock = ClockAdapterFactory::create($clock ?? new SystemClock());
+		$this->logger = $logger ?? new NullLogger();
 
 		$this->executor = $executor ?? new BasicJobExecutor(
 			$this->clock,
@@ -274,6 +280,12 @@ class ManagedScheduler implements Scheduler
 				$job->run(new JobLock($lock));
 			} catch (Throwable $throwable) {
 				// Handled bellow
+			}
+
+			if ($lock->isExpired()) {
+				$this->logger->warning("Lock of job '$id' expired before the job finished.", [
+					'id' => $id,
+				]);
 			}
 
 			$result = new JobResult(
