@@ -376,7 +376,9 @@ $scheduler = new SimpleScheduler(null, null, null, null, $logger);
 
 If you use [process job executor](#parallelization-and-process-isolation), then also these situations are logged:
 
-- Subprocess running the job produced unexpected stdout output. Job should never echo or write directly to stdout.
+- Subprocess running the job produced unexpected *stdout* output. Job should never echo or write directly to stdout.
+- Subprocess running the job produced unexpected *stderr* output. This may happen just due to deprecation notices but may
+  also be caused by more serious problem occurring in CLI.
 
 ```php
 use Orisai\Scheduler\SimpleScheduler;

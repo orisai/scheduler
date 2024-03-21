@@ -101,17 +101,17 @@ final class ProcessJobExecutor implements JobExecutor
 
 				unset($jobExecutions[$i]);
 
-				$output = trim($execution->getOutput());
-				$errorOutput = trim($execution->getErrorOutput());
+				$stdout = trim($execution->getOutput());
+				$stderr = trim($execution->getErrorOutput());
 
 				try {
-					$decoded = json_decode($output, true, 512, JSON_THROW_ON_ERROR);
+					$decoded = json_decode($stdout, true, 512, JSON_THROW_ON_ERROR);
 					assert(is_array($decoded));
 				} catch (JsonException $e) {
 					$suppressedExceptions[] = $this->createSubprocessFail(
 						$execution,
-						$output,
-						$errorOutput,
+						$stdout,
+						$stderr,
 					);
 
 					continue;
@@ -122,11 +122,8 @@ final class ProcessJobExecutor implements JobExecutor
 					$this->logUnexpectedStdout($execution, $jobId, $unexpectedStdout);
 				}
 
-				if ($errorOutput !== '') {
-					$suppressedExceptions[] = $this->createStderrFail(
-						$execution,
-						$errorOutput,
-					);
+				if ($stderr !== '') {
+					$this->logUnexpectedStderr($execution, $jobId, $stderr);
 				}
 
 				yield $jobSummaries[] = $this->createSummary($decoded, $jobSchedule->getExpression());
@@ -208,16 +205,17 @@ final class ProcessJobExecutor implements JobExecutor
 			->withMessage($message);
 	}
 
-	private function createStderrFail(Process $execution, string $errorOutput): JobProcessFailure
+	/**
+	 * @param int|string $jobId
+	 */
+	private function logUnexpectedStderr(Process $execution, $jobId, string $stderr): void
 	{
-		$message = Message::create()
-			->withContext("Running job via command {$execution->getCommandLine()}")
-			->withProblem('Job subprocess produced stderr output.')
-			->with('Exit code', (string) $execution->getExitCode())
-			->with('stderr', $errorOutput);
-
-		return JobProcessFailure::create()
-			->withMessage($message);
+		$this->logger->warning("Subprocess running job '$jobId' produced unexpected stderr output.", [
+			'id' => $jobId,
+			'command' => $execution->getCommandLine(),
+			'exitCode' => $execution->getExitCode(),
+			'stderr' => $stderr,
+		]);
 	}
 
 	/**

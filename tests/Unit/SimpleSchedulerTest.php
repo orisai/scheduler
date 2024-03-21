@@ -1174,37 +1174,30 @@ MSG,
 
 	public function testProcessJobStderr(): void
 	{
-		$scheduler = SchedulerProcessSetup::createWithStderrJob();
+		[$scheduler, $logger] = SchedulerProcessSetup::createWithStderrJob();
+		$summary = $scheduler->run();
 
-		$e = null;
-		try {
-			$scheduler->run();
-		} catch (RunFailure $e) {
-			// Handled bellow
+		foreach ($logger->logs as &$log) {
+			self::assertIsString($log[2]['command']);
+			// Can't easily assert
+			unset($log[2]['command']);
 		}
 
-		self::assertNotNull($e);
-		self::assertStringStartsWith(
-			<<<'MSG'
-Run failed
-Suppressed errors:
-MSG,
-			$e->getMessage(),
+		self::assertCount(1, $summary->getJobSummaries());
+		self::assertSame(
+			[
+				[
+					'warning',
+					"Subprocess running job '0' produced unexpected stderr output.",
+					[
+						'id' => 0,
+						'exitCode' => 0,
+						'stderr' => 'job error',
+					],
+				],
+			],
+			$logger->logs,
 		);
-
-		self::assertNotSame([], $e->getSuppressed());
-		foreach ($e->getSuppressed() as $suppressed) {
-			self::assertInstanceOf(JobProcessFailure::class, $suppressed);
-			self::assertStringMatchesFormat(
-				<<<'MSG'
-Context: Running job via command %a
-Problem: Job subprocess produced stderr output.
-Exit code: 0
-stderr: job error
-MSG,
-				rtrim($suppressed->getMessage()),
-			);
-		}
 	}
 
 	/**

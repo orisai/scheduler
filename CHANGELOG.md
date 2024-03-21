@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - `ProcessJobExecutor`
 	- subprocess errors include exit code
 	- logs unexpected stdout instead of triggering E_USER_NOTICE (via optional logger)
+	- logs unexpected stderr instead of throwing an exception (via optional logger)
 
 ### Fixed
 

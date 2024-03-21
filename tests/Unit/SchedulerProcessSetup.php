@@ -84,11 +84,15 @@ final class SchedulerProcessSetup
 		return new ManagedScheduler($jobManager, null, null, $executor, $clock);
 	}
 
-	public static function createWithStderrJob(): ManagedScheduler
+	/**
+	 * @return array{ManagedScheduler, TestLogger}
+	 */
+	public static function createWithStderrJob(): array
 	{
 		$jobManager = new SimpleJobManager();
 		$clock = new FrozenClock(1);
-		$executor = new ProcessJobExecutor($clock);
+		$logger = new TestLogger();
+		$executor = new ProcessJobExecutor($clock, $logger);
 		$executor->setExecutable(__DIR__ . '/scheduler-process-binary-with-stderr-job.php');
 
 		$jobManager->addJob(
@@ -98,7 +102,9 @@ final class SchedulerProcessSetup
 			new CronExpression('* * * * *'),
 		);
 
-		return new ManagedScheduler($jobManager, null, null, $executor, $clock);
+		$scheduler = new ManagedScheduler($jobManager, null, null, $executor, $clock, $logger);
+
+		return [$scheduler, $logger];
 	}
 
 	/**
