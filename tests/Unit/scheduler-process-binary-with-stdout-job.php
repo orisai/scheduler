@@ -7,7 +7,7 @@ use Tests\Orisai\Scheduler\Unit\SchedulerProcessSetup;
 require_once __DIR__ . '/../../vendor/autoload.php';
 
 $application = new Application();
-$scheduler = SchedulerProcessSetup::createWithStdoutJob();
+[$scheduler] = SchedulerProcessSetup::createWithStdoutJob();
 
 $command = new RunJobCommand($scheduler);
 

@@ -21,15 +21,14 @@ use Orisai\Scheduler\Status\JobSummary;
 use Orisai\Scheduler\Status\RunParameters;
 use Orisai\Scheduler\Status\RunSummary;
 use Psr\Clock\ClockInterface;
+use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
 use Symfony\Component\Process\Process;
-use Throwable;
 use function assert;
 use function is_array;
 use function json_decode;
 use function json_encode;
-use function trigger_error;
 use function trim;
-use const E_USER_NOTICE;
 use const JSON_THROW_ON_ERROR;
 use const PHP_BINARY;
 
@@ -41,13 +40,16 @@ final class ProcessJobExecutor implements JobExecutor
 
 	private Clock $clock;
 
+	private LoggerInterface $logger;
+
 	private string $script = 'bin/console';
 
 	private string $command = 'scheduler:run-job';
 
-	public function __construct(?ClockInterface $clock = null)
+	public function __construct(?ClockInterface $clock = null, ?LoggerInterface $logger = null)
 	{
 		$this->clock = ClockAdapterFactory::create($clock ?? new SystemClock());
+		$this->logger = $logger ?? new NullLogger();
 	}
 
 	public function setExecutable(string $script, string $command = 'scheduler:run-job'): void
@@ -91,7 +93,7 @@ final class ProcessJobExecutor implements JobExecutor
 			}
 
 			// Check running jobs
-			foreach ($jobExecutions as $i => [$execution, $cronExpression]) {
+			foreach ($jobExecutions as $i => [$execution, $jobSchedule, $jobId]) {
 				assert($execution instanceof Process);
 				if ($execution->isRunning()) {
 					continue;
@@ -115,15 +117,9 @@ final class ProcessJobExecutor implements JobExecutor
 					continue;
 				}
 
-				$stdout = $decoded['stdout'];
-				if ($stdout !== '') {
-					try {
-						$this->triggerUnexpectedStdout($execution, $stdout);
-					} catch (Throwable $e) {
-						$suppressedExceptions[] = $e;
-
-						continue;
-					}
+				$unexpectedStdout = $decoded['stdout'];
+				if ($unexpectedStdout !== '') {
+					$this->logUnexpectedStdout($execution, $jobId, $unexpectedStdout);
 				}
 
 				if ($errorOutput !== '') {
@@ -133,7 +129,7 @@ final class ProcessJobExecutor implements JobExecutor
 					);
 				}
 
-				yield $jobSummaries[] = $this->createSummary($decoded, $cronExpression);
+				yield $jobSummaries[] = $this->createSummary($decoded, $jobSchedule->getExpression());
 			}
 
 			// Nothing to do, wait
@@ -152,9 +148,9 @@ final class ProcessJobExecutor implements JobExecutor
 	}
 
 	/**
-	 * @param array<int|string, JobSchedule>             $jobSchedules
-	 * @param array<int, array{Process, CronExpression}> $jobExecutions
-	 * @return array<int, array{Process, CronExpression}>
+	 * @param array<int|string, JobSchedule>                      $jobSchedules
+	 * @param array<int, array{Process, JobSchedule, int|string}> $jobExecutions
+	 * @return array<int, array{Process, JobSchedule, int|string}>
 	 */
 	private function startJobs(array $jobSchedules, array $jobExecutions, RunParameters $parameters): array
 	{
@@ -170,7 +166,7 @@ final class ProcessJobExecutor implements JobExecutor
 			]);
 			$execution->start();
 
-			$jobExecutions[] = [$execution, $jobSchedule->getExpression()];
+			$jobExecutions[] = [$execution, $jobSchedule, $id];
 		}
 
 		return $jobExecutions;
@@ -224,15 +220,17 @@ final class ProcessJobExecutor implements JobExecutor
 			->withMessage($message);
 	}
 
-	private function triggerUnexpectedStdout(Process $execution, string $stdout): void
+	/**
+	 * @param int|string $jobId
+	 */
+	private function logUnexpectedStdout(Process $execution, $jobId, string $stdout): void
 	{
-		$message = Message::create()
-			->withContext("Running job via command {$execution->getCommandLine()}")
-			->withProblem('Job subprocess produced unsupported stdout output.')
-			->with('Exit code', (string) $execution->getExitCode())
-			->with('stdout', $stdout);
-
-		trigger_error($message->toString(), E_USER_NOTICE);
+		$this->logger->warning("Subprocess running job '$jobId' produced unexpected stdout output.", [
+			'id' => $jobId,
+			'command' => $execution->getCommandLine(),
+			'exitCode' => $execution->getExitCode(),
+			'stdout' => $stdout,
+		]);
 	}
 
 }

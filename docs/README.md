@@ -374,6 +374,18 @@ use Orisai\Scheduler\SimpleScheduler;
 $scheduler = new SimpleScheduler(null, null, null, null, $logger);
 ```
 
+If you use [process job executor](#parallelization-and-process-isolation), then also these situations are logged:
+
+- Subprocess running the job produced unexpected stdout output. Job should never echo or write directly to stdout.
+
+```php
+use Orisai\Scheduler\SimpleScheduler;
+use Orisai\Scheduler\Executor\ProcessJobExecutor;
+
+$executor = new ProcessJobExecutor(null, $logger);
+$scheduler = new SimpleScheduler(null, null, $executor, null, $logger);
+```
+
 ## Locks and job overlapping
 
 Jobs are time-based and simply run at specified intervals. If they take too long, they may overlap and run

@@ -13,6 +13,7 @@ use Orisai\Scheduler\Manager\SimpleJobManager;
 use Orisai\Scheduler\Status\JobInfo;
 use Orisai\Scheduler\Status\JobResult;
 use Tests\Orisai\Scheduler\Doubles\CallbackList;
+use Tests\Orisai\Scheduler\Doubles\TestLogger;
 use Throwable;
 use function fwrite;
 use const STDERR;
@@ -100,11 +101,15 @@ final class SchedulerProcessSetup
 		return new ManagedScheduler($jobManager, null, null, $executor, $clock);
 	}
 
-	public static function createWithStdoutJob(): ManagedScheduler
+	/**
+	 * @return array{ManagedScheduler, TestLogger}
+	 */
+	public static function createWithStdoutJob(): array
 	{
 		$jobManager = new SimpleJobManager();
 		$clock = new FrozenClock(1);
-		$executor = new ProcessJobExecutor($clock);
+		$logger = new TestLogger();
+		$executor = new ProcessJobExecutor($clock, $logger);
 		$executor->setExecutable(__DIR__ . '/scheduler-process-binary-with-stdout-job.php');
 
 		$jobManager->addJob(
@@ -115,7 +120,9 @@ final class SchedulerProcessSetup
 			new CronExpression('* * * * *'),
 		);
 
-		return new ManagedScheduler($jobManager, null, null, $executor, $clock);
+		$scheduler = new ManagedScheduler($jobManager, null, null, $executor, $clock, $logger);
+
+		return [$scheduler, $logger];
 	}
 
 	/**

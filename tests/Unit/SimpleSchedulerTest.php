@@ -7,7 +7,6 @@ use Cron\CronExpression;
 use DateTimeImmutable;
 use DateTimeInterface;
 use DateTimeZone;
-use ErrorException;
 use Exception;
 use Generator;
 use Orisai\Clock\FrozenClock;
@@ -37,9 +36,6 @@ use Tests\Orisai\Scheduler\Doubles\TestLogger;
 use Throwable;
 use function count;
 use function rtrim;
-use function set_error_handler;
-use const E_ALL;
-use const E_USER_NOTICE;
 
 final class SimpleSchedulerTest extends TestCase
 {
@@ -1216,79 +1212,30 @@ MSG,
 	 */
 	public function testProcessJobStdout(): void
 	{
-		$errors = [];
-
-		set_error_handler(
-			static function (int $errno, string $errstr) use (&$errors): bool {
-				$errors[] = [$errno, $errstr];
-
-				return true;
-			},
-			E_ALL,
-		);
-
-		$scheduler = SchedulerProcessSetup::createWithStdoutJob();
+		[$scheduler, $logger] = SchedulerProcessSetup::createWithStdoutJob();
 		$summary = $scheduler->run();
 
+		foreach ($logger->logs as &$log) {
+			self::assertIsString($log[2]['command']);
+			// Can't easily assert
+			unset($log[2]['command']);
+		}
+
 		self::assertCount(1, $summary->getJobSummaries());
-		self::assertCount(1, $errors);
-		foreach ($errors as [$code, $message]) {
-			self::assertSame(E_USER_NOTICE, $code);
-			self::assertStringMatchesFormat(
-				<<<'MSG'
-Context: Running job via command %a
-Problem: Job subprocess produced unsupported stdout output.
-Exit code: 0
-stdout:  echo%c
-MSG,
-				$message,
-			);
-		}
-	}
-
-	/**
-	 * @runInSeparateProcess
-	 */
-	public function testProcessJobStdoutWithStrictErrorHandler(): void
-	{
-		set_error_handler(
-			static function (int $errno, string $errstr): void {
-				throw new ErrorException($errstr, $errno);
-			},
-			E_ALL,
+		self::assertSame(
+			[
+				[
+					'warning',
+					"Subprocess running job '0' produced unexpected stdout output.",
+					[
+						'id' => 0,
+						'exitCode' => 0,
+						'stdout' => ' echo ',
+					],
+				],
+			],
+			$logger->logs,
 		);
-
-		$scheduler = SchedulerProcessSetup::createWithStdoutJob();
-
-		$e = null;
-		try {
-			$scheduler->run();
-		} catch (RunFailure $e) {
-			// Handled bellow
-		}
-
-		self::assertNotNull($e);
-		self::assertStringStartsWith(
-			<<<'MSG'
-Run failed
-Suppressed errors:
-MSG,
-			$e->getMessage(),
-		);
-
-		self::assertNotSame([], $e->getSuppressed());
-		foreach ($e->getSuppressed() as $suppressed) {
-			self::assertInstanceOf(ErrorException::class, $suppressed);
-			self::assertStringMatchesFormat(
-				<<<'MSG'
-Context: Running job via command %a
-Problem: Job subprocess produced unsupported stdout output.
-Exit code: 0
-stdout:  echo%c
-MSG,
-				$suppressed->getMessage(),
-			);
-		}
 	}
 
 	public function testProcessBeforeRunEvent(): void
