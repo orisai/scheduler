@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - `ListCommand`
 	- adds `--explain` option to explain whole expression
 - `SymfonyCommandJob`
+- `JobInfo`
+	- `getTimeZone()` returns timezone job should run in
 
 ### Changed
 
@@ -25,6 +27,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 	- logs unexpected stderr instead of throwing an exception (via optional logger)
 - `JobInfo`
 	- `getExtendedExpression()` includes seconds only if seconds are used
+	- `getExtendedExpression()` includes timezone if timezone is used
 
 ### Fixed
 

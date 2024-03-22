@@ -253,6 +253,7 @@ class ManagedScheduler implements Scheduler
 			$jobSchedule->getRepeatAfterSeconds(),
 			$runSecond,
 			$this->getCurrentTime($jobSchedule),
+			$jobSchedule->getTimeZone(),
 		);
 
 		$lock = $this->lockFactory->createLock("Orisai.Scheduler.Job/$id");

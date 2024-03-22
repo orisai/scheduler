@@ -3,6 +3,7 @@
 namespace Orisai\Scheduler\Status;
 
 use DateTimeImmutable;
+use DateTimeZone;
 
 final class JobInfo
 {
@@ -22,6 +23,8 @@ final class JobInfo
 
 	private DateTimeImmutable $start;
 
+	private ?DateTimeZone $timeZone;
+
 	/**
 	 * @param string|int  $id
 	 * @param int<0, 30>  $repeatAfterSeconds
@@ -33,7 +36,8 @@ final class JobInfo
 		string $expression,
 		int $repeatAfterSeconds,
 		int $runSecond,
-		DateTimeImmutable $start
+		DateTimeImmutable $start,
+		?DateTimeZone $timeZone
 	)
 	{
 		$this->id = $id;
@@ -42,6 +46,7 @@ final class JobInfo
 		$this->repeatAfterSeconds = $repeatAfterSeconds;
 		$this->runSecond = $runSecond;
 		$this->start = $start;
+		$this->timeZone = $timeZone;
 	}
 
 	/**
@@ -81,6 +86,10 @@ final class JobInfo
 			$expression .= " / $this->repeatAfterSeconds";
 		}
 
+		if ($this->timeZone !== null) {
+			$expression .= " ({$this->timeZone->getName()})";
+		}
+
 		return $expression;
 	}
 
@@ -95,6 +104,11 @@ final class JobInfo
 	public function getStart(): DateTimeImmutable
 	{
 		return $this->start;
+	}
+
+	public function getTimeZone(): ?DateTimeZone
+	{
+		return $this->timeZone;
 	}
 
 	/**

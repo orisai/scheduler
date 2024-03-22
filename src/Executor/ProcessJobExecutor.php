@@ -3,7 +3,6 @@
 namespace Orisai\Scheduler\Executor;
 
 use Closure;
-use Cron\CronExpression;
 use DateTimeImmutable;
 use Generator;
 use JsonException;
@@ -126,7 +125,7 @@ final class ProcessJobExecutor implements JobExecutor
 					$this->logUnexpectedStderr($execution, $jobId, $stderr);
 				}
 
-				yield $jobSummaries[] = $this->createSummary($decoded, $jobSchedule->getExpression());
+				yield $jobSummaries[] = $this->createSummary($decoded, $jobSchedule);
 			}
 
 			// Nothing to do, wait
@@ -172,7 +171,7 @@ final class ProcessJobExecutor implements JobExecutor
 	/**
 	 * @param array<mixed> $raw
 	 */
-	private function createSummary(array $raw, CronExpression $cronExpression): JobSummary
+	private function createSummary(array $raw, JobSchedule $jobSchedule): JobSummary
 	{
 		return new JobSummary(
 			new JobInfo(
@@ -182,9 +181,10 @@ final class ProcessJobExecutor implements JobExecutor
 				$raw['info']['repeatAfterSeconds'],
 				$raw['info']['runSecond'],
 				DateTimeImmutable::createFromFormat('U.u e', $raw['info']['start']),
+				$jobSchedule->getTimeZone(),
 			),
 			new JobResult(
-				$cronExpression,
+				$jobSchedule->getExpression(),
 				DateTimeImmutable::createFromFormat('U.u e', $raw['result']['end']),
 				JobResultState::from($raw['result']['state']),
 			),

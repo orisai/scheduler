@@ -302,7 +302,8 @@ $scheduler->addBeforeRunCallback(
 			$jobInfo->getId(); // int|string
 			$jobInfo->getName(); // string
 			$jobInfo->getExpression(); // string, e.g. * * * * *
-			$jobInfo->getExtendedExpression(); // string, e.g. * * * * * / 30
+			$jobInfo->getTimeZone(); // DateTimeZone|null
+			$jobInfo->getExtendedExpression(); // string, e.g. '* * * * * / 30 (Europe/Prague)'
 			$jobInfo->getRepeatAfterSeconds(); // int<0, 30>
 			$jobInfo->getRunsCountPerMinute(); // int<1, max>
 			$jobInfo->getEstimatedStartTimes(); // list<DateTimeImmutable>
@@ -596,7 +597,8 @@ $id = $info->getId(); // string|int
 $name = $info->getName(); // string
 $expression = $info->getExpression(); // string, e.g. '* * * * *'
 $repeatAfterSeconds = $info->getRepeatAfterSeconds(); // int<0, 30>
-$extendedExpression = $info->getExtendedExpression(); // string, e.g. '* * * * * / 30'
+$timeZone = $info->getTimeZone(); // DateTimeZone|null
+$extendedExpression = $info->getExtendedExpression(); // string, e.g. '* * * * * / 30 (Europe/Prague)'
 $runSecond = $info->getRunSecond(); // int
 $start = $info->getStart(); // DateTimeImmutable
 ```

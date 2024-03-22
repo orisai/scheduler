@@ -20,11 +20,11 @@ final class RunSummaryTest extends TestCase
 		$end = new DateTimeImmutable();
 		$jobSummaries = [
 			new JobSummary(
-				new JobInfo('id', '1', '* * * * *', 0, 0, new DateTimeImmutable()),
+				new JobInfo('id', '1', '* * * * *', 0, 0, new DateTimeImmutable(), null),
 				new JobResult(new CronExpression('* * * * *'), new DateTimeImmutable(), JobResultState::done()),
 			),
 			new JobSummary(
-				new JobInfo('id', '2', '1 * * * *', 5, 10, new DateTimeImmutable()),
+				new JobInfo('id', '2', '1 * * * *', 5, 10, new DateTimeImmutable(), null),
 				new JobResult(new CronExpression('1 * * * *'), new DateTimeImmutable(), JobResultState::done()),
 			),
 		];

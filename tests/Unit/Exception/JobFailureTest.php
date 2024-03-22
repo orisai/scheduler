@@ -17,7 +17,7 @@ final class JobFailureTest extends TestCase
 
 	public function test(): void
 	{
-		$info = new JobInfo('id', 'name', '* * * * *', 0, 0, new DateTimeImmutable());
+		$info = new JobInfo('id', 'name', '* * * * *', 0, 0, new DateTimeImmutable(), null);
 		$result = new JobResult(
 			new CronExpression('* * * * *'),
 			new DateTimeImmutable(),
