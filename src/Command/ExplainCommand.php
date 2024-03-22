@@ -113,11 +113,6 @@ final class ExplainCommand extends BaseExplainCommand
 				$output->writeln("<error>Option --seconds expects an int<0, 59>, '$seconds' given.</error>");
 			}
 
-			if ($id !== null) {
-				$hasErrors = true;
-				$output->writeln('<error>Option --seconds cannot be used with --id.</error>');
-			}
-
 			if ($expression === null) {
 				$hasErrors = true;
 				$output->writeln('<error>Option --seconds must be used with --expression.</error>');
@@ -132,11 +127,6 @@ final class ExplainCommand extends BaseExplainCommand
 				$output->writeln("<error>Option --timezone expects a valid timezone, '$timezone' given.</error>");
 			} else {
 				$timezone = new DateTimeZone($timezone);
-			}
-
-			if ($id !== null) {
-				$hasErrors = true;
-				$output->writeln('<error>Option --timezone cannot be used with --id.</error>');
 			}
 
 			if ($expression === null) {

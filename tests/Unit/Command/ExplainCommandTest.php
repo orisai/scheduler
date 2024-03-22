@@ -393,10 +393,8 @@ MSG,
 			],
 			<<<'MSG'
 Option --seconds expects an int<0, 59>, 'bad seconds' given.
-Option --seconds cannot be used with --id.
 Option --seconds must be used with --expression.
 Option --timezone expects a valid timezone, 'bad timezone' given.
-Option --timezone cannot be used with --id.
 Option --timezone must be used with --expression.
 Option --language expects no value or one of supported languages, 'noop' given. Use --help to list available languages.
 Option --language must be used with --expression.
