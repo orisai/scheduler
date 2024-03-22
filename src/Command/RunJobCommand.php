@@ -2,10 +2,12 @@
 
 namespace Orisai\Scheduler\Command;
 
+use Orisai\Clock\SystemClock;
 use Orisai\Scheduler\Scheduler;
 use Orisai\Scheduler\Status\JobResultState;
 use Orisai\Scheduler\Status\JobSummary;
 use Orisai\Scheduler\Status\RunParameters;
+use Psr\Clock\ClockInterface;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -24,9 +26,9 @@ final class RunJobCommand extends BaseRunCommand
 
 	private Scheduler $scheduler;
 
-	public function __construct(Scheduler $scheduler)
+	public function __construct(Scheduler $scheduler, ?ClockInterface $clock = null)
 	{
-		parent::__construct();
+		parent::__construct($clock ?? new SystemClock());
 		$this->scheduler = $scheduler;
 	}
 

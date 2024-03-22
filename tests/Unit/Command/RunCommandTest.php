@@ -59,9 +59,12 @@ MSG,
 		$scheduler->addJob(
 			new CallbackJob(Closure::fromCallable([$cbs, 'job2'])),
 			new CronExpression('* * * * *'),
+			null,
+			0,
+			new DateTimeZone('UTC'),
 		);
 
-		$command = new RunCommand($scheduler);
+		$command = new RunCommand($scheduler, $clock);
 		$tester = new CommandTester($command);
 
 		putenv('COLUMNS=80');
@@ -103,10 +106,10 @@ MSG,
             "expression": "* * * * *",
             "repeatAfterSeconds": 0,
             "runSecond": 0,
-            "start": "1.000000"
+            "start": "1.000000 Europe\/Prague"
         },
         "result": {
-            "end": "1.000000",
+            "end": "1.000000 Europe\/Prague",
             "state": "done"
         }
     },
@@ -117,10 +120,10 @@ MSG,
             "expression": "* * * * *",
             "repeatAfterSeconds": 0,
             "runSecond": 0,
-            "start": "1.000000"
+            "start": "1.000000 UTC"
         },
         "result": {
-            "end": "1.000000",
+            "end": "1.000000 UTC",
             "state": "done"
         }
     }
@@ -150,7 +153,7 @@ MSG,
 			new CronExpression('* * * * *'),
 		);
 
-		$command = new RunCommand($scheduler);
+		$command = new RunCommand($scheduler, $clock);
 		$tester = new CommandTester($command);
 
 		putenv('COLUMNS=80');
@@ -179,10 +182,10 @@ MSG,
             "expression": "* * * * *",
             "repeatAfterSeconds": 0,
             "runSecond": 0,
-            "start": "1.000000"
+            "start": "1.000000 Europe\/Prague"
         },
         "result": {
-            "end": "1.000000",
+            "end": "1.000000 Europe\/Prague",
             "state": "done"
         }
     },
@@ -193,10 +196,10 @@ MSG,
             "expression": "* * * * *",
             "repeatAfterSeconds": 0,
             "runSecond": 0,
-            "start": "1.000000"
+            "start": "1.000000 Europe\/Prague"
         },
         "result": {
-            "end": "1.000000",
+            "end": "1.000000 Europe\/Prague",
             "state": "fail"
         }
     }
@@ -226,7 +229,7 @@ MSG,
 		$lock = $lockFactory->createLock('Orisai.Scheduler.Job/0');
 		$lock->acquire();
 
-		$command = new RunCommand($scheduler);
+		$command = new RunCommand($scheduler, $clock);
 		$tester = new CommandTester($command);
 
 		putenv('COLUMNS=80');

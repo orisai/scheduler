@@ -4,6 +4,7 @@ namespace Orisai\Scheduler\Command;
 
 use Orisai\Scheduler\Status\JobResultState;
 use Orisai\Scheduler\Status\JobSummary;
+use Psr\Clock\ClockInterface;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Terminal;
@@ -19,6 +20,14 @@ use function strtoupper;
 abstract class BaseRunCommand extends Command
 {
 
+	private ClockInterface $clock;
+
+	public function __construct(ClockInterface $clock)
+	{
+		parent::__construct();
+		$this->clock = $clock;
+	}
+
 	protected function getTerminalWidth(): int
 	{
 		return (new Terminal())->getWidth();
@@ -29,7 +38,8 @@ abstract class BaseRunCommand extends Command
 		$info = $summary->getInfo();
 		$result = $summary->getResult();
 
-		$runStart = $info->getStart()->format('Y-m-d H:i:s');
+		$timezone = $this->clock->now()->getTimezone();
+		$runStart = $info->getStart()->setTimezone($timezone)->format('Y-m-d H:i:s');
 		$running = ' Running ';
 		$id = $info->getId();
 		$name = $info->getName();

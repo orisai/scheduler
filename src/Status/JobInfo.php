@@ -108,7 +108,7 @@ final class JobInfo
 			'expression' => $this->getExpression(),
 			'repeatAfterSeconds' => $this->getRepeatAfterSeconds(),
 			'runSecond' => $this->getRunSecond(),
-			'start' => $this->getStart()->format('U.u'),
+			'start' => $this->getStart()->format('U.u e'),
 		];
 	}
 

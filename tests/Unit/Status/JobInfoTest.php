@@ -43,7 +43,7 @@ final class JobInfoTest extends TestCase
 				'expression' => $expression,
 				'repeatAfterSeconds' => $repeatAfterSeconds,
 				'runSecond' => $runSecond,
-				'start' => $start->format('U.u'),
+				'start' => $start->format('U.u e'),
 			],
 			$info->toArray(),
 		);

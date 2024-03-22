@@ -61,7 +61,7 @@ MSG,
 			new CronExpression('* * * * *'),
 		);
 
-		$command = new RunJobCommand($scheduler);
+		$command = new RunJobCommand($scheduler, $clock);
 		$tester = new CommandTester($command);
 
 		putenv('COLUMNS=80');
@@ -107,7 +107,7 @@ MSG,
 			new CronExpression('* * * * *'),
 		);
 
-		$command = new RunJobCommand($scheduler);
+		$command = new RunJobCommand($scheduler, $clock);
 		$tester = new CommandTester($command);
 
 		putenv('COLUMNS=80');
@@ -143,7 +143,7 @@ MSG,
 		$lock = $lockFactory->createLock('Orisai.Scheduler.Job/0');
 		$lock->acquire();
 
-		$command = new RunJobCommand($scheduler);
+		$command = new RunJobCommand($scheduler, $clock);
 		$tester = new CommandTester($command);
 
 		putenv('COLUMNS=80');
@@ -172,7 +172,7 @@ MSG,
 			new CronExpression('0 * * * *'),
 		);
 
-		$command = new RunJobCommand($scheduler);
+		$command = new RunJobCommand($scheduler, $clock);
 		$tester = new CommandTester($command);
 
 		putenv('COLUMNS=80');
@@ -217,7 +217,7 @@ MSG,
 			new CronExpression('1 * * * *'),
 		);
 
-		$command = new RunJobCommand($scheduler);
+		$command = new RunJobCommand($scheduler, $clock);
 		$tester = new CommandTester($command);
 
 		putenv('COLUMNS=80');
@@ -252,10 +252,10 @@ MSG,
         "expression": "1 * * * *",
         "repeatAfterSeconds": 0,
         "runSecond": 30,
-        "start": "61.000000"
+        "start": "61.000000 Europe\/Prague"
     },
     "result": {
-        "end": "61.000000",
+        "end": "61.000000 Europe\/Prague",
         "state": "done"
     },
     "stdout": ""
@@ -278,7 +278,7 @@ MSG,
 			new CronExpression('* * * * *'),
 		);
 
-		$command = new RunJobCommand($scheduler);
+		$command = new RunJobCommand($scheduler, $clock);
 		$tester = new CommandTester($command);
 
 		putenv('COLUMNS=80');
@@ -311,10 +311,10 @@ MSG,
         "expression": "* * * * *",
         "repeatAfterSeconds": 0,
         "runSecond": 0,
-        "start": "1.000000"
+        "start": "1.000000 Europe\/Prague"
     },
     "result": {
-        "end": "1.000000",
+        "end": "1.000000 Europe\/Prague",
         "state": "done"
     },
     "stdout": "output"
