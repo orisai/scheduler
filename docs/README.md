@@ -756,7 +756,7 @@ bin/console scheduler:explain
 bin/console scheduler:explain --id="job id"
 bin/console scheduler:explain --expression="0 22 * 12 *"
 bin/console scheduler:explain --expression="* 8 * * *" --seconds=10 --timezone="Europe/Prague" --language=en
-bin/console scheduler:explain -e="* 8 * * *" -s=10 -tz="Europe/Prague" -l=en
+bin/console scheduler:explain -e"* 8 * * *" -s10 -tz"Europe/Prague" -len
 ```
 
 Options:
