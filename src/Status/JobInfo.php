@@ -71,11 +71,17 @@ final class JobInfo
 	}
 
 	/**
-	 * Expression / repeat after seconds
+	 * Expression[ / repeat after seconds]
 	 */
 	public function getExtendedExpression(): string
 	{
-		return "$this->expression / $this->repeatAfterSeconds";
+		$expression = $this->expression;
+
+		if ($this->repeatAfterSeconds !== 0) {
+			$expression .= " / $this->repeatAfterSeconds";
+		}
+
+		return $expression;
 	}
 
 	/**

@@ -3,27 +3,36 @@
 namespace Tests\Orisai\Scheduler\Unit\Status;
 
 use DateTimeImmutable;
+use Generator;
 use Orisai\Scheduler\Status\JobInfo;
 use PHPUnit\Framework\TestCase;
 
 final class JobInfoTest extends TestCase
 {
 
-	public function test(): void
+	/**
+	 * @param int|string $id
+	 * @param int<0, 30> $repeatAfterSeconds
+	 * @param int<0, max> $runSecond
+	 *
+	 * @dataProvider provide
+	 */
+	public function test(
+		$id,
+		string $name,
+		string $expression,
+		int $repeatAfterSeconds,
+		int $runSecond,
+		DateTimeImmutable $start,
+		string $extendedExpression
+	): void
 	{
-		$id = 'id';
-		$name = 'name';
-		$expression = '* * * * *';
-		$repeatAfterSeconds = 2;
-		$runSecond = 0;
-		$start = new DateTimeImmutable();
-
 		$info = new JobInfo($id, $name, $expression, $repeatAfterSeconds, $runSecond, $start);
 		self::assertSame($id, $info->getId());
 		self::assertSame($name, $info->getName());
 		self::assertSame($expression, $info->getExpression());
 		self::assertSame($repeatAfterSeconds, $info->getRepeatAfterSeconds());
-		self::assertSame("$expression / $repeatAfterSeconds", $info->getExtendedExpression());
+		self::assertSame($extendedExpression, $info->getExtendedExpression());
 		self::assertSame($runSecond, $info->getRunSecond());
 		self::assertSame($start, $info->getStart());
 
@@ -38,6 +47,29 @@ final class JobInfoTest extends TestCase
 			],
 			$info->toArray(),
 		);
+	}
+
+	public function provide(): Generator
+	{
+		yield [
+			'id',
+			'name',
+			'* * * * *',
+			0,
+			0,
+			new DateTimeImmutable(),
+			'* * * * *',
+		];
+
+		yield [
+			1,
+			'other name',
+			'* * * * */5',
+			10,
+			15,
+			new DateTimeImmutable(),
+			'* * * * */5 / 10',
+		];
 	}
 
 }
