@@ -23,6 +23,7 @@ Cron job scheduler - with locks, parallelism and more
 - [Job types](#job-types)
 	- [Callback job](#callback-job)
 	- [Custom job](#custom-job)
+	- [Symfony command job](#symfony-command-job)
 - [Job info and result](#job-info-and-result)
 - [Run summary](#run-summary)
 - [Run single job](#run-single-job)
