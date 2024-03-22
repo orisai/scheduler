@@ -234,9 +234,21 @@ MSG,
 
 		yield [
 			[
+				'--expression' => '* * * * *',
+				'--language' => 'en',
+			],
+			<<<'MSG'
+At every minute.
+
+MSG,
+		];
+
+		yield [
+			[
 				'-e' => '* * * * *',
 				'-s' => '59',
 				'-tz' => 'UTC',
+				'-l' => 'en',
 			],
 			<<<'MSG'
 At every 59 seconds in UTC time zone.
@@ -353,9 +365,31 @@ MSG,
 
 		yield [
 			[
+				'--expression' => '* * * *',
+				'--language' => 'noop',
+			],
+			<<<'MSG'
+Option --language expects no value or one of supported languages, 'noop' given. Use --help to list available languages.
+
+MSG,
+		];
+
+		yield [
+			[
+				'--language' => 'en',
+			],
+			<<<'MSG'
+Option --language must be used with --expression.
+
+MSG,
+		];
+
+		yield [
+			[
 				'--id' => 'id',
 				'--seconds' => 'bad seconds',
 				'--timezone' => 'bad timezone',
+				'--language' => 'noop',
 			],
 			<<<'MSG'
 Option --seconds expects an int<0, 59>, 'bad seconds' given.
@@ -364,6 +398,8 @@ Option --seconds must be used with --expression.
 Option --timezone expects a valid timezone, 'bad timezone' given.
 Option --timezone cannot be used with --id.
 Option --timezone must be used with --expression.
+Option --language expects no value or one of supported languages, 'noop' given. Use --help to list available languages.
+Option --language must be used with --expression.
 
 MSG,
 		];

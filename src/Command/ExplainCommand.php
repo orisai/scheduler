@@ -4,13 +4,13 @@ namespace Orisai\Scheduler\Command;
 
 use DateTimeZone;
 use Orisai\CronExpressionExplainer\CronExpressionExplainer;
-use Orisai\CronExpressionExplainer\DefaultCronExpressionExplainer;
-use Orisai\CronExpressionExplainer\Exception\InvalidExpression;
+use Orisai\CronExpressionExplainer\Exception\UnsupportedExpression;
 use Orisai\Scheduler\Scheduler;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+use function array_key_exists;
 use function assert;
 use function in_array;
 use function is_string;
@@ -22,17 +22,14 @@ final class ExplainCommand extends BaseExplainCommand
 
 	private Scheduler $scheduler;
 
-	private CronExpressionExplainer $explainer;
-
 	public function __construct(
 		Scheduler $scheduler,
 		?CronExpressionExplainer $explainer = null,
 		?ClockInterface $clock = null
 	)
 	{
-		parent::__construct($clock);
+		parent::__construct($explainer, $clock);
 		$this->scheduler = $scheduler;
-		$this->explainer = $explainer ?? new DefaultCronExpressionExplainer();
 	}
 
 	public static function getDefaultName(): string
@@ -53,6 +50,12 @@ final class ExplainCommand extends BaseExplainCommand
 		$this->addOption('expression', 'e', InputOption::VALUE_REQUIRED, 'Expression to explain');
 		$this->addOption('seconds', 's', InputOption::VALUE_REQUIRED, 'Repeat every n seconds');
 		$this->addOption('timezone', 'tz', InputOption::VALUE_REQUIRED, 'The timezone time should be displayed in');
+		$this->addOption(
+			'language',
+			'l',
+			InputOption::VALUE_REQUIRED,
+			"Translate expression in given language - {$this->getSupportedLanguages()}",
+		);
 	}
 
 	protected function execute(InputInterface $input, OutputInterface $output): int
@@ -66,20 +69,21 @@ final class ExplainCommand extends BaseExplainCommand
 		$expression = $options['expression'];
 		$seconds = $options['seconds'];
 		$timezone = $options['timezone'];
+		$language = $options['language'];
 
 		if ($id !== null) {
 			return $this->explainJobWithId($id, $output);
 		}
 
 		if ($expression !== null) {
-			return $this->explainExpression($expression, $seconds, $timezone, $output);
+			return $this->explainExpression($expression, $seconds, $timezone, $language, $output);
 		}
 
 		return $this->explainSyntax($output);
 	}
 
 	/**
-	 * @return array{id: string|null, expression: string|null, seconds: int<0, 59>|null, timezone: DateTimeZone|null}|null
+	 * @return array{id: string|null, expression: string|null, seconds: int<0, 59>|null, timezone: DateTimeZone|null, language: string|null}|null
 	 */
 	private function validateOptions(InputInterface $input, OutputInterface $output): ?array
 	{
@@ -141,6 +145,23 @@ final class ExplainCommand extends BaseExplainCommand
 			}
 		}
 
+		$language = $input->getOption('language');
+		assert($language === null || is_string($language));
+		if ($language !== null) {
+			if (!array_key_exists($language, $this->explainer->getSupportedLanguages())) {
+				$hasErrors = true;
+				$output->writeln(
+					"<error>Option --language expects no value or one of supported languages, '$language' given."
+					. ' Use --help to list available languages.</error>',
+				);
+			}
+
+			if ($expression === null) {
+				$hasErrors = true;
+				$output->writeln('<error>Option --language must be used with --expression.</error>');
+			}
+		}
+
 		if ($hasErrors) {
 			return null;
 		}
@@ -154,6 +175,7 @@ final class ExplainCommand extends BaseExplainCommand
 			'expression' => $expression,
 			'seconds' => $seconds,
 			'timezone' => $timezone,
+			'language' => $language,
 		];
 	}
 
@@ -164,6 +186,7 @@ final class ExplainCommand extends BaseExplainCommand
 		string $expression,
 		?int $seconds,
 		?DateTimeZone $timeZone,
+		?string $language,
 		OutputInterface $output
 	): int
 	{
@@ -172,8 +195,9 @@ final class ExplainCommand extends BaseExplainCommand
 				$expression,
 				$seconds,
 				$timeZone,
+				$language,
 			));
-		} catch (InvalidExpression $exception) {
+		} catch (UnsupportedExpression $exception) {
 			$output->writeln("<error>{$exception->getMessage()}</error>");
 
 			return self::FAILURE;

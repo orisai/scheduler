@@ -7,7 +7,6 @@ use DateTimeImmutable;
 use DateTimeInterface;
 use DateTimeZone;
 use Orisai\CronExpressionExplainer\CronExpressionExplainer;
-use Orisai\CronExpressionExplainer\DefaultCronExpressionExplainer;
 use Orisai\Scheduler\Job\JobSchedule;
 use Orisai\Scheduler\Scheduler;
 use Psr\Clock\ClockInterface;
@@ -16,6 +15,7 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Terminal;
 use function abs;
+use function array_key_exists;
 use function assert;
 use function floor;
 use function in_array;
@@ -39,17 +39,14 @@ final class ListCommand extends BaseExplainCommand
 
 	private Scheduler $scheduler;
 
-	private CronExpressionExplainer $explainer;
-
 	public function __construct(
 		Scheduler $scheduler,
 		?ClockInterface $clock = null,
 		?CronExpressionExplainer $explainer = null
 	)
 	{
-		parent::__construct($clock);
+		parent::__construct($explainer, $clock);
 		$this->scheduler = $scheduler;
-		$this->explainer = $explainer ?? new DefaultCronExpressionExplainer();
 	}
 
 	public static function getDefaultName(): string
@@ -68,7 +65,13 @@ final class ListCommand extends BaseExplainCommand
 		parent::configure();
 		$this->addOption('next', null, InputOption::VALUE_OPTIONAL, 'Sort jobs by their next execution time', false);
 		$this->addOption('timezone', 'tz', InputOption::VALUE_REQUIRED, 'The timezone times should be displayed in');
-		$this->addOption('explain', null, InputOption::VALUE_NONE, 'Explain expression');
+		$this->addOption(
+			'explain',
+			null,
+			InputOption::VALUE_OPTIONAL,
+			"Explain expression - {$this->getSupportedLanguages()}",
+			false,
+		);
 	}
 
 	protected function execute(InputInterface $input, OutputInterface $output): int
@@ -135,12 +138,15 @@ final class ListCommand extends BaseExplainCommand
 				$nextDueDate,
 			));
 
-			if ($explain) {
-				$output->writeln($this->explainer->explain(
+			if ($explain !== false) {
+				$explainedExpression = $this->explainer->explain(
 					$jobSchedule->getExpression()->getExpression(),
 					$jobSchedule->getRepeatAfterSeconds(),
 					$computedTimeZone,
-				));
+					$explain,
+				);
+
+				$output->writeln($explainedExpression);
 			}
 		}
 
@@ -148,7 +154,7 @@ final class ListCommand extends BaseExplainCommand
 	}
 
 	/**
-	 * @return array{next: int<1, max>|bool, timezone: DateTimeZone, explain: bool}|null
+	 * @return array{next: int<1, max>|bool, timezone: DateTimeZone, explain: false|string|null}|null
 	 */
 	private function validateOptions(InputInterface $input, OutputInterface $output): ?array
 	{
@@ -185,7 +191,17 @@ final class ListCommand extends BaseExplainCommand
 		}
 
 		$explain = $input->getOption('explain');
-		assert(is_bool($explain));
+		assert($explain === null || $explain === false || is_string($explain));
+		if (
+			is_string($explain)
+			&& !array_key_exists($explain, $this->explainer->getSupportedLanguages())
+		) {
+			$hasErrors = true;
+			$output->writeln(
+				"<error>Option --explain expects no value or one of supported languages, '$explain' given."
+				. ' Use --help to list available languages.</error>',
+			);
+		}
 
 		if ($hasErrors) {
 			return null;

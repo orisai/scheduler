@@ -315,12 +315,24 @@ MSG,
 
 		yield [
 			[
+				'--explain' => 'noop',
+			],
+			<<<'MSG'
+Option --explain expects no value or one of supported languages, 'noop' given. Use --help to list available languages.
+
+MSG,
+		];
+
+		yield [
+			[
 				'--next' => '0',
 				'--timezone' => 'bad-timezone',
+				'--explain' => 'noop',
 			],
 			<<<'MSG'
 Option --next expects an int<1, max>, '0' given.
 Option --timezone expects a valid timezone, 'bad-timezone' given.
+Option --explain expects no value or one of supported languages, 'noop' given. Use --help to list available languages.
 
 MSG,
 		];
@@ -420,11 +432,11 @@ MSG,
 
 		putenv('COLUMNS=80');
 		$tester->execute([
-			'--explain' => true,
+			'--explain' => null,
 		]);
 
 		self::assertSame(
-			<<<'MSG'
+			$explainDefault = <<<'MSG'
           * * * 4 * / 10                     [2] Tests\Orisai\Scheduler\Doubles\CallbackList::__invoke() Next Due: 2 months
 At every 10 seconds in April.
           * * * * *                          [0] Tests\Orisai\Scheduler\Doubles\CallbackList::job1() Next Due: 59 seconds
@@ -433,6 +445,16 @@ At every minute.
 At every 30th minute past every hour from 7 through 15 on every day-of-week from Monday through Friday in America/New_York time zone.
 
 MSG,
+			CommandOutputHelper::getCommandOutput($tester),
+		);
+		self::assertSame($command::SUCCESS, $tester->getStatusCode());
+
+		$tester->execute([
+			'--explain' => 'en',
+		]);
+
+		self::assertSame(
+			$explainDefault,
 			CommandOutputHelper::getCommandOutput($tester),
 		);
 		self::assertSame($command::SUCCESS, $tester->getStatusCode());
