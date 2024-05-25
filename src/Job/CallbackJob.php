@@ -29,7 +29,7 @@ final class CallbackJob implements Job
 		$ref = new ReflectionFunction($this->callback);
 		$refName = $ref->getName();
 
-		if (str_ends_with($refName, '{closure}')) {
+		if (str_contains($refName, '{closure')) {
 			$name = sprintf(
 				'%s:%s',
 				str_replace(getcwd() . DIRECTORY_SEPARATOR, '', $ref->getFileName()),
