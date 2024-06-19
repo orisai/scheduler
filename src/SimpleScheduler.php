@@ -54,6 +54,7 @@ final class SimpleScheduler extends ManagedScheduler
 	/**
 	 * @param Closure(): Job $jobConstructor
 	 * @param int<0, 30> $repeatAfterSeconds
+	 * @param-later-invoked-callable $jobConstructor
 	 */
 	public function addLazyJob(
 		Closure $jobConstructor,

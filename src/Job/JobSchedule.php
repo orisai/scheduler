@@ -49,6 +49,7 @@ final class JobSchedule
 	/**
 	 * @param Closure(): Job $jobConstructor
 	 * @param int<0, 30> $repeatAfterSeconds
+	 * @param-later-invoked-callable $jobConstructor
 	 */
 	public static function createLazy(
 		Closure $jobConstructor,

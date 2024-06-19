@@ -17,6 +17,8 @@ interface JobExecutor
 	 * @param array<int, array<int|string, JobSchedule>> $jobSchedulesBySecond
 	 * @param Closure(): void $beforeRunCallback
 	 * @param Closure(RunSummary): void $afterRunCallback
+	 * @param-immediately-invoked-callable $beforeRunCallback
+	 * @param-immediately-invoked-callable $afterRunCallback
 	 * @return Generator<int, JobSummary, void, RunSummary>
 	 * @throws RunFailure
 	 */

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased](https://github.com/orisai/scheduler/compare/2.1.0...v2.x)
 
+### Added
+
+- callbacks are marked as either `@param-later-invoked-callable` or `@param-immediately-invoked-callable`
+
 ## [2.1.0](https://github.com/orisai/scheduler/compare/2.0.0...2.1.0) - 2024-05-26
 
 ### Added

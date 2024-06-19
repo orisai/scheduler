@@ -165,6 +165,7 @@ final class WorkerCommand extends Command
 
 	/**
 	 * @param Closure(): void $cb
+	 * @param-later-invoked-callable $cb
 	 *
 	 * @internal
 	 */

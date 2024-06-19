@@ -18,6 +18,7 @@ final class CallbackJob implements Job
 
 	/**
 	 * @param Closure(JobLock): void $callback
+	 * @param-later-invoked-callable $callback
 	 */
 	public function __construct(Closure $callback)
 	{

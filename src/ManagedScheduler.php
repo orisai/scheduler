@@ -65,6 +65,7 @@ class ManagedScheduler implements Scheduler
 
 	/**
 	 * @param Closure(Throwable, JobInfo, JobResult): (void)|null $errorHandler
+	 * @param-later-invoked-callable $errorHandler
 	 */
 	public function __construct(
 		JobManager $jobManager,
@@ -326,6 +327,7 @@ class ManagedScheduler implements Scheduler
 
 	/**
 	 * @param Closure(JobInfo, JobResult): void $callback
+	 * @param-later-invoked-callable $callback
 	 */
 	public function addLockedJobCallback(Closure $callback): void
 	{
@@ -334,6 +336,7 @@ class ManagedScheduler implements Scheduler
 
 	/**
 	 * @param Closure(JobInfo): void $callback
+	 * @param-later-invoked-callable $callback
 	 */
 	public function addBeforeJobCallback(Closure $callback): void
 	{
@@ -342,6 +345,7 @@ class ManagedScheduler implements Scheduler
 
 	/**
 	 * @param Closure(JobInfo, JobResult): void $callback
+	 * @param-later-invoked-callable $callback
 	 */
 	public function addAfterJobCallback(Closure $callback): void
 	{
@@ -350,6 +354,7 @@ class ManagedScheduler implements Scheduler
 
 	/**
 	 * @param Closure(RunInfo): void $callback
+	 * @param-later-invoked-callable $callback
 	 */
 	public function addBeforeRunCallback(Closure $callback): void
 	{
@@ -358,6 +363,7 @@ class ManagedScheduler implements Scheduler
 
 	/**
 	 * @param Closure(RunSummary): void $callback
+	 * @param-later-invoked-callable $callback
 	 */
 	public function addAfterRunCallback(Closure $callback): void
 	{
