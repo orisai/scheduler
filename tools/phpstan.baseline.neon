@@ -116,7 +116,17 @@ parameters:
 			path: ../tests/Unit/SimpleSchedulerTest.php
 
 		-
+			message: "#^Call to static method PHPUnit\\\\Framework\\\\Assert\\:\\:assertSame\\(\\) with 2 and \\*NEVER\\* will always evaluate to false\\.$#"
+			count: 5
+			path: ../tests/Unit/SimpleSchedulerTest.php
+
+		-
 			message: "#^Call to static method PHPUnit\\\\Framework\\\\Assert\\:\\:assertSame\\(\\) with 2 and 1 will always evaluate to false\\.$#"
+			count: 4
+			path: ../tests/Unit/SimpleSchedulerTest.php
+
+		-
+			message: "#^Call to static method PHPUnit\\\\Framework\\\\Assert\\:\\:assertSame\\(\\) with 3 and \\*NEVER\\* will always evaluate to false\\.$#"
 			count: 4
 			path: ../tests/Unit/SimpleSchedulerTest.php
 
@@ -126,7 +136,22 @@ parameters:
 			path: ../tests/Unit/SimpleSchedulerTest.php
 
 		-
+			message: "#^Call to static method PHPUnit\\\\Framework\\\\Assert\\:\\:assertSame\\(\\) with 4 and \\*NEVER\\* will always evaluate to false\\.$#"
+			count: 3
+			path: ../tests/Unit/SimpleSchedulerTest.php
+
+		-
 			message: "#^Call to static method PHPUnit\\\\Framework\\\\Assert\\:\\:assertSame\\(\\) with 4 and 2 will always evaluate to false\\.$#"
+			count: 1
+			path: ../tests/Unit/SimpleSchedulerTest.php
+
+		-
+			message: "#^Call to static method PHPUnit\\\\Framework\\\\Assert\\:\\:assertSame\\(\\) with 5 and \\*NEVER\\* will always evaluate to false\\.$#"
+			count: 1
+			path: ../tests/Unit/SimpleSchedulerTest.php
+
+		-
+			message: "#^Call to static method PHPUnit\\\\Framework\\\\Assert\\:\\:assertSame\\(\\) with 6 and \\*NEVER\\* will always evaluate to false\\.$#"
 			count: 1
 			path: ../tests/Unit/SimpleSchedulerTest.php
 
