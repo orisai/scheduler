@@ -1,6 +1,6 @@
 _: list
 
-# Config
+## Config
 
 PHPCS_CONFIG=tools/phpcs.xml
 PHPSTAN_CONFIG=tools/phpstan.neon
@@ -8,10 +8,15 @@ PHPSTAN_BASELINE_CONFIG=tools/phpstan.baseline.neon
 PHPUNIT_CONFIG=tools/phpunit.xml
 INFECTION_CONFIG=tools/infection.json
 
-# QA
+## Install
 
-qa: ## Check code quality - coding style and static analysis
-	make cs & make phpstan
+update: ## Update all dependencies
+	make update-php
+
+update-php: ## Update PHP dependencies
+	composer update
+
+## QA
 
 cs: ## Check PHP files coding style
 	mkdir -p var/tools/PHP_CodeSniffer
@@ -28,7 +33,7 @@ phpstan: ## Analyse code with PHPStan
 phpstan-baseline: ## Add PHPStan errors to baseline
 	make phpstan ARGS="-b $(PHPSTAN_BASELINE_CONFIG)"
 
-# Tests
+## Tests
 
 .PHONY: tests
 tests: ## Run all tests
@@ -56,14 +61,22 @@ mutations-infection:
 		--skip-initial-tests \
 		$(ARGS)
 
-# Utilities
+## Utilities
 
 .SILENT: $(shell grep -h -E '^[a-zA-Z_-]+:.*?$$' $(MAKEFILE_LIST) | sort -u | awk 'BEGIN {FS = ":.*?"}; {printf "%s ", $$1}')
 
-LIST_PAD=20
 list:
-	awk 'BEGIN {FS = ":.*##"; printf "Usage:\n  make \033[36m<target>\033[0m\n\nTargets:\n"}'
-	grep -h -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort -u | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-$(LIST_PAD)s\033[0m %s\n", $$1, $$2}'
+	awk 'BEGIN {FS = ":.*##"; printf "Usage:\n  make \033[36m<target>\033[0m\n"}'
+	@max_len=0; \
+	for target in $$(grep -h -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "} {print $$1}'); do \
+		len=$${#target}; \
+		if [ $$len -gt $$max_len ]; then \
+			max_len=$$len; \
+		fi \
+	done; \
+	awk -v max_len=$$max_len 'BEGIN {FS = ":.*?## "; last_section=""} \
+	/^## /{last_section=sprintf("\n\033[1m%s\033[0m", substr($$0, 4)); next} \
+	/^[a-zA-Z_-]+:.*?## /{if (last_section != "") { printf "%s\n", last_section; last_section=""; } printf "  \033[36m%-*s\033[0m %s\n", max_len + 1, $$1, $$2}' $(MAKEFILE_LIST)
 
 PRE_PHP=XDEBUG_MODE=off
 

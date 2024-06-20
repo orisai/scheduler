@@ -39,7 +39,7 @@ jobs:
 
     steps:
       - name: "Checkout"
-        uses: "actions/checkout@v3"
+        uses: "actions/checkout@v4"
 
       - name: "PHP"
         uses: "orisai/github-workflows/.github/actions/setup-php@v1"
@@ -72,7 +72,7 @@ jobs:
 
     steps:
       - name: "Checkout"
-        uses: "actions/checkout@v3"
+        uses: "actions/checkout@v4"
 
       - name: "PHP"
         uses: "orisai/github-workflows/.github/actions/setup-php@v1"
@@ -116,7 +116,7 @@ jobs:
 
     steps:
       - name: "Checkout"
-        uses: "actions/checkout@v3"
+        uses: "actions/checkout@v4"
 
       - name: "PHP"
         uses: "orisai/github-workflows/.github/actions/setup-php@v1"
@@ -143,7 +143,7 @@ jobs:
           token: "${{ secrets.GITHUB_TOKEN }}"
 
       - name: "Upload logs"
-        uses: "actions/upload-artifact@v3"
+        uses: "actions/upload-artifact@v4"
         with:
           name: "Logs - Tests (${{ matrix.operating-system }}, ${{ matrix.php-version }}, ${{ matrix.composer-flags }})"
           path: "var/log"
@@ -186,7 +186,7 @@ jobs:
 
     steps:
       - name: "Checkout"
-        uses: "actions/checkout@v3"
+        uses: "actions/checkout@v4"
 
       - name: "PHP"
         uses: "orisai/github-workflows/.github/actions/setup-php@v1"
@@ -212,7 +212,7 @@ jobs:
           stryker-token: "${{ secrets.STRYKER_DASHBOARD_API_KEY }}"
 
       - name: "Upload logs"
-        uses: "actions/upload-artifact@v3"
+        uses: "actions/upload-artifact@v4"
         with:
           name: "Logs - Mutations"
           path: "var/coverage/mutations/infection.log"

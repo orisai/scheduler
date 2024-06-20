@@ -17,24 +17,12 @@
 </p>
 
 <p align="center">
-	<a href="https://github.com/orisai/scheduler/actions?query=workflow%3ACI">
-		<img src="https://github.com/orisai/scheduler/workflows/CI/badge.svg">
-	</a>
-	<a href="https://coveralls.io/r/orisai/scheduler?branch=v2.x">
-		<img src="https://badgen.net/coveralls/c/github/orisai/scheduler/v2.x?cache=300">
-	</a>
-	<a href="https://dashboard.stryker-mutator.io/reports/github.com/orisai/scheduler/v2.x">
-		<img src="https://badge.stryker-mutator.io/github.com/orisai/scheduler/v2.x">
-	</a>
-	<a href="https://packagist.org/packages/orisai/scheduler">
-		<img src="https://badgen.net/packagist/dt/orisai/scheduler?cache=3600">
-	</a>
-	<a href="https://packagist.org/packages/orisai/scheduler">
-		<img src="https://badgen.net/packagist/v/orisai/scheduler?cache=3600">
-	</a>
-	<a href="https://choosealicense.com/licenses/mpl-2.0/">
-		<img src="https://badgen.net/badge/license/MPL-2.0/blue?cache=3600">
-	</a>
+	<a href="https://github.com/orisai/scheduler/actions?query=workflow:CI+branch:v2.x"><img src="https://github.com/orisai/scheduler/actions/workflows/ci.yaml/badge.svg?branch=v2.x"></a>
+	<a href="https://coveralls.io/github/orisai/scheduler?branch=v2.x"><img src="https://badgen.net/coveralls/c/github/orisai/scheduler/v2.x?cache=300"></a>
+	<a href="https://dashboard.stryker-mutator.io/reports/github.com/orisai/scheduler/v2.x"><img src="https://img.shields.io/endpoint?style=flat&url=https://badge-api.stryker-mutator.io/github.com/orisai/scheduler/v2.x"></a>
+	<a href="https://packagist.org/packages/orisai/scheduler"><img src="https://badgen.net/packagist/dt/orisai/scheduler?cache=3600"></a>
+	<a href="https://packagist.org/packages/orisai/scheduler"><img src="https://badgen.net/packagist/v/orisai/scheduler?cache=3600"></a>
+	<a href="https://choosealicense.com/licenses/mpl-2.0/"><img src="https://badgen.net/badge/license/MPL-2.0/blue?cache=3600"></a>
 <p>
 
 ##
