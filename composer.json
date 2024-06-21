@@ -29,7 +29,7 @@
 		}
 	],
 	"require": {
-		"php": ">=7.4.0 <8.3.0",
+		"php": "7.4 - 8.3",
 		"dragonmantank/cron-expression": "^3.3",
 		"orisai/clock": "^1.2.0",
 		"orisai/cron-expression-explainer": "^1.0.0",

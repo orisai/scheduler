@@ -36,6 +36,7 @@ use Tests\Orisai\Scheduler\Doubles\TestLogger;
 use Throwable;
 use function count;
 use function rtrim;
+use const PHP_VERSION_ID;
 
 final class SimpleSchedulerTest extends TestCase
 {
@@ -1162,17 +1163,31 @@ MSG,
 		self::assertNotSame([], $e->getSuppressed());
 		foreach ($e->getSuppressed() as $suppressed) {
 			self::assertInstanceOf(JobProcessFailure::class, $suppressed);
-			self::assertStringMatchesFormat(
-				<<<'MSG'
-Context: Running job via command %a
-Problem: Job subprocess did not correctly write job result to stdout.
-Tip: Check the documentation for troubleshooting guide.
-Exit code: 1
-stdout: Could not open input file: bin/console
-stderr:
-MSG,
-				rtrim($suppressed->getMessage()),
-			);
+			if (PHP_VERSION_ID < 8_03_00) {
+				self::assertStringMatchesFormat(
+					<<<'MSG'
+	Context: Running job via command %a
+	Problem: Job subprocess did not correctly write job result to stdout.
+	Tip: Check the documentation for troubleshooting guide.
+	Exit code: 1
+	stdout: Could not open input file: bin/console
+	stderr:
+	MSG,
+					rtrim($suppressed->getMessage()),
+				);
+			} else {
+				self::assertStringMatchesFormat(
+					<<<'MSG'
+	Context: Running job via command %a
+	Problem: Job subprocess did not correctly write job result to stdout.
+	Tip: Check the documentation for troubleshooting guide.
+	Exit code: 1
+	stdout:%c
+	stderr: Could not open input file: bin/console
+	MSG,
+					rtrim($suppressed->getMessage()),
+				);
+			}
 		}
 	}
 

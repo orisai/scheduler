@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 
 - callbacks are marked as either `@param-later-invoked-callable` or `@param-immediately-invoked-callable`
+- Allow PHP 8.3
 
 ## [2.1.0](https://github.com/orisai/scheduler/compare/2.0.0...2.1.0) - 2024-05-26
 
