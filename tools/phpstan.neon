@@ -3,7 +3,7 @@ includes:
 	- phpstan.baseline.neon
 
 parameters:
-	phpVersion: 70400
+	phpVersion: 80300
 	level: 8
 	tmpDir: ../var/tools/PHPStan
 	resultCachePath: %currentWorkingDirectory%/var/tools/PHPStan/resultCache.php
@@ -12,6 +12,8 @@ parameters:
 	checkMissingCallableSignature: true
 	checkInternalClassCaseSensitivity: true
 	checkTooWideReturnTypesInProtectedAndPublicMethods: true
+	reportAnyTypeWideningInVarTag: true
+	reportPossiblyNonexistentConstantArrayOffset: true
 
 	exceptions:
 		check:
