@@ -42,7 +42,7 @@
 	},
 	"require-dev": {
 		"brianium/paratest": "^6.3.0",
-		"infection/infection": "^0.26.0",
+		"infection/infection": "^0.26.0|^0.27.0|^0.28.0|^0.29.0",
 		"orisai/coding-standard": "^3.0.0",
 		"phpstan/extension-installer": "^1.0.0",
 		"phpstan/phpstan": "^1.0.0",
