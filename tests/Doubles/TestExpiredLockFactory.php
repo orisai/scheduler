@@ -4,7 +4,7 @@ namespace Tests\Orisai\Scheduler\Doubles;
 
 use Symfony\Component\Lock\Key;
 use Symfony\Component\Lock\LockFactory;
-use Symfony\Component\Lock\LockInterface;
+use Symfony\Component\Lock\SharedLockInterface;
 use Symfony\Component\Lock\Store\InMemoryStore;
 
 final class TestExpiredLockFactory extends LockFactory
@@ -16,12 +16,12 @@ final class TestExpiredLockFactory extends LockFactory
 		parent::__construct(new InMemoryStore());
 	}
 
-	public function createLock(string $resource, ?float $ttl = 300.0, ?bool $autoRelease = null): LockInterface
+	public function createLock(string $resource, ?float $ttl = 300.0, ?bool $autoRelease = null): SharedLockInterface
 	{
 		return $this->createLockFromKey(new Key($resource), $ttl, $autoRelease);
 	}
 
-	public function createLockFromKey(Key $key, ?float $ttl = 300.0, ?bool $autoRelease = null): LockInterface
+	public function createLockFromKey(Key $key, ?float $ttl = 300.0, ?bool $autoRelease = null): SharedLockInterface
 	{
 		$lock = new TestLock();
 		$lock->isExpired = true;

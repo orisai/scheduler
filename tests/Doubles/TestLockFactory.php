@@ -4,8 +4,8 @@ namespace Tests\Orisai\Scheduler\Doubles;
 
 use Symfony\Component\Lock\Key;
 use Symfony\Component\Lock\LockFactory;
-use Symfony\Component\Lock\LockInterface;
 use Symfony\Component\Lock\PersistingStoreInterface;
+use Symfony\Component\Lock\SharedLockInterface;
 
 final class TestLockFactory extends LockFactory
 {
@@ -18,12 +18,12 @@ final class TestLockFactory extends LockFactory
 		$this->autoRelease = $autoRelease;
 	}
 
-	public function createLock(string $resource, ?float $ttl = 300.0, ?bool $autoRelease = null): LockInterface
+	public function createLock(string $resource, ?float $ttl = 300.0, ?bool $autoRelease = null): SharedLockInterface
 	{
 		return parent::createLock($resource, $ttl, $autoRelease ?? $this->autoRelease);
 	}
 
-	public function createLockFromKey(Key $key, ?float $ttl = 300.0, ?bool $autoRelease = null): LockInterface
+	public function createLockFromKey(Key $key, ?float $ttl = 300.0, ?bool $autoRelease = null): SharedLockInterface
 	{
 		return parent::createLockFromKey($key, $ttl, $autoRelease ?? $this->autoRelease);
 	}
