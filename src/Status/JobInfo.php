@@ -131,7 +131,7 @@ final class JobInfo
 			'expression' => $this->getExpression(),
 			'repeatAfterSeconds' => $this->getRepeatAfterSeconds(),
 			'runSecond' => $this->getRunSecond(),
-			'start' => $this->getStart()->format('U.u e'),
+			'start' => [$this->start->format('U.u'), $this->start->getTimezone()->getName()],
 			'forcedRun' => $this->forcedRun,
 		];
 	}

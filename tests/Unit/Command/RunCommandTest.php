@@ -106,11 +106,17 @@ MSG,
             "expression": "* * * * *",
             "repeatAfterSeconds": 0,
             "runSecond": 0,
-            "start": "1.000000 Europe\/Prague",
+            "start": [
+                "1.000000",
+                "Europe\/Prague"
+            ],
             "forcedRun": false
         },
         "result": {
-            "end": "1.000000 Europe\/Prague",
+            "end": [
+                "1.000000",
+                "Europe\/Prague"
+            ],
             "state": "done"
         }
     },
@@ -121,11 +127,17 @@ MSG,
             "expression": "* * * * *",
             "repeatAfterSeconds": 0,
             "runSecond": 0,
-            "start": "1.000000 UTC",
+            "start": [
+                "1.000000",
+                "UTC"
+            ],
             "forcedRun": false
         },
         "result": {
-            "end": "1.000000 UTC",
+            "end": [
+                "1.000000",
+                "UTC"
+            ],
             "state": "done"
         }
     }
@@ -184,11 +196,17 @@ MSG,
             "expression": "* * * * *",
             "repeatAfterSeconds": 0,
             "runSecond": 0,
-            "start": "1.000000 Europe\/Prague",
+            "start": [
+                "1.000000",
+                "Europe\/Prague"
+            ],
             "forcedRun": false
         },
         "result": {
-            "end": "1.000000 Europe\/Prague",
+            "end": [
+                "1.000000",
+                "Europe\/Prague"
+            ],
             "state": "done"
         }
     },
@@ -199,11 +217,17 @@ MSG,
             "expression": "* * * * *",
             "repeatAfterSeconds": 0,
             "runSecond": 0,
-            "start": "1.000000 Europe\/Prague",
+            "start": [
+                "1.000000",
+                "Europe\/Prague"
+            ],
             "forcedRun": false
         },
         "result": {
-            "end": "1.000000 Europe\/Prague",
+            "end": [
+                "1.000000",
+                "Europe\/Prague"
+            ],
             "state": "fail"
         }
     }

@@ -252,11 +252,17 @@ MSG,
         "expression": "1 * * * *",
         "repeatAfterSeconds": 0,
         "runSecond": 30,
-        "start": "61.000000 Europe\/Prague",
+        "start": [
+            "61.000000",
+            "Europe\/Prague"
+        ],
         "forcedRun": false
     },
     "result": {
-        "end": "61.000000 Europe\/Prague",
+        "end": [
+            "61.000000",
+            "Europe\/Prague"
+        ],
         "state": "done"
     },
     "stdout": ""
@@ -312,11 +318,17 @@ MSG,
         "expression": "* * * * *",
         "repeatAfterSeconds": 0,
         "runSecond": 0,
-        "start": "1.000000 Europe\/Prague",
+        "start": [
+            "1.000000",
+            "Europe\/Prague"
+        ],
         "forcedRun": true
     },
     "result": {
-        "end": "1.000000 Europe\/Prague",
+        "end": [
+            "1.000000",
+            "Europe\/Prague"
+        ],
         "state": "done"
     },
     "stdout": "output"

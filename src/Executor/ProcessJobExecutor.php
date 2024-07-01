@@ -4,6 +4,7 @@ namespace Orisai\Scheduler\Executor;
 
 use Closure;
 use DateTimeImmutable;
+use DateTimeZone;
 use Generator;
 use JsonException;
 use Orisai\Clock\Adapter\ClockAdapterFactory;
@@ -180,13 +181,15 @@ final class ProcessJobExecutor implements JobExecutor
 				$raw['info']['expression'],
 				$raw['info']['repeatAfterSeconds'],
 				$raw['info']['runSecond'],
-				DateTimeImmutable::createFromFormat('U.u e', $raw['info']['start']),
+				DateTimeImmutable::createFromFormat('U.u', $raw['info']['start'][0])
+					->setTimezone(new DateTimeZone($raw['info']['start'][1])),
 				$jobSchedule->getTimeZone(),
 				$raw['info']['forcedRun'],
 			),
 			new JobResult(
 				$jobSchedule->getExpression(),
-				DateTimeImmutable::createFromFormat('U.u e', $raw['result']['end']),
+				DateTimeImmutable::createFromFormat('U.u', $raw['result']['end'][0])
+					->setTimezone(new DateTimeZone($raw['result']['end'][1])),
 				JobResultState::from($raw['result']['state']),
 			),
 		);
