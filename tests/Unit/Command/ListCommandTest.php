@@ -477,4 +477,48 @@ MSG,
 		self::assertSame($command::SUCCESS, $tester->getStatusCode());
 	}
 
+	public function testImpossibleTime(): void
+	{
+		$clock = new FrozenClock(1, new DateTimeZone('Europe/Prague'));
+		$scheduler = new SimpleScheduler(null, null, null, $clock);
+
+		$cbs = new CallbackList();
+		$scheduler->addJob(
+			new CallbackJob(Closure::fromCallable([$cbs, 'job1'])),
+			new CronExpression('* * 31 2 *'),
+		);
+		$scheduler->addJob(
+			new CallbackJob(Closure::fromCallable([$cbs, 'job1'])),
+			new CronExpression('* * * * *'),
+		);
+		$scheduler->addJob(
+			new CallbackJob(Closure::fromCallable([$cbs, 'job1'])),
+			new CronExpression('* * 31 2 *'),
+		);
+		$scheduler->addJob(
+			new CallbackJob(Closure::fromCallable([$cbs, 'job1'])),
+			new CronExpression('* * * * *'),
+		);
+
+		$command = new ListCommand($scheduler, $clock);
+		$tester = new CommandTester($command);
+
+		putenv('COLUMNS=80');
+		$tester->execute([
+			'--next' => null,
+		]);
+
+		self::assertSame(
+			<<<'MSG'
+  * * 31 2 * [0] Tests\Orisai\Scheduler\Doubles\CallbackList::job1() Next Due: NEVER
+  * * 31 2 * [2] Tests\Orisai\Scheduler\Doubles\CallbackList::job1() Next Due: NEVER
+  * * * * *  [1] Tests\Orisai\Scheduler\Doubles\CallbackList::job1() Next Due: 59 seconds
+  * * * * *  [3] Tests\Orisai\Scheduler\Doubles\CallbackList::job1() Next Due: 59 seconds
+
+MSG,
+			CommandOutputHelper::getCommandOutput($tester),
+		);
+		self::assertSame($command::SUCCESS, $tester->getStatusCode());
+	}
+
 }

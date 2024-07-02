@@ -13,6 +13,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Terminal;
+use Throwable;
 use function abs;
 use function array_key_exists;
 use function assert;
@@ -127,16 +128,21 @@ final class ListCommand extends BaseExplainCommand
 
 			$nextDueDateLabel = 'Next Due:';
 			$nextDueDate = $this->getNextDueDate($jobSchedule, $timeZone);
-			$nextDueDate = $output->isVerbose()
-				? $nextDueDate->format('Y-m-d H:i:s P')
-				: $this->getRelativeTime($nextDueDate);
+
+			if ($nextDueDate !== null) {
+				$nextDueDateStr = $output->isVerbose()
+					? $nextDueDate->format('Y-m-d H:i:s P')
+					: $this->getRelativeTime($nextDueDate);
+			} else {
+				$nextDueDateStr = 'NEVER';
+			}
 
 			$dots = str_repeat(
 				'.',
 				max(
 				/* @infection-ignore-all */
 					$terminalWidth - mb_strlen(
-						$expressionPadding . $id . $name . $nextDueDateLabel . $nextDueDate,
+						$expressionPadding . $id . $name . $nextDueDateLabel . $nextDueDateStr,
 					) - $expressionLength - 8,
 					0,
 				),
@@ -152,7 +158,7 @@ final class ListCommand extends BaseExplainCommand
 				$name,
 				$dots,
 				$nextDueDateLabel,
-				$nextDueDate,
+				$nextDueDate === null ? "<fg=#ef4444>$nextDueDateStr</>" : $nextDueDateStr,
 			));
 
 			if ($explain !== false) {
@@ -246,10 +252,23 @@ final class ListCommand extends BaseExplainCommand
 		if ($next !== false) {
 			/** @infection-ignore-all */
 			uasort($jobSchedules, function (JobSchedule $a, JobSchedule $b) use ($timeZone): int {
-				$nextDueDateA = $this->getNextDueDate($a, $timeZone)
-					->setTimezone(new DateTimeZone('UTC'));
-				$nextDueDateB = $this->getNextDueDate($b, $timeZone)
-					->setTimezone(new DateTimeZone('UTC'));
+				$nextDueDateA = $this->getNextDueDate($a, $timeZone);
+				$nextDueDateB = $this->getNextDueDate($b, $timeZone);
+
+				if ($nextDueDateA === null && $nextDueDateB === null) {
+					return 0;
+				}
+
+				if ($nextDueDateA === null) {
+					return -1;
+				}
+
+				if ($nextDueDateB === null) {
+					return 1;
+				}
+
+				$nextDueDateA = $nextDueDateA->setTimezone(new DateTimeZone('UTC'));
+				$nextDueDateB = $nextDueDateB->setTimezone(new DateTimeZone('UTC'));
 
 				if (
 					$nextDueDateA->format(DateTimeInterface::ATOM)
@@ -282,15 +301,19 @@ final class ListCommand extends BaseExplainCommand
 		return $jobSchedules;
 	}
 
-	private function getNextDueDate(JobSchedule $jobSchedule, DateTimeZone $timeZone): DateTimeImmutable
+	private function getNextDueDate(JobSchedule $jobSchedule, DateTimeZone $timeZone): ?DateTimeImmutable
 	{
 		$expression = $jobSchedule->getExpression();
 		$repeatAfterSeconds = $jobSchedule->getRepeatAfterSeconds();
 
 		$now = $this->clock->now()->setTimezone($timeZone);
-		$nextDueDate = DateTimeImmutable::createFromMutable(
-			$expression->getNextRunDate($now)->setTimezone($timeZone),
-		);
+		try {
+			$nextDueDate = DateTimeImmutable::createFromMutable(
+				$expression->getNextRunDate($now)->setTimezone($timeZone),
+			);
+		} catch (Throwable $exception) {
+			return null;
+		}
 
 		if ($repeatAfterSeconds === 0) {
 			return $nextDueDate;

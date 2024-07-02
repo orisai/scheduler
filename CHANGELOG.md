@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 - `ProcessJobExecutor`
 	- start and end times passed from job process to main process are not shifted by offset of current timezone from UTC
+- `ListCommand`
+	- handle impossible due times (like 31st of February)
 
 ## [2.1.1](https://github.com/orisai/scheduler/compare/2.1.0...2.1.1) - 2024-06-21
 
