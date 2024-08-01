@@ -4,7 +4,6 @@ namespace Orisai\Scheduler\Status;
 
 use DateTimeImmutable;
 use DateTimeZone;
-use function assert;
 
 final class PlannedJobInfo
 {
@@ -97,7 +96,6 @@ final class PlannedJobInfo
 		$count = $this->getRunsCountPerMinute();
 		for ($i = 1; $i < $count; $i++) {
 			$lastTime = $lastTime->modify("+{$this->repeatAfterSeconds} seconds");
-			assert($lastTime !== false);
 			$times[] = $lastTime;
 		}
 
