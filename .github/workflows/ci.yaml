@@ -35,7 +35,7 @@ jobs:
       matrix:
         include:
           - operating-system: "ubuntu-latest"
-            php-version: "8.3"
+            php-version: "8.4"
 
     steps:
       - name: "Checkout"
@@ -68,7 +68,7 @@ jobs:
       matrix:
         include:
           - operating-system: "ubuntu-latest"
-            php-version: "8.3"
+            php-version: "8.4"
 
     steps:
       - name: "Checkout"
@@ -101,7 +101,7 @@ jobs:
     strategy:
       matrix:
         operating-system: [ "ubuntu-latest" ]
-        php-version: [ "7.4", "8.0", "8.1", "8.2", "8.3" ]
+        php-version: [ "7.4", "8.0", "8.1", "8.2", "8.3", "8.4" ]
         composer-flags: [ "" ]
         experimental: [ false ]
         include:
@@ -109,16 +109,12 @@ jobs:
             php-version: "7.4"
             composer-flags: "--prefer-lowest --prefer-stable"
             experimental: false
-          - operating-system: "ubuntu-latest"
-            php-version: "8.4"
-            composer-flags: "--ignore-platform-req=php+"
-            experimental: true
           - operating-system: "macos-latest"
-            php-version: "8.3"
+            php-version: "8.4"
             composer-flags: ""
             experimental: false
           - operating-system: "windows-latest"
-            php-version: "8.3"
+            php-version: "8.4"
             composer-flags: ""
             experimental: false
 
@@ -170,7 +166,7 @@ jobs:
       matrix:
         include:
           - operating-system: "ubuntu-latest"
-            php-version: "8.3"
+            php-version: "8.4"
 
     steps:
       - name: "Coveralls"
@@ -190,7 +186,7 @@ jobs:
       matrix:
         include:
           - operating-system: "ubuntu-latest"
-            php-version: "8.3"
+            php-version: "8.4"
 
     steps:
       - name: "Checkout"

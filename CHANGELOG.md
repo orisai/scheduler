@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased](https://github.com/orisai/scheduler/compare/2.1.2...v2.x)
 
+### Changed
+
+- Composer
+	- Allow PHP 8.4
+
 ## [2.1.2](https://github.com/orisai/scheduler/compare/2.1.1...2.1.2) - 2024-07-03
 
 ### Fixed
