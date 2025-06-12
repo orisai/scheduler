@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased](https://github.com/orisai/scheduler/compare/2.1.3...v2.x)
 
+## Added
+
+- `ProcessJobExecutor`
+	- `PhpExecutableFinder` is used instead of `PHP_BINARY` to locate PHP binary
+- `WorkerCommand`
+	- `PhpExecutableFinder` is used instead of `PHP_BINARY` to locate PHP binary
+
 ## [2.1.3](https://github.com/orisai/scheduler/compare/2.1.2...2.1.3) - 2024-12-29
 
 ### Changed

@@ -7,17 +7,18 @@ use DateTimeImmutable;
 use Orisai\Clock\Adapter\ClockAdapterFactory;
 use Orisai\Clock\Clock;
 use Orisai\Clock\SystemClock;
+use Orisai\Exceptions\Logic\InvalidState;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Process\PhpExecutableFinder;
 use Symfony\Component\Process\Process;
 use function assert;
 use function is_bool;
 use function ltrim;
 use function usleep;
-use const PHP_BINARY;
 
 /**
  * @infection-ignore-all
@@ -83,10 +84,16 @@ final class WorkerCommand extends Command
 
 	protected function execute(InputInterface $input, OutputInterface $output): int
 	{
+		$binary = (new PhpExecutableFinder())->find();
 		$script = $input->getOption('script') ?? $this->script;
 		$command = $input->getOption('command') ?? $this->command;
 		$force = $input->getOption('force');
 		assert(is_bool($force));
+
+		if ($binary === false) {
+			throw InvalidState::create()
+				->withMessage('PHP executable could not be found, subprocess cannot be executed.');
+		}
 
 		if (!$force && !$input->isInteractive()) {
 			$output->writeln(
@@ -112,7 +119,7 @@ final class WorkerCommand extends Command
 				&& $this->testRuns !== 0
 			) {
 				$executions[] = $execution = new Process([
-					PHP_BINARY,
+					$binary,
 					$script,
 					$command,
 				]);

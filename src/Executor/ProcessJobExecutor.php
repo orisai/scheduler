@@ -10,6 +10,7 @@ use JsonException;
 use Orisai\Clock\Adapter\ClockAdapterFactory;
 use Orisai\Clock\Clock;
 use Orisai\Clock\SystemClock;
+use Orisai\Exceptions\Logic\InvalidState;
 use Orisai\Exceptions\Message;
 use Orisai\Scheduler\Exception\JobProcessFailure;
 use Orisai\Scheduler\Exception\RunFailure;
@@ -23,6 +24,7 @@ use Orisai\Scheduler\Status\RunSummary;
 use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
+use Symfony\Component\Process\PhpExecutableFinder;
 use Symfony\Component\Process\Process;
 use function assert;
 use function is_array;
@@ -30,7 +32,6 @@ use function json_decode;
 use function json_encode;
 use function trim;
 use const JSON_THROW_ON_ERROR;
-use const PHP_BINARY;
 
 /**
  * @infection-ignore-all
@@ -65,6 +66,12 @@ final class ProcessJobExecutor implements JobExecutor
 		Closure $afterRunCallback
 	): Generator
 	{
+		$binary = (new PhpExecutableFinder())->find();
+		if ($binary === false) {
+			throw InvalidState::create()
+				->withMessage('PHP executable could not be found, subprocess cannot be executed.');
+		}
+
 		$beforeRunCallback();
 
 		$jobExecutions = [];
@@ -81,6 +88,7 @@ final class ProcessJobExecutor implements JobExecutor
 					$currentSecond = $lastExecutedSecond + 1;
 					if (isset($jobSchedulesBySecond[$currentSecond])) {
 						$jobExecutions = $this->startJobs(
+							$binary,
 							$jobSchedulesBySecond[$currentSecond],
 							$jobExecutions,
 							new RunParameters($currentSecond, false),
@@ -149,11 +157,16 @@ final class ProcessJobExecutor implements JobExecutor
 	 * @param array<int, array{Process, JobSchedule, int|string}> $jobExecutions
 	 * @return array<int, array{Process, JobSchedule, int|string}>
 	 */
-	private function startJobs(array $jobSchedules, array $jobExecutions, RunParameters $parameters): array
+	private function startJobs(
+		string $binary,
+		array $jobSchedules,
+		array $jobExecutions,
+		RunParameters $parameters
+	): array
 	{
 		foreach ($jobSchedules as $id => $jobSchedule) {
 			$execution = new Process([
-				PHP_BINARY,
+				$binary,
 				$this->script,
 				$this->command,
 				$id,
