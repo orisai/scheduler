@@ -21,3 +21,9 @@ parameters:
 			tooWideThrowType: true
 		checkedExceptionClasses:
 			- Orisai\Exceptions\Check\CheckedException
+
+	ignoreErrors:
+		# Internal classes in tests
+		-
+			message: '#(.+)internal(.+)Orisai(.+)#'
+			path: ../tests
