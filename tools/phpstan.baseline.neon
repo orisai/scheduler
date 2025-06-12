@@ -85,6 +85,24 @@ parameters:
 			path: ../tests/Unit/Job/CallbackJobTest.php
 
 		-
+			message: '#^Call to static method PHPUnit\\Framework\\Assert\:\:assertCount\(\) with 3 and array\{Orisai\\Scheduler\\Status\\JobInfo, Orisai\\Scheduler\\Status\\JobInfo\} will always evaluate to false\.$#'
+			identifier: staticMethod.impossibleType
+			count: 1
+			path: ../tests/Unit/SimpleSchedulerTest.php
+
+		-
+			message: '#^Call to static method PHPUnit\\Framework\\Assert\:\:assertCount\(\) with 3 and array\{Throwable, Throwable\} will always evaluate to false\.$#'
+			identifier: staticMethod.impossibleType
+			count: 1
+			path: ../tests/Unit/SimpleSchedulerTest.php
+
+		-
+			message: '#^Call to static method PHPUnit\\Framework\\Assert\:\:assertCount\(\) with 3 and array\{array\{Orisai\\Scheduler\\Status\\JobInfo, Orisai\\Scheduler\\Status\\JobResult\}, array\{Orisai\\Scheduler\\Status\\JobInfo, Orisai\\Scheduler\\Status\\JobResult\}\} will always evaluate to false\.$#'
+			identifier: staticMethod.impossibleType
+			count: 1
+			path: ../tests/Unit/SimpleSchedulerTest.php
+
+		-
 			message: '#^Call to static method PHPUnit\\Framework\\Assert\:\:assertInstanceOf\(\) with ''Orisai\\\\Scheduler\\\\Status\\\\JobSummary'' and Orisai\\Scheduler\\Status\\JobSummary will always evaluate to true\.$#'
 			identifier: staticMethod.alreadyNarrowedType
 			count: 1
