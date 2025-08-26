@@ -7,9 +7,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased](https://github.com/orisai/scheduler/compare/2.2.0...v2.x)
 
+### Fixed
+
+- `WorkerCommand` - run subprocess may write to output right before finish
+
 ## [2.2.0](https://github.com/orisai/scheduler/compare/2.1.3...2.2.0) - 2025-06-28
 
-## Added
+### Added
 
 - `ProcessJobExecutor`, `WorkerCommand`
 	- `PhpExecutableFinder` is used instead of `PHP_BINARY` to locate PHP binary (fixes running in environment where

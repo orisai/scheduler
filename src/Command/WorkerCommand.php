@@ -17,7 +17,7 @@ use Symfony\Component\Process\PhpExecutableFinder;
 use Symfony\Component\Process\Process;
 use function assert;
 use function is_bool;
-use function ltrim;
+use function trim;
 use function usleep;
 
 /**
@@ -144,12 +144,10 @@ final class WorkerCommand extends Command
 			}
 
 			foreach ($executions as $key => $execution) {
-				$executionOutput = $execution->getIncrementalOutput()
-					. $execution->getIncrementalErrorOutput();
-
-				$output->write(ltrim($executionOutput, "\n"));
+				$this->writeOutput($output, $execution);
 
 				if (!$execution->isRunning()) {
+					$this->writeOutput($output, $execution); // Process may write right before finish
 					unset($executions[$key]);
 				}
 			}
@@ -160,6 +158,19 @@ final class WorkerCommand extends Command
 		}
 
 		return self::SUCCESS;
+	}
+
+	private function writeOutput(OutputInterface $output, Process $process): void
+	{
+		$stdout = trim($process->getIncrementalOutput());
+		if ($stdout !== '') {
+			$output->writeln($stdout);
+		}
+
+		$stderr = trim($process->getIncrementalErrorOutput());
+		if ($stderr !== '') {
+			$output->writeln($stderr);
+		}
 	}
 
 	private function nullSeconds(DateTimeImmutable $dt): DateTimeImmutable
