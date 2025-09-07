@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Fixed
 
 - `WorkerCommand` - run subprocess may write to output right before finish
+- `ProcessJobExecutor`, `WorkerCommand` - parameters for phpdbg are properly escaped
 
 ## [2.2.0](https://github.com/orisai/scheduler/compare/2.1.3...2.2.0) - 2025-06-28
 

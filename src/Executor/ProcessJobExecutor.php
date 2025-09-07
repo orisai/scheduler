@@ -26,6 +26,7 @@ use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 use Symfony\Component\Process\PhpExecutableFinder;
 use Symfony\Component\Process\Process;
+use function array_merge;
 use function assert;
 use function is_array;
 use function json_decode;
@@ -66,11 +67,14 @@ final class ProcessJobExecutor implements JobExecutor
 		Closure $afterRunCallback
 	): Generator
 	{
-		$binary = (new PhpExecutableFinder())->find();
+		$finder = new PhpExecutableFinder();
+		$binary = $finder->find(false);
 		if ($binary === false) {
 			throw InvalidState::create()
 				->withMessage('PHP executable could not be found, subprocess cannot be executed.');
 		}
+
+		$phpCommand = array_merge([$binary], $finder->findArguments());
 
 		$beforeRunCallback();
 
@@ -88,7 +92,7 @@ final class ProcessJobExecutor implements JobExecutor
 					$currentSecond = $lastExecutedSecond + 1;
 					if (isset($jobSchedulesBySecond[$currentSecond])) {
 						$jobExecutions = $this->startJobs(
-							$binary,
+							$phpCommand,
 							$jobSchedulesBySecond[$currentSecond],
 							$jobExecutions,
 							new RunParameters($currentSecond, false),
@@ -153,27 +157,29 @@ final class ProcessJobExecutor implements JobExecutor
 	}
 
 	/**
-	 * @param array<int|string, JobSchedule>                      $jobSchedules
+	 * @param list<string> $phpCommand
+	 * @param array<int|string, JobSchedule> $jobSchedules
 	 * @param array<int, array{Process, JobSchedule, int|string}> $jobExecutions
 	 * @return array<int, array{Process, JobSchedule, int|string}>
 	 */
 	private function startJobs(
-		string $binary,
+		array $phpCommand,
 		array $jobSchedules,
 		array $jobExecutions,
 		RunParameters $parameters
 	): array
 	{
 		foreach ($jobSchedules as $id => $jobSchedule) {
-			$execution = new Process([
-				$binary,
-				$this->script,
-				$this->command,
-				$id,
-				'--json',
-				'--parameters',
-				json_encode($parameters->toArray(), JSON_THROW_ON_ERROR),
-			]);
+			$execution = new Process(
+				array_merge($phpCommand, [
+					$this->script,
+					$this->command,
+					$id,
+					'--json',
+					'--parameters',
+					json_encode($parameters->toArray(), JSON_THROW_ON_ERROR),
+				]),
+			);
 			$execution->start();
 
 			$jobExecutions[] = [$execution, $jobSchedule, $id];

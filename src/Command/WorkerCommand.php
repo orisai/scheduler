@@ -15,6 +15,7 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Process\PhpExecutableFinder;
 use Symfony\Component\Process\Process;
+use function array_merge;
 use function assert;
 use function is_bool;
 use function trim;
@@ -84,7 +85,8 @@ final class WorkerCommand extends Command
 
 	protected function execute(InputInterface $input, OutputInterface $output): int
 	{
-		$binary = (new PhpExecutableFinder())->find();
+		$finder = new PhpExecutableFinder();
+		$binary = $finder->find(false);
 		$script = $input->getOption('script') ?? $this->script;
 		$command = $input->getOption('command') ?? $this->command;
 		$force = $input->getOption('force');
@@ -94,6 +96,8 @@ final class WorkerCommand extends Command
 			throw InvalidState::create()
 				->withMessage('PHP executable could not be found, subprocess cannot be executed.');
 		}
+
+		$phpCommand = array_merge([$binary], $finder->findArguments(), [$script, $command]);
 
 		if (!$force && !$input->isInteractive()) {
 			$output->writeln(
@@ -118,11 +122,7 @@ final class WorkerCommand extends Command
 				&& $this->nullSeconds($currentTime) != $lastExecutionStartedAt
 				&& $this->testRuns !== 0
 			) {
-				$executions[] = $execution = new Process([
-					$binary,
-					$script,
-					$command,
-				]);
+				$executions[] = $execution = new Process($phpCommand);
 
 				// @codeCoverageIgnoreStart
 				if (Process::isTtySupported()) {
