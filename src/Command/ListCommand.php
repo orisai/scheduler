@@ -149,7 +149,7 @@ final class ListCommand extends BaseExplainCommand
 			);
 
 			$output->writeln(sprintf(
-				'  <fg=yellow>%s</><fg=#6C7280>%s</>%s%s [%s] %s<fg=#6C7280>%s %s %s</>',
+				'  <fg=yellow>%s</><fg=gray>%s</>%s%s [%s] %s<fg=gray>%s %s %s</>',
 				$expressionString,
 				$repeatAfterSecondsString,
 				$timeZoneString,
@@ -158,7 +158,7 @@ final class ListCommand extends BaseExplainCommand
 				$name,
 				$dots,
 				$nextDueDateLabel,
-				$nextDueDate === null ? "<fg=#ef4444>$nextDueDateStr</>" : $nextDueDateStr,
+				$nextDueDate === null ? "<fg=red>$nextDueDateStr</>" : $nextDueDateStr,
 			));
 
 			if ($explain !== false) {
@@ -169,7 +169,7 @@ final class ListCommand extends BaseExplainCommand
 					$explain,
 				);
 
-				$output->writeln("  <fg=#57534E>$explainedExpression</>");
+				$output->writeln("  <fg=gray>$explainedExpression</>");
 				$output->writeln('');
 			}
 		}

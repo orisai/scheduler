@@ -51,15 +51,15 @@ abstract class BaseRunCommand extends Command
 		$stateName = strtoupper($state->value);
 		switch ($state) {
 			case JobResultState::done():
-				$status = "<fg=#16a34a>$stateName</>";
+				$status = "<fg=green>$stateName</>";
 
 				break;
 			case JobResultState::fail():
-				$status = "<fg=#ef4444>$stateName</>";
+				$status = "<fg=red>$stateName</>";
 
 				break;
 			case JobResultState::lock():
-				$status = "<fg=#ca8a04>$stateName</>";
+				$status = "<fg=yellow>$stateName</>";
 
 				break;
 		}
@@ -76,7 +76,7 @@ abstract class BaseRunCommand extends Command
 		);
 
 		$output->writeln(sprintf(
-			'<fg=gray>%s</>%s[%s] %s<fg=#6C7280>%s</> <fg=gray>%s</> %s',
+			'<fg=gray>%s</>%s[%s] %s<fg=gray>%s</> <fg=gray>%s</> %s',
 			$runStart,
 			$running,
 			$id,

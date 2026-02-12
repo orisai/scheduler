@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased](https://github.com/orisai/scheduler/compare/2.2.1...v2.x)
 
+### Fixed
+
+- Use ANSI colors in console commands to support environments without true color support
+
 ## [2.2.1](https://github.com/orisai/scheduler/compare/2.2.0...2.2.1) - 2025-09-08
 
 ### Fixed
