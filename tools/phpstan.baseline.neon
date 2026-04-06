@@ -1,253 +1,286 @@
 parameters:
 	ignoreErrors:
 		-
-			message: '#^Parameter \#1 \$expression of method Orisai\\CronExpressionExplainer\\CronExpressionExplainer\:\:explain\(\) expects string, string\|null given\.$#'
+			rawMessage: 'Parameter #1 $expression of method Orisai\CronExpressionExplainer\CronExpressionExplainer::explain() expects string, string|null given.'
 			identifier: argument.type
 			count: 1
 			path: ../src/Command/ExplainCommand.php
 
 		-
-			message: '#^Only booleans are allowed in a ternary operator condition, mixed given\.$#'
+			rawMessage: 'Only booleans are allowed in a ternary operator condition, mixed given.'
 			identifier: ternary.condNotBoolean
 			count: 1
 			path: ../src/Command/RunCommand.php
 
 		-
-			message: '#^Only booleans are allowed in a negated boolean, mixed given\.$#'
+			rawMessage: 'Only booleans are allowed in a negated boolean, mixed given.'
 			identifier: booleanNot.exprNotBoolean
 			count: 1
 			path: ../src/Command/RunJobCommand.php
 
 		-
-			message: '#^Only booleans are allowed in an if condition, mixed given\.$#'
+			rawMessage: 'Only booleans are allowed in an if condition, mixed given.'
 			identifier: if.condNotBoolean
 			count: 2
 			path: ../src/Command/RunJobCommand.php
 
 		-
-			message: '#^Loose comparison via "\!\=" is not allowed\.$#'
-			identifier: notEqual.notAllowed
-			count: 1
-			path: ../src/Command/WorkerCommand.php
-
-		-
-			message: '#^Call to function assert\(\) with true will always evaluate to true\.$#'
+			rawMessage: 'Call to function assert() with true will always evaluate to true.'
 			identifier: function.alreadyNarrowedType
 			count: 1
 			path: ../src/Executor/ProcessJobExecutor.php
 
 		-
-			message: '#^Cannot call method setTimezone\(\) on DateTimeImmutable\|false\.$#'
+			rawMessage: 'Cannot call method setTimezone() on DateTimeImmutable|false.'
 			identifier: method.nonObject
 			count: 2
 			path: ../src/Executor/ProcessJobExecutor.php
 
 		-
-			message: '#^Instanceof between Symfony\\Component\\Process\\Process and Symfony\\Component\\Process\\Process will always evaluate to true\.$#'
+			rawMessage: Instanceof between Symfony\Component\Process\Process and Symfony\Component\Process\Process will always evaluate to true.
 			identifier: instanceof.alwaysTrue
 			count: 1
 			path: ../src/Executor/ProcessJobExecutor.php
 
 		-
-			message: '#^Parameter \#3 \$subject of function str_replace expects array\<string\>\|string, string\|false given\.$#'
+			rawMessage: 'Parameter #3 $subject of function str_replace expects array<string>|string, string|false given.'
 			identifier: argument.type
 			count: 1
 			path: ../src/Job/CallbackJob.php
 
 		-
-			message: '#^Parameter \#3 \$expression of class Orisai\\Scheduler\\Status\\JobInfo constructor expects string, string\|null given\.$#'
+			rawMessage: 'Parameter #3 $expression of class Orisai\Scheduler\Status\JobInfo constructor expects string, string|null given.'
 			identifier: argument.type
 			count: 1
 			path: ../src/ManagedScheduler.php
 
 		-
-			message: '#^Parameter \#3 \$expression of class Orisai\\Scheduler\\Status\\PlannedJobInfo constructor expects string, string\|null given\.$#'
+			rawMessage: 'Parameter #3 $expression of class Orisai\Scheduler\Status\PlannedJobInfo constructor expects string, string|null given.'
 			identifier: argument.type
 			count: 1
 			path: ../src/ManagedScheduler.php
 
 		-
-			message: '#^Method Orisai\\Scheduler\\Status\\PlannedJobInfo\:\:getRunsCountPerMinute\(\) should return int\<1, max\> but returns int\.$#'
+			rawMessage: 'Method Orisai\Scheduler\Status\PlannedJobInfo::getRunsCountPerMinute() should return int<1, max> but returns int.'
 			identifier: return.type
 			count: 2
 			path: ../src/Status/PlannedJobInfo.php
 
 		-
-			message: '#^Parameter \#1 \$expected of static method PHPUnit\\Framework\\Assert\:\:assertSame\(\) contains unresolvable type\.$#'
+			rawMessage: 'Parameter #1 $expected of static method PHPUnit\Framework\Assert::assertSame() contains unresolvable type.'
 			identifier: argument.unresolvableType
 			count: 2
 			path: ../tests/Unit/Command/ExplainCommandTest.php
 
 		-
-			message: '#^Call to static method PHPUnit\\Framework\\Assert\:\:assertSame\(\) with 2 and 1 will always evaluate to false\.$#'
+			rawMessage: 'Call to static method PHPUnit\Framework\Assert::assertSame() with 2 and 1 will always evaluate to false.'
 			identifier: staticMethod.impossibleType
 			count: 1
 			path: ../tests/Unit/Job/CallbackJobTest.php
 
 		-
-			message: '#^Call to static method PHPUnit\\Framework\\Assert\:\:assertCount\(\) with 3 and array\{Orisai\\Scheduler\\Status\\JobInfo, Orisai\\Scheduler\\Status\\JobInfo\} will always evaluate to false\.$#'
+			rawMessage: '''
+				Call to deprecated method add() of class Symfony\Component\Console\Application:
+				since Symfony 7.4, use Application::addCommand() instead
+			'''
+			identifier: method.deprecated
+			count: 1
+			path: ../tests/Unit/Job/SymfonyConsoleJobTest.php
+
+		-
+			rawMessage: 'Call to function method_exists() with Symfony\Component\Console\Application and ''addCommand'' will always evaluate to true.'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: ../tests/Unit/Job/SymfonyConsoleJobTest.php
+
+		-
+			rawMessage: 'Call to static method PHPUnit\Framework\Assert::assertCount() with 3 and array{Orisai\Scheduler\Status\JobInfo, Orisai\Scheduler\Status\JobInfo} will always evaluate to false.'
 			identifier: staticMethod.impossibleType
 			count: 1
 			path: ../tests/Unit/SimpleSchedulerTest.php
 
 		-
-			message: '#^Call to static method PHPUnit\\Framework\\Assert\:\:assertCount\(\) with 3 and array\{Throwable, Throwable\} will always evaluate to false\.$#'
+			rawMessage: 'Call to static method PHPUnit\Framework\Assert::assertCount() with 3 and array{Throwable, Throwable} will always evaluate to false.'
 			identifier: staticMethod.impossibleType
 			count: 1
 			path: ../tests/Unit/SimpleSchedulerTest.php
 
 		-
-			message: '#^Call to static method PHPUnit\\Framework\\Assert\:\:assertCount\(\) with 3 and array\{array\{Orisai\\Scheduler\\Status\\JobInfo, Orisai\\Scheduler\\Status\\JobResult\}, array\{Orisai\\Scheduler\\Status\\JobInfo, Orisai\\Scheduler\\Status\\JobResult\}\} will always evaluate to false\.$#'
+			rawMessage: 'Call to static method PHPUnit\Framework\Assert::assertCount() with 3 and array{array{Orisai\Scheduler\Status\JobInfo, Orisai\Scheduler\Status\JobResult}, array{Orisai\Scheduler\Status\JobInfo, Orisai\Scheduler\Status\JobResult}} will always evaluate to false.'
 			identifier: staticMethod.impossibleType
 			count: 1
 			path: ../tests/Unit/SimpleSchedulerTest.php
 
 		-
-			message: '#^Call to static method PHPUnit\\Framework\\Assert\:\:assertInstanceOf\(\) with ''Orisai\\\\Scheduler\\\\Status\\\\JobSummary'' and Orisai\\Scheduler\\Status\\JobSummary will always evaluate to true\.$#'
+			rawMessage: 'Call to static method PHPUnit\Framework\Assert::assertInstanceOf() with ''Orisai\\Scheduler\\Status\\JobSummary'' and Orisai\Scheduler\Status\JobSummary will always evaluate to true.'
 			identifier: staticMethod.alreadyNarrowedType
 			count: 1
 			path: ../tests/Unit/SimpleSchedulerTest.php
 
 		-
-			message: '#^Call to static method PHPUnit\\Framework\\Assert\:\:assertInstanceOf\(\) with ''Tests\\\\Orisai\\\\Scheduler\\\\Doubles\\\\JobInnerFailure'' and null will always evaluate to false\.$#'
+			rawMessage: 'Call to static method PHPUnit\Framework\Assert::assertInstanceOf() with ''Tests\\Orisai\\Scheduler\\Doubles\\JobInnerFailure'' and null will always evaluate to false.'
 			identifier: staticMethod.impossibleType
 			count: 2
 			path: ../tests/Unit/SimpleSchedulerTest.php
 
 		-
-			message: '#^Call to static method PHPUnit\\Framework\\Assert\:\:assertInstanceOf\(\) with ''Throwable'' and Throwable will always evaluate to true\.$#'
+			rawMessage: 'Call to static method PHPUnit\Framework\Assert::assertInstanceOf() with ''Throwable'' and Throwable will always evaluate to true.'
 			identifier: staticMethod.alreadyNarrowedType
 			count: 1
 			path: ../tests/Unit/SimpleSchedulerTest.php
 
 		-
-			message: '#^Call to static method PHPUnit\\Framework\\Assert\:\:assertNotNull\(\) with Orisai\\Scheduler\\Status\\JobSummary will always evaluate to true\.$#'
+			rawMessage: 'Call to static method PHPUnit\Framework\Assert::assertNotNull() with Orisai\Scheduler\Status\JobSummary will always evaluate to true.'
 			identifier: staticMethod.alreadyNarrowedType
 			count: 3
 			path: ../tests/Unit/SimpleSchedulerTest.php
 
 		-
-			message: '#^Call to static method PHPUnit\\Framework\\Assert\:\:assertNotNull\(\) with null will always evaluate to false\.$#'
+			rawMessage: 'Call to static method PHPUnit\Framework\Assert::assertNotNull() with null will always evaluate to false.'
 			identifier: staticMethod.impossibleType
 			count: 6
 			path: ../tests/Unit/SimpleSchedulerTest.php
 
 		-
-			message: '#^Call to static method PHPUnit\\Framework\\Assert\:\:assertSame\(\) with 0 and 0 will always evaluate to true\.$#'
+			rawMessage: 'Call to static method PHPUnit\Framework\Assert::assertSame() with 0 and 0 will always evaluate to true.'
 			identifier: staticMethod.alreadyNarrowedType
 			count: 2
 			path: ../tests/Unit/SimpleSchedulerTest.php
 
 		-
-			message: '#^Call to static method PHPUnit\\Framework\\Assert\:\:assertSame\(\) with 1 and 0 will always evaluate to false\.$#'
+			rawMessage: 'Call to static method PHPUnit\Framework\Assert::assertSame() with 1 and 0 will always evaluate to false.'
 			identifier: staticMethod.impossibleType
 			count: 3
 			path: ../tests/Unit/SimpleSchedulerTest.php
 
 		-
-			message: '#^Call to static method PHPUnit\\Framework\\Assert\:\:assertSame\(\) with 1 and 1 will always evaluate to true\.$#'
+			rawMessage: 'Call to static method PHPUnit\Framework\Assert::assertSame() with 1 and 1 will always evaluate to true.'
 			identifier: staticMethod.alreadyNarrowedType
 			count: 1
 			path: ../tests/Unit/SimpleSchedulerTest.php
 
 		-
-			message: '#^Call to static method PHPUnit\\Framework\\Assert\:\:assertSame\(\) with 2 and \*NEVER\* will always evaluate to false\.$#'
+			rawMessage: 'Call to static method PHPUnit\Framework\Assert::assertSame() with 2 and *NEVER* will always evaluate to false.'
 			identifier: staticMethod.impossibleType
 			count: 5
 			path: ../tests/Unit/SimpleSchedulerTest.php
 
 		-
-			message: '#^Call to static method PHPUnit\\Framework\\Assert\:\:assertSame\(\) with 2 and 1 will always evaluate to false\.$#'
+			rawMessage: 'Call to static method PHPUnit\Framework\Assert::assertSame() with 2 and 1 will always evaluate to false.'
 			identifier: staticMethod.impossibleType
 			count: 4
 			path: ../tests/Unit/SimpleSchedulerTest.php
 
 		-
-			message: '#^Call to static method PHPUnit\\Framework\\Assert\:\:assertSame\(\) with 3 and \*NEVER\* will always evaluate to false\.$#'
+			rawMessage: 'Call to static method PHPUnit\Framework\Assert::assertSame() with 3 and *NEVER* will always evaluate to false.'
 			identifier: staticMethod.impossibleType
 			count: 4
 			path: ../tests/Unit/SimpleSchedulerTest.php
 
 		-
-			message: '#^Call to static method PHPUnit\\Framework\\Assert\:\:assertSame\(\) with 3 and 1 will always evaluate to false\.$#'
+			rawMessage: 'Call to static method PHPUnit\Framework\Assert::assertSame() with 3 and 1 will always evaluate to false.'
 			identifier: staticMethod.impossibleType
 			count: 1
 			path: ../tests/Unit/SimpleSchedulerTest.php
 
 		-
-			message: '#^Call to static method PHPUnit\\Framework\\Assert\:\:assertSame\(\) with 4 and \*NEVER\* will always evaluate to false\.$#'
+			rawMessage: 'Call to static method PHPUnit\Framework\Assert::assertSame() with 4 and *NEVER* will always evaluate to false.'
 			identifier: staticMethod.impossibleType
 			count: 3
 			path: ../tests/Unit/SimpleSchedulerTest.php
 
 		-
-			message: '#^Call to static method PHPUnit\\Framework\\Assert\:\:assertSame\(\) with 4 and 2 will always evaluate to false\.$#'
+			rawMessage: 'Call to static method PHPUnit\Framework\Assert::assertSame() with 4 and 2 will always evaluate to false.'
 			identifier: staticMethod.impossibleType
 			count: 1
 			path: ../tests/Unit/SimpleSchedulerTest.php
 
 		-
-			message: '#^Call to static method PHPUnit\\Framework\\Assert\:\:assertSame\(\) with 5 and \*NEVER\* will always evaluate to false\.$#'
+			rawMessage: 'Call to static method PHPUnit\Framework\Assert::assertSame() with 5 and *NEVER* will always evaluate to false.'
 			identifier: staticMethod.impossibleType
 			count: 1
 			path: ../tests/Unit/SimpleSchedulerTest.php
 
 		-
-			message: '#^Call to static method PHPUnit\\Framework\\Assert\:\:assertSame\(\) with 6 and \*NEVER\* will always evaluate to false\.$#'
+			rawMessage: 'Call to static method PHPUnit\Framework\Assert::assertSame() with 6 and *NEVER* will always evaluate to false.'
 			identifier: staticMethod.impossibleType
 			count: 1
 			path: ../tests/Unit/SimpleSchedulerTest.php
 
 		-
-			message: '#^Call to static method PHPUnit\\Framework\\Assert\:\:assertSame\(\) with array\{''\* \* \* \* \*'', ''1 \* \* \* \*''\} and array\{\} will always evaluate to false\.$#'
+			rawMessage: 'Call to static method PHPUnit\Framework\Assert::assertSame() with array{''* * * * *'', ''1 * * * *''} and array{} will always evaluate to false.'
 			identifier: staticMethod.impossibleType
 			count: 1
 			path: ../tests/Unit/SimpleSchedulerTest.php
 
 		-
-			message: '#^Call to static method PHPUnit\\Framework\\Assert\:\:assertSame\(\) with array\{''\* \* \* \* \*''\} and array\{\} will always evaluate to false\.$#'
+			rawMessage: 'Call to static method PHPUnit\Framework\Assert::assertSame() with array{''* * * * *''} and array{} will always evaluate to false.'
 			identifier: staticMethod.impossibleType
 			count: 1
 			path: ../tests/Unit/SimpleSchedulerTest.php
 
 		-
-			message: '#^Call to static method PHPUnit\\Framework\\Assert\:\:assertTrue\(\) with false will always evaluate to false\.$#'
+			rawMessage: 'Call to static method PHPUnit\Framework\Assert::assertTrue() with false will always evaluate to false.'
 			identifier: staticMethod.impossibleType
 			count: 1
 			path: ../tests/Unit/SimpleSchedulerTest.php
 
 		-
-			message: '#^Dead catch \- Tests\\Orisai\\Scheduler\\Doubles\\JobInnerFailure is never thrown in the try block\.$#'
+			rawMessage: Dead catch - Tests\Orisai\Scheduler\Doubles\JobInnerFailure is never thrown in the try block.
 			identifier: catch.neverThrown
 			count: 2
 			path: ../tests/Unit/SimpleSchedulerTest.php
 
 		-
-			message: '#^If condition is always true\.$#'
+			rawMessage: If condition is always true.
 			identifier: if.alwaysTrue
 			count: 3
 			path: ../tests/Unit/SimpleSchedulerTest.php
 
 		-
-			message: '#^Parameter \#2 \$end of class Orisai\\Scheduler\\Status\\JobResult constructor expects DateTimeImmutable, DateTimeImmutable\|false given\.$#'
+			rawMessage: 'Parameter #2 $end of class Orisai\Scheduler\Status\JobResult constructor expects DateTimeImmutable, DateTimeImmutable|false given.'
 			identifier: argument.type
 			count: 1
 			path: ../tests/Unit/SimpleSchedulerTest.php
 
 		-
-			message: '#^Parameter \#6 \$start of class Orisai\\Scheduler\\Status\\JobInfo constructor expects DateTimeImmutable, DateTimeImmutable\|false given\.$#'
+			rawMessage: 'Parameter #6 $start of class Orisai\Scheduler\Status\JobInfo constructor expects DateTimeImmutable, DateTimeImmutable|false given.'
 			identifier: argument.type
 			count: 2
 			path: ../tests/Unit/SimpleSchedulerTest.php
 
 		-
-			message: '#^Unreachable statement \- code above always terminates\.$#'
+			rawMessage: Unreachable statement - code above always terminates.
 			identifier: deadCode.unreachable
 			count: 1
 			path: ../tests/Unit/SimpleSchedulerTest.php
 
 		-
-			message: '#^Parameter \#2 \$end of class Orisai\\Scheduler\\Status\\JobResult constructor expects DateTimeImmutable, DateTimeImmutable\|false given\.$#'
+			rawMessage: 'Parameter #2 $end of class Orisai\Scheduler\Status\JobResult constructor expects DateTimeImmutable, DateTimeImmutable|false given.'
 			identifier: argument.type
 			count: 1
 			path: ../tests/Unit/Status/JobResultTest.php
+
+		-
+			rawMessage: 'Parameter #1 $start of method Tests\Orisai\Scheduler\Unit\Status\PlannedJobInfoTest::testEstimatedStartTimes() expects DateTimeImmutable, DateTimeImmutable|false given.'
+			identifier: argument.type
+			count: 4
+			path: ../tests/Unit/Status/PlannedJobInfoTest.php
+
+		-
+			rawMessage: 'Parameter #4 $estimatedTimes of method Tests\Orisai\Scheduler\Unit\Status\PlannedJobInfoTest::testEstimatedStartTimes() expects list<DateTimeImmutable>, array{DateTimeImmutable|false, DateTimeImmutable|false, DateTimeImmutable|false, DateTimeImmutable|false, DateTimeImmutable|false, DateTimeImmutable|false, DateTimeImmutable|false, DateTimeImmutable|false, ...} given.'
+			identifier: argument.type
+			count: 1
+			path: ../tests/Unit/Status/PlannedJobInfoTest.php
+
+		-
+			rawMessage: 'Parameter #4 $estimatedTimes of method Tests\Orisai\Scheduler\Unit\Status\PlannedJobInfoTest::testEstimatedStartTimes() expects list<DateTimeImmutable>, array{DateTimeImmutable|false, DateTimeImmutable|false} given.'
+			identifier: argument.type
+			count: 2
+			path: ../tests/Unit/Status/PlannedJobInfoTest.php
+
+		-
+			rawMessage: 'Parameter #4 $estimatedTimes of method Tests\Orisai\Scheduler\Unit\Status\PlannedJobInfoTest::testEstimatedStartTimes() expects list<DateTimeImmutable>, array{DateTimeImmutable|false} given.'
+			identifier: argument.type
+			count: 1
+			path: ../tests/Unit/Status/PlannedJobInfoTest.php

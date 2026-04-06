@@ -119,7 +119,7 @@ final class WorkerCommand extends Command
 
 			if (
 				(int) $currentTime->format('s') === 0
-				&& $this->nullSeconds($currentTime) != $lastExecutionStartedAt
+				&& $this->nullSeconds($currentTime)->format('U') !== $lastExecutionStartedAt->format('U')
 				&& $this->testRuns !== 0
 			) {
 				$executions[] = $execution = new Process($phpCommand);

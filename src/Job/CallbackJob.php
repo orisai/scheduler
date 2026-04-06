@@ -32,9 +32,9 @@ final class CallbackJob implements Job
 
 		if (str_contains($refName, '{closure')) {
 			$name = sprintf(
-				'%s:%s',
+				'%s:%d',
 				str_replace(getcwd() . DIRECTORY_SEPARATOR, '', $ref->getFileName()),
-				$ref->getStartLine(),
+				(int) $ref->getStartLine(),
 			);
 
 			/** @infection-ignore-all */
