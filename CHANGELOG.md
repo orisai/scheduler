@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased](https://github.com/orisai/scheduler/compare/2.2.2...v2.x)
 
+### Added
+
+- Maintenance mode - stop running jobs during deployments
+	- `MaintenanceChecker` interface - implement to define when maintenance is active
+	- `MaintenanceManager` - orchestrates maintenance checking and shutdown requests
+- Run tracking
+	- `RunRegistry` - tracks active runs
+		- `FileRunRegistry` - PID-based stale detection (verifies process is alive), JSON metadata in run files
+		- `LockPoolRunRegistry` - lock refresh support to prevent TTL expiry during long runs
+	- `ActiveRun` - value object with run ID, PID and start timestamp
+	- `ActivityStatus` - value object returned by `ManagedScheduler->getStatus()`
+- `StatusCommand` (`scheduler:status`) - reports maintenance state and active runs
+	- `--fail-when-not-ready-for-shutdown` option for deploy scripts
+- `Scheduler`
+	- `getStatus()` - returns `ActivityStatus` with active runs and maintenance state (BC break)
+- `ManagedScheduler`
+	- accepts optional `MaintenanceManager` - enables maintenance mode with two-phase shutdown
+	  (graceful wait, then force-kill after configurable grace period)
+	- accepts optional `RunRegistry` - enables active run tracking
+- `RunCommand`
+	- accepts optional `MaintenanceManager` - registers signal handlers for graceful shutdown
+	- handles `SIGTERM` and `SIGINT` signals (requires `pcntl` extension, double-signal forces exit)
+	- returns exit code `2` when run was stopped due to maintenance
+- `WorkerCommand`
+	- handles `SIGTERM` and `SIGINT` signals for graceful stop (requires `pcntl` extension, double-signal forces exit)
+- `BasicJobExecutor` - supports maintenance mode (shutdown after current job finishes)
+- `JobResultState::maintenance()` - for jobs skipped or terminated due to maintenance
+- `RunSummary->isMaintenanceActive()` - indicates whether run was affected by maintenance
+
+### Changed
+
+- `JobExecutor` (BC break)
+	- `runJobs()` accepts optional `?ShutdownCheck $shutdownCheck` parameter
+- `RunSummary`
+	- constructor accepts optional `bool $maintenanceActive` parameter
+
 ## [2.2.2](https://github.com/orisai/scheduler/compare/2.2.1...2.2.2) - 2026-02-12
 
 ### Fixed

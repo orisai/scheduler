@@ -9,12 +9,14 @@ final class JobResultState
 
 	private const Done = 'done',
 		Fail = 'fail',
-		Lock = 'lock';
+		Lock = 'lock',
+		Maintenance = 'maintenance';
 
 	private const ValuesAndNames = [
 		self::Done => 'Done',
 		self::Fail => 'Fail',
 		self::Lock => 'Lock',
+		self::Maintenance => 'Maintenance',
 	];
 
 	/** @readonly */
@@ -45,6 +47,11 @@ final class JobResultState
 	public static function lock(): self
 	{
 		return self::from(self::Lock);
+	}
+
+	public static function maintenance(): self
+	{
+		return self::from(self::Maintenance);
 	}
 
 	public static function tryFrom(string $value): ?self

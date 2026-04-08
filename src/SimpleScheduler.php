@@ -7,7 +7,9 @@ use Cron\CronExpression;
 use DateTimeZone;
 use Orisai\Scheduler\Executor\JobExecutor;
 use Orisai\Scheduler\Job\Job;
+use Orisai\Scheduler\Maintenance\MaintenanceManager;
 use Orisai\Scheduler\Manager\SimpleJobManager;
+use Orisai\Scheduler\RunRegistry\RunRegistry;
 use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Lock\LockFactory;
@@ -22,7 +24,9 @@ final class SimpleScheduler extends ManagedScheduler
 		?LockFactory $lockFactory = null,
 		?JobExecutor $executor = null,
 		?ClockInterface $clock = null,
-		?LoggerInterface $logger = null
+		?LoggerInterface $logger = null,
+		?MaintenanceManager $maintenanceManager = null,
+		?RunRegistry $runRegistry = null
 	)
 	{
 		$this->jobManager = new SimpleJobManager();
@@ -34,6 +38,8 @@ final class SimpleScheduler extends ManagedScheduler
 			$executor,
 			$clock,
 			$logger,
+			$maintenanceManager,
+			$runRegistry,
 		);
 	}
 

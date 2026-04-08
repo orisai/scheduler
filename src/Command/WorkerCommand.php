@@ -17,9 +17,15 @@ use Symfony\Component\Process\PhpExecutableFinder;
 use Symfony\Component\Process\Process;
 use function array_merge;
 use function assert;
+use function function_exists;
 use function is_bool;
+use function pcntl_async_signals;
+use function pcntl_signal;
+use function pcntl_signal_get_handler;
 use function trim;
 use function usleep;
+use const SIGINT;
+use const SIGTERM;
 
 /**
  * @infection-ignore-all
@@ -28,6 +34,8 @@ final class WorkerCommand extends Command
 {
 
 	private Clock $clock;
+
+	private bool $shouldStop = false;
 
 	private ?int $testRuns = null;
 
@@ -85,6 +93,8 @@ final class WorkerCommand extends Command
 
 	protected function execute(InputInterface $input, OutputInterface $output): int
 	{
+		$previousHandlers = $this->registerSignalHandlers($output);
+
 		$finder = new PhpExecutableFinder();
 		$binary = $finder->find(false);
 		$script = $input->getOption('script') ?? $this->script;
@@ -92,10 +102,13 @@ final class WorkerCommand extends Command
 		$force = $input->getOption('force');
 		assert(is_bool($force));
 
+		// @codeCoverageIgnoreStart
 		if ($binary === false) {
 			throw InvalidState::create()
 				->withMessage('PHP executable could not be found, subprocess cannot be executed.');
 		}
+
+		// @codeCoverageIgnoreEnd
 
 		$phpCommand = array_merge([$binary], $finder->findArguments(), [$script, $command]);
 
@@ -114,6 +127,10 @@ final class WorkerCommand extends Command
 		$executions = [];
 		while (true) {
 			usleep(100_000);
+
+			if ($this->shouldStop) {
+				break;
+			}
 
 			$currentTime = $this->clock->now();
 
@@ -143,21 +160,87 @@ final class WorkerCommand extends Command
 				}
 			}
 
-			foreach ($executions as $key => $execution) {
-				$this->writeOutput($output, $execution);
-
-				if (!$execution->isRunning()) {
-					$this->writeOutput($output, $execution); // Process may write right before finish
-					unset($executions[$key]);
-				}
-			}
+			$this->processExecutions($executions, $output);
 
 			if ($this->testRuns === 0 && $executions === []) {
 				break;
 			}
 		}
 
+		// Wait for running subprocesses to finish
+		while ($executions !== []) {
+			$this->processExecutions($executions, $output);
+
+			usleep(100_000);
+		}
+
+		if ($this->shouldStop) {
+			$output->writeln('<info>Scheduler worker stopped.</info>');
+		}
+
+		$this->restoreSignalHandlers($previousHandlers);
+
 		return self::SUCCESS;
+	}
+
+	/**
+	 * @param array<Process> $executions
+	 * @param-out array<Process> $executions
+	 */
+	private function processExecutions(array &$executions, OutputInterface $output): void
+	{
+		foreach ($executions as $key => $execution) {
+			$this->writeOutput($output, $execution);
+
+			if (!$execution->isRunning()) {
+				$this->writeOutput($output, $execution); // Process may write right before finish
+				unset($executions[$key]);
+			}
+		}
+	}
+
+	/**
+	 * @return array{(callable(): mixed)|int, (callable(): mixed)|int}|null
+	 */
+	private function registerSignalHandlers(OutputInterface $output): ?array
+	{
+		if (!function_exists('pcntl_async_signals')) {
+			return null;
+		}
+
+		pcntl_async_signals(true);
+
+		$previousTermHandler = pcntl_signal_get_handler(SIGTERM);
+		$previousIntHandler = pcntl_signal_get_handler(SIGINT);
+
+		$handler = function (): void {
+			// @codeCoverageIgnoreStart
+			// Tested via real subprocess in SignalHandlingTest, but coverage is not collected from subprocesses
+			if ($this->shouldStop) {
+				exit(1);
+			}
+
+			// @codeCoverageIgnoreEnd
+			$this->shouldStop = true;
+		};
+
+		pcntl_signal(SIGTERM, $handler);
+		pcntl_signal(SIGINT, $handler);
+
+		return [$previousTermHandler, $previousIntHandler];
+	}
+
+	/**
+	 * @param array{(callable(): mixed)|int, (callable(): mixed)|int}|null $previousHandlers
+	 */
+	private function restoreSignalHandlers(?array $previousHandlers): void
+	{
+		if ($previousHandlers === null) {
+			return; // @codeCoverageIgnore
+		}
+
+		pcntl_signal(SIGTERM, $previousHandlers[0]);
+		pcntl_signal(SIGINT, $previousHandlers[1]);
 	}
 
 	private function writeOutput(OutputInterface $output, Process $process): void
@@ -191,6 +274,14 @@ final class WorkerCommand extends Command
 	{
 		$this->testRuns = $runs;
 		$this->testCb = $cb;
+	}
+
+	/**
+	 * @internal
+	 */
+	public function requestStop(): void
+	{
+		$this->shouldStop = true;
 	}
 
 }

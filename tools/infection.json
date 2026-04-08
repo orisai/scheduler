@@ -13,6 +13,8 @@
 		}
 	},
 	"tmpDir": "../var/tools/Infection",
+	"timeout": 10,
+	"testFrameworkOptions": "--exclude-group=subprocess",
 	"mutators": {
 		"@default": true
 	}

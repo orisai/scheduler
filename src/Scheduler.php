@@ -6,12 +6,15 @@ use Generator;
 use Orisai\Scheduler\Exception\JobFailure;
 use Orisai\Scheduler\Exception\RunFailure;
 use Orisai\Scheduler\Job\JobSchedule;
+use Orisai\Scheduler\Status\ActivityStatus;
 use Orisai\Scheduler\Status\JobSummary;
 use Orisai\Scheduler\Status\RunParameters;
 use Orisai\Scheduler\Status\RunSummary;
 
 interface Scheduler
 {
+
+	public function getStatus(): ActivityStatus;
 
 	/**
 	 * @return array<int|string, JobSchedule>

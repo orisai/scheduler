@@ -26,7 +26,8 @@ interface JobExecutor
 		array $jobSchedulesBySecond,
 		DateTimeImmutable $runStart,
 		Closure $beforeRunCallback,
-		Closure $afterRunCallback
+		Closure $afterRunCallback,
+		?ShutdownCheck $shutdownCheck = null
 	): Generator;
 
 }

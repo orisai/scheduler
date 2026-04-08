@@ -58,6 +58,7 @@ abstract class BaseRunCommand extends Command
 				$status = "<fg=red>$stateName</>";
 
 				break;
+			case JobResultState::maintenance():
 			case JobResultState::lock():
 				$status = "<fg=yellow>$stateName</>";
 

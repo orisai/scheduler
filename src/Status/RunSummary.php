@@ -14,14 +14,22 @@ final class RunSummary
 	/** @var list<JobSummary> */
 	private array $jobSummaries;
 
+	private bool $maintenanceActive;
+
 	/**
 	 * @param list<JobSummary> $jobSummaries
 	 */
-	public function __construct(DateTimeImmutable $start, DateTimeImmutable $end, array $jobSummaries)
+	public function __construct(
+		DateTimeImmutable $start,
+		DateTimeImmutable $end,
+		array $jobSummaries,
+		bool $maintenanceActive = false
+	)
 	{
 		$this->start = $start;
 		$this->end = $end;
 		$this->jobSummaries = $jobSummaries;
+		$this->maintenanceActive = $maintenanceActive;
 	}
 
 	public function getStart(): DateTimeImmutable
@@ -40,6 +48,11 @@ final class RunSummary
 	public function getJobSummaries(): array
 	{
 		return $this->jobSummaries;
+	}
+
+	public function isMaintenanceActive(): bool
+	{
+		return $this->maintenanceActive;
 	}
 
 }

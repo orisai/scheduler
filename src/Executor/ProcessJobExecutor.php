@@ -15,6 +15,7 @@ use Orisai\Exceptions\Message;
 use Orisai\Scheduler\Exception\JobProcessFailure;
 use Orisai\Scheduler\Exception\RunFailure;
 use Orisai\Scheduler\Job\JobSchedule;
+use Orisai\Scheduler\Maintenance\CreatesMaintenanceJobSummary;
 use Orisai\Scheduler\Status\JobInfo;
 use Orisai\Scheduler\Status\JobResult;
 use Orisai\Scheduler\Status\JobResultState;
@@ -40,6 +41,8 @@ use const JSON_THROW_ON_ERROR;
 final class ProcessJobExecutor implements JobExecutor
 {
 
+	use CreatesMaintenanceJobSummary;
+
 	private Clock $clock;
 
 	private LoggerInterface $logger;
@@ -64,16 +67,19 @@ final class ProcessJobExecutor implements JobExecutor
 		array $jobSchedulesBySecond,
 		DateTimeImmutable $runStart,
 		Closure $beforeRunCallback,
-		Closure $afterRunCallback
+		Closure $afterRunCallback,
+		?ShutdownCheck $shutdownCheck = null
 	): Generator
 	{
 		$finder = new PhpExecutableFinder();
 		$binary = $finder->find(false);
+		// @codeCoverageIgnoreStart
 		if ($binary === false) {
 			throw InvalidState::create()
 				->withMessage('PHP executable could not be found, subprocess cannot be executed.');
 		}
 
+		// @codeCoverageIgnoreEnd
 		$phpCommand = array_merge([$binary], $finder->findArguments());
 
 		$beforeRunCallback();
@@ -81,9 +87,80 @@ final class ProcessJobExecutor implements JobExecutor
 		$jobExecutions = [];
 		$jobSummaries = [];
 		$suppressedExceptions = [];
+		$maintenanceActive = false;
+
+		$shutdownDetectedAt = null;
+		$lastShutdownCheckAt = 0.0;
+		$lastRefreshAt = 0.0;
 
 		$lastExecutedSecond = -1;
 		while ($jobExecutions !== [] || $jobSchedulesBySecond !== []) {
+			// Refresh registry (throttled to every 30 seconds)
+			if ($shutdownCheck !== null && $shutdownDetectedAt === null) {
+				$now = (float) $this->clock->now()->format('U.u');
+				if ($now - $lastRefreshAt >= 30.0) {
+					$lastRefreshAt = $now;
+					$shutdownCheck->refresh();
+				}
+			}
+
+			// Check for shutdown (throttled to every 1 second)
+			if ($shutdownCheck !== null && $shutdownDetectedAt === null) {
+				$now = (float) $this->clock->now()->format('U.u');
+				if ($now - $lastShutdownCheckAt >= 1.0) {
+					$lastShutdownCheckAt = $now;
+
+					if ($shutdownCheck->shouldShutdown()) {
+						$shutdownDetectedAt = $now;
+						$maintenanceActive = true;
+
+						// Create maintenance summaries for jobs not yet started
+						foreach ($jobSchedulesBySecond as $second => $schedules) {
+							foreach ($schedules as $id => $jobSchedule) {
+								yield $jobSummaries[] = $this->createMaintenanceJobSummary(
+									$id,
+									$jobSchedule,
+									$second,
+									$runStart,
+								);
+							}
+						}
+
+						$jobSchedulesBySecond = [];
+					}
+				}
+			}
+
+			// Force-kill remaining processes after grace period
+			if ($shutdownDetectedAt !== null && $shutdownCheck !== null && $jobExecutions !== []) {
+				$elapsed = (float) $this->clock->now()->format('U.u') - $shutdownDetectedAt;
+				if ($elapsed >= $shutdownCheck->getGracePeriodSeconds()) {
+					foreach ($jobExecutions as $i => [$execution, $jobSchedule, $jobId]) {
+						assert($execution instanceof Process);
+						if ($execution->isRunning()) {
+							$execution->stop(10);
+						}
+
+						unset($jobExecutions[$i]);
+
+						$summary = $this->tryCollectJobSummary($execution, $jobSchedule, $jobId);
+						if ($summary === null) {
+							// Process was killed before producing output
+							$summary = $this->createMaintenanceJobSummary(
+								$jobId,
+								$jobSchedule,
+								0,
+								$runStart,
+							);
+						}
+
+						yield $jobSummaries[] = $summary;
+					}
+
+					break;
+				}
+			}
+
 			// If we have scheduled jobs and are at right second, execute them
 			if ($jobSchedulesBySecond !== []) {
 				$shouldRunSecond = $this->clock->now()->getTimestamp() - $runStart->getTimestamp();
@@ -113,39 +190,32 @@ final class ProcessJobExecutor implements JobExecutor
 
 				unset($jobExecutions[$i]);
 
-				$stdout = trim($execution->getOutput());
-				$stderr = trim($execution->getErrorOutput());
+				$summary = $this->tryCollectJobSummary($execution, $jobSchedule, $jobId);
+				if ($summary === null) {
+					// Check shutdown directly - SIGINT may have killed the subprocess before
+					// the throttled shutdown check had a chance to set $shutdownDetectedAt
+					if ($shutdownCheck !== null && $shutdownCheck->shouldShutdown()) {
+						$summary = $this->createMaintenanceJobSummary($jobId, $jobSchedule, 0, $runStart);
+						$maintenanceActive = true;
+					} else {
+						$suppressedExceptions[] = $this->createSubprocessFail(
+							$execution,
+							trim($execution->getOutput()),
+							trim($execution->getErrorOutput()),
+						);
 
-				try {
-					$decoded = json_decode($stdout, true, 512, JSON_THROW_ON_ERROR);
-					assert(is_array($decoded));
-				} catch (JsonException $e) {
-					$suppressedExceptions[] = $this->createSubprocessFail(
-						$execution,
-						$stdout,
-						$stderr,
-					);
-
-					continue;
+						continue;
+					}
 				}
 
-				$unexpectedStdout = $decoded['stdout'];
-				if ($unexpectedStdout !== '') {
-					$this->logUnexpectedStdout($execution, $jobId, $unexpectedStdout);
-				}
-
-				if ($stderr !== '') {
-					$this->logUnexpectedStderr($execution, $jobId, $stderr);
-				}
-
-				yield $jobSummaries[] = $this->createSummary($decoded, $jobSchedule);
+				yield $jobSummaries[] = $summary;
 			}
 
 			// Nothing to do, wait
 			$this->clock->sleep(0, 1);
 		}
 
-		$summary = new RunSummary($runStart, $this->clock->now(), $jobSummaries);
+		$summary = new RunSummary($runStart, $this->clock->now(), $jobSummaries, $maintenanceActive);
 
 		$afterRunCallback($summary);
 
@@ -186,6 +256,36 @@ final class ProcessJobExecutor implements JobExecutor
 		}
 
 		return $jobExecutions;
+	}
+
+	/**
+	 * Reads process output, parses JSON, logs unexpected stdout/stderr.
+	 * Returns null if JSON parsing fails (caller decides how to handle).
+	 *
+	 * @param int|string $jobId
+	 */
+	private function tryCollectJobSummary(Process $execution, JobSchedule $jobSchedule, $jobId): ?JobSummary
+	{
+		$stdout = trim($execution->getOutput());
+		$stderr = trim($execution->getErrorOutput());
+
+		try {
+			$decoded = json_decode($stdout, true, 512, JSON_THROW_ON_ERROR);
+			assert(is_array($decoded));
+		} catch (JsonException $e) {
+			return null;
+		}
+
+		$unexpectedStdout = $decoded['stdout'];
+		if ($unexpectedStdout !== '') {
+			$this->logUnexpectedStdout($execution, $jobId, $unexpectedStdout);
+		}
+
+		if ($stderr !== '') {
+			$this->logUnexpectedStderr($execution, $jobId, $stderr);
+		}
+
+		return $this->createSummary($decoded, $jobSchedule);
 	}
 
 	/**

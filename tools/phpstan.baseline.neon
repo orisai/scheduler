@@ -25,9 +25,15 @@ parameters:
 			path: ../src/Command/RunJobCommand.php
 
 		-
+			rawMessage: 'Parameter #3 $expression of class Orisai\Scheduler\Status\JobInfo constructor expects string, string|null given.'
+			identifier: argument.type
+			count: 1
+			path: ../src/Executor/BasicJobExecutor.php
+
+		-
 			rawMessage: 'Call to function assert() with true will always evaluate to true.'
 			identifier: function.alreadyNarrowedType
-			count: 1
+			count: 2
 			path: ../src/Executor/ProcessJobExecutor.php
 
 		-
@@ -39,6 +45,18 @@ parameters:
 		-
 			rawMessage: Instanceof between Symfony\Component\Process\Process and Symfony\Component\Process\Process will always evaluate to true.
 			identifier: instanceof.alwaysTrue
+			count: 2
+			path: ../src/Executor/ProcessJobExecutor.php
+
+		-
+			rawMessage: 'Parameter #3 $expression of class Orisai\Scheduler\Status\JobInfo constructor expects string, string|null given.'
+			identifier: argument.type
+			count: 1
+			path: ../src/Executor/ProcessJobExecutor.php
+
+		-
+			rawMessage: 'Parameter #3 $runSecond of method Orisai\Scheduler\Executor\ProcessJobExecutor::createMaintenanceJobSummary() expects int<0, max>, int given.'
+			identifier: argument.type
 			count: 1
 			path: ../src/Executor/ProcessJobExecutor.php
 
@@ -51,7 +69,7 @@ parameters:
 		-
 			rawMessage: 'Parameter #3 $expression of class Orisai\Scheduler\Status\JobInfo constructor expects string, string|null given.'
 			identifier: argument.type
-			count: 1
+			count: 2
 			path: ../src/ManagedScheduler.php
 
 		-
@@ -73,6 +91,33 @@ parameters:
 			path: ../tests/Unit/Command/ExplainCommandTest.php
 
 		-
+			rawMessage: 'Call to static method PHPUnit\Framework\Assert::assertTrue() with true will always evaluate to true.'
+			identifier: staticMethod.alreadyNarrowedType
+			count: 1
+			path: ../tests/Unit/Command/SignalHandlingTest.php
+
+		-
+			rawMessage: '''
+				Call to deprecated method add() of class Symfony\Component\Console\Application:
+				since Symfony 7.4, use Application::addCommand() instead
+			'''
+			identifier: method.deprecated
+			count: 1
+			path: ../tests/Unit/Command/StatusCommandTest.php
+
+		-
+			rawMessage: 'Call to function method_exists() with Symfony\Component\Console\Application and ''addCommand'' will always evaluate to true.'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: ../tests/Unit/Command/StatusCommandTest.php
+
+		-
+			rawMessage: 'Parameter #2 $pid of method Orisai\Scheduler\RunRegistry\FileRunRegistry::register() expects int, int|false given.'
+			identifier: argument.type
+			count: 4
+			path: ../tests/Unit/Command/StatusCommandTest.php
+
+		-
 			rawMessage: 'Call to static method PHPUnit\Framework\Assert::assertSame() with 2 and 1 will always evaluate to false.'
 			identifier: staticMethod.impossibleType
 			count: 1
@@ -92,6 +137,36 @@ parameters:
 			identifier: function.alreadyNarrowedType
 			count: 1
 			path: ../tests/Unit/Job/SymfonyConsoleJobTest.php
+
+		-
+			rawMessage: 'Call to static method PHPUnit\Framework\Assert::assertTrue() with false will always evaluate to false.'
+			identifier: staticMethod.impossibleType
+			count: 1
+			path: ../tests/Unit/Maintenance/MaintenanceIntegrationTest.php
+
+		-
+			rawMessage: Comparison operation ">" between 0 and 0 is always false.
+			identifier: greater.alwaysFalse
+			count: 1
+			path: ../tests/Unit/Maintenance/MaintenanceIntegrationTest.php
+
+		-
+			rawMessage: 'Parameter #1 $process_id of function posix_kill expects int, int|false given.'
+			identifier: argument.type
+			count: 2
+			path: ../tests/Unit/Maintenance/SignalAndShutdownTest.php
+
+		-
+			rawMessage: 'Parameter #2 $pid of method Orisai\Scheduler\RunRegistry\FileRunRegistry::register() expects int, int|false given.'
+			identifier: argument.type
+			count: 13
+			path: ../tests/Unit/RunRegistry/FileRunRegistryTest.php
+
+		-
+			rawMessage: 'Parameter #2 $pid of method Orisai\Scheduler\RunRegistry\LockPoolRunRegistry::register() expects int, int|false given.'
+			identifier: argument.type
+			count: 7
+			path: ../tests/Unit/RunRegistry/LockPoolRunRegistryTest.php
 
 		-
 			rawMessage: 'Call to static method PHPUnit\Framework\Assert::assertCount() with 3 and array{Orisai\Scheduler\Status\JobInfo, Orisai\Scheduler\Status\JobInfo} will always evaluate to false.'

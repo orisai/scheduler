@@ -1095,6 +1095,9 @@ MSG,
 		self::assertSame(90, $clock->now()->getTimestamp());
 	}
 
+	/**
+	 * @group subprocess
+	 */
 	public function testProcessNoJobs(): void
 	{
 		$clock = new FrozenClock(1);
@@ -1108,6 +1111,9 @@ MSG,
 		);
 	}
 
+	/**
+	 * @group subprocess
+	 */
 	public function testProcessExecutorWithErrorHandler(): void
 	{
 		$scheduler = SchedulerProcessSetup::createWithErrorHandler();
@@ -1116,6 +1122,9 @@ MSG,
 		self::assertCount(4, $summary->getJobSummaries());
 	}
 
+	/**
+	 * @group subprocess
+	 */
 	public function testProcessExecutorWithoutErrorHandler(): void
 	{
 		$scheduler = SchedulerProcessSetup::createWithoutErrorHandler();
@@ -1139,6 +1148,9 @@ MSG,
 		self::assertStringContainsString(JobProcessFailure::class, $e->getMessage());
 	}
 
+	/**
+	 * @group subprocess
+	 */
 	public function testProcessExecutorWithDefaultExecutable(): void
 	{
 		$scheduler = SchedulerProcessSetup::createWithDefaultExecutable();
@@ -1191,6 +1203,9 @@ MSG,
 		}
 	}
 
+	/**
+	 * @group subprocess
+	 */
 	public function testProcessStderr(): void
 	{
 		$scheduler = SchedulerProcessSetup::createWithStderr();
@@ -1228,6 +1243,9 @@ MSG,
 		}
 	}
 
+	/**
+	 * @group subprocess
+	 */
 	public function testProcessJobStderr(): void
 	{
 		[$scheduler, $logger] = SchedulerProcessSetup::createWithStderrJob();
@@ -1259,6 +1277,10 @@ MSG,
 	/**
 	 * @runInSeparateProcess
 	 */
+
+	/**
+	 * @group subprocess
+	 */
 	public function testProcessJobStdout(): void
 	{
 		[$scheduler, $logger] = SchedulerProcessSetup::createWithStdoutJob();
@@ -1287,6 +1309,9 @@ MSG,
 		);
 	}
 
+	/**
+	 * @group subprocess
+	 */
 	public function testProcessBeforeRunEvent(): void
 	{
 		$scheduler = SchedulerProcessSetup::createWithErrorHandler();
@@ -1302,6 +1327,9 @@ MSG,
 		self::assertGreaterThan(0, count($info->getJobInfos()));
 	}
 
+	/**
+	 * @group subprocess
+	 */
 	public function testProcessAfterRunEvent(): void
 	{
 		$scheduler = SchedulerProcessSetup::createEmpty();
@@ -1316,6 +1344,9 @@ MSG,
 		self::assertNotNull($summary);
 	}
 
+	/**
+	 * @group subprocess
+	 */
 	public function testProcessAfterRunEventAfterException(): void
 	{
 		$scheduler = SchedulerProcessSetup::createWithThrowingJob();

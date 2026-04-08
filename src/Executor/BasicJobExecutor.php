@@ -8,6 +8,7 @@ use Generator;
 use Orisai\Clock\Clock;
 use Orisai\Scheduler\Exception\RunFailure;
 use Orisai\Scheduler\Job\JobSchedule;
+use Orisai\Scheduler\Maintenance\CreatesMaintenanceJobSummary;
 use Orisai\Scheduler\Status\JobSummary;
 use Orisai\Scheduler\Status\RunSummary;
 use Throwable;
@@ -19,6 +20,8 @@ use function max;
  */
 final class BasicJobExecutor implements JobExecutor
 {
+
+	use CreatesMaintenanceJobSummary;
 
 	private Clock $clock;
 
@@ -38,7 +41,8 @@ final class BasicJobExecutor implements JobExecutor
 		array $jobSchedulesBySecond,
 		DateTimeImmutable $runStart,
 		Closure $beforeRunCallback,
-		Closure $afterRunCallback
+		Closure $afterRunCallback,
+		?ShutdownCheck $shutdownCheck = null
 	): Generator
 	{
 		$beforeRunCallback();
@@ -49,10 +53,30 @@ final class BasicJobExecutor implements JobExecutor
 
 		$jobSummaries = [];
 		$suppressedExceptions = [];
+		$maintenanceActive = false;
+		$skipRemaining = false;
+
 		for ($second = 0; $second <= $lastSecond; $second++) {
 			$secondInitiatedAt = $this->clock->now();
 
 			foreach ($jobSchedulesBySecond[$second] ?? [] as $id => $jobSchedule) {
+				// Check for shutdown between jobs
+				if (!$skipRemaining && $shutdownCheck !== null && $shutdownCheck->shouldShutdown()) {
+					$maintenanceActive = true;
+					$skipRemaining = true;
+				}
+
+				if ($skipRemaining) {
+					yield $jobSummaries[] = $this->createMaintenanceJobSummary(
+						$id,
+						$jobSchedule,
+						$second,
+						$runStart,
+					);
+
+					continue;
+				}
+
 				[$jobSummary, $throwable] = ($this->runCb)($id, $jobSchedule, $second);
 
 				yield $jobSummaries[] = $jobSummary;
@@ -62,10 +86,12 @@ final class BasicJobExecutor implements JobExecutor
 				}
 			}
 
-			$this->sleepTillNextSecond($second, $lastSecond, $secondInitiatedAt);
+			if (!$skipRemaining) {
+				$this->sleepTillNextSecond($second, $lastSecond, $secondInitiatedAt);
+			}
 		}
 
-		$summary = new RunSummary($runStart, $this->clock->now(), $jobSummaries);
+		$summary = new RunSummary($runStart, $this->clock->now(), $jobSummaries, $maintenanceActive);
 
 		$afterRunCallback($summary);
 

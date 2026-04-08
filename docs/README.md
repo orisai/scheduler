@@ -33,6 +33,13 @@ Cron job scheduler - with locks, parallelism and more
 	- [List command - show all jobs](#list-command)
 	- [Worker command - run jobs periodically](#worker-command)
 	- [Explain command - explain cron expression syntax](#explain-command)
+- [Run tracking](#run-tracking)
+	- [Status command](#status-command)
+- [Maintenance mode](#maintenance-mode)
+	- [Setup](#maintenance-setup)
+	- [Signal handling](#signal-handling)
+	- [Deploy integration](#deploy-integration)
+	- [Exit codes](#exit-codes)
 - [Lazy loading](#lazy-loading)
 - [Integrations and extensions](#integrations-and-extensions)
 - [Troubleshooting guide](#troubleshooting-guide)
@@ -811,6 +818,183 @@ Options:
 - `--seconds=<seconds>` (or `-s`) - repeat every n seconds
 - `--timezone=<timezone>` (or `-tz`) - the timezone time should be displayed in
 - `--locale=<locale>` (or `-l`) - explain in specified locale
+
+## Run tracking
+
+`RunRegistry` tracks active `scheduler:run` processes. This is useful for monitoring and for deploy scripts
+to check if it's safe to proceed. Run tracking works independently of maintenance mode - you can use it
+with any executor.
+
+Two implementations are provided:
+
+**FileRunRegistry** (single-server):
+
+```php
+use Orisai\Scheduler\RunRegistry\FileRunRegistry;
+
+$registry = new FileRunRegistry(__DIR__ . '/var/scheduler-runs');
+```
+
+Stores a JSON file per active run with PID, process start time, and timestamp. Detects stale runs by:
+1. Checking if the process is alive (`posix_kill($pid, 0)`)
+2. Comparing process start time from `/proc` on Linux to detect PID reuse
+3. Time-based fallback for systems without `/proc` (e.g. macOS)
+
+Dead and stale processes are cleaned up automatically.
+
+**LockPoolRunRegistry** (multi-server):
+
+```php
+use Orisai\Scheduler\RunRegistry\LockPoolRunRegistry;
+
+$registry = new LockPoolRunRegistry($lockFactory, 10); // pool of 10 slots
+```
+
+Uses `symfony/lock` with a fixed pool of lock keys. Works with any lock store (Redis, database, etc.).
+Locks are refreshed periodically to prevent TTL expiry during long runs.
+If all pool slots are taken, throws `LogicException` - increase the pool size.
+
+Pass the registry to the scheduler:
+
+```php
+use Orisai\Scheduler\SimpleScheduler;
+
+$scheduler = new SimpleScheduler(
+    null,      // errorHandler
+    null,      // lockFactory
+    null,      // executor
+    null,      // clock
+    null,      // logger
+    null,      // maintenanceManager
+    $registry,
+);
+```
+
+### Status command
+
+Check active runs and maintenance state:
+
+```bash
+php bin/console scheduler:status
+```
+
+Output:
+
+```
+Maintenance: UNAVAILABLE
+Active runs: 2
+  - 1712345678-a3f2b1 (PID 12345, started 15s ago)
+  - 1712345679-d4e5c2 (PID 12346, started 3s ago)
+Ready for shutdown: NO
+```
+
+Also available programmatically:
+
+```php
+$status = $scheduler->getStatus(); // ActivityStatus
+$status->isMaintenanceEnabled();   // ?bool - null when maintenance not configured
+$status->getActiveRuns();          // list<ActiveRun>
+$status->isReadyForShutdown();     // true when maintenance active AND no active runs
+```
+
+Each `ActiveRun` provides `getId()`, `getPid()` and `getStartTimestamp()`.
+
+## Maintenance mode
+
+During deployments, you typically want to stop running cron jobs to prevent interference. The scheduler supports
+a two-phase shutdown: first it waits for running jobs to finish naturally (graceful), then force-kills any remaining
+processes after a configurable grace period.
+
+Both executors support maintenance mode:
+- **ProcessJobExecutor**: force-kills child processes after the grace period expires
+- **BasicJobExecutor**: stops after the current job finishes (cannot interrupt in-process execution)
+
+### Maintenance setup
+
+Create a `MaintenanceChecker` implementation for your environment:
+
+```php
+use Orisai\Scheduler\Maintenance\MaintenanceChecker;
+
+class AppMaintenanceChecker implements MaintenanceChecker
+{
+
+    public function isMaintenance(): bool
+    {
+        return file_exists(__DIR__ . '/maintenance.running');
+    }
+
+}
+```
+
+Set up the scheduler with `MaintenanceManager` and `RunRegistry`:
+
+```php
+use Orisai\Scheduler\Command\RunCommand;
+use Orisai\Scheduler\Maintenance\MaintenanceManager;
+use Orisai\Scheduler\RunRegistry\FileRunRegistry;
+use Orisai\Scheduler\SimpleScheduler;
+
+$checker = new AppMaintenanceChecker();
+$registry = new FileRunRegistry(__DIR__ . '/var/scheduler-runs');
+$manager = new MaintenanceManager($checker);
+
+$scheduler = new SimpleScheduler(
+    null,      // errorHandler
+    null,      // lockFactory
+    null,      // executor
+    null,      // clock
+    null,      // logger
+    $manager,
+    $registry,
+);
+
+$runCommand = new RunCommand($scheduler, null, $manager);
+```
+
+The grace period (time before force-kill) defaults to 30 seconds. This matches the Kubernetes
+`terminationGracePeriodSeconds` default - long enough for most jobs to finish DB transactions, API calls
+and file operations, short enough to not block deploys excessively.
+
+```php
+$manager = new MaintenanceManager($checker, 60); // 60 second grace period
+```
+
+### Signal handling
+
+`RunCommand` and `WorkerCommand` handle `SIGTERM` and `SIGINT` signals:
+
+- **RunCommand**: first signal triggers graceful shutdown (same as maintenance mode), second signal forces immediate exit
+- **WorkerCommand**: first signal stops spawning new `scheduler:run` processes and waits for current ones to finish, second signal forces immediate exit
+
+Signal handling in `RunCommand` requires `MaintenanceManager` to be passed to the command constructor.
+
+Signal handling requires the `pcntl` extension (available on Linux/macOS CLI, not on Windows).
+When pcntl is not available, signals are silently skipped - the `MaintenanceChecker` polling approach still works.
+
+### Deploy integration
+
+Typical deploy flow:
+
+1. Enable maintenance (create your maintenance flag)
+2. Poll `scheduler:status` with `--fail-when-not-ready-for-shutdown` until ready (exits with `0` when ready, `1` when not):
+
+```bash
+while ! php bin/console scheduler:status --fail-when-not-ready-for-shutdown; do
+    sleep 1
+done
+```
+
+3. Deploy the application
+4. Disable maintenance (remove your maintenance flag)
+
+### Exit codes
+
+The `scheduler:run` command returns:
+
+- `0` - all jobs completed successfully
+- `1` - one or more jobs failed
+- `2` - maintenance shutdown (run was stopped due to maintenance)
 
 ## Lazy loading
 

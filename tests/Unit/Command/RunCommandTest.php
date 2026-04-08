@@ -7,19 +7,27 @@ use Cron\CronExpression;
 use DateTimeZone;
 use Orisai\Clock\FrozenClock;
 use Orisai\Scheduler\Command\RunCommand;
+use Orisai\Scheduler\Executor\ProcessJobExecutor;
 use Orisai\Scheduler\Job\CallbackJob;
+use Orisai\Scheduler\Maintenance\MaintenanceManager;
+use Orisai\Scheduler\RunRegistry\FileRunRegistry;
 use Orisai\Scheduler\SimpleScheduler;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Tester\CommandTester;
 use Symfony\Component\Lock\Store\InMemoryStore;
 use Tests\Orisai\Scheduler\Doubles\CallbackList;
 use Tests\Orisai\Scheduler\Doubles\CustomNameJob;
+use Tests\Orisai\Scheduler\Doubles\FileExistsMaintenanceChecker;
 use Tests\Orisai\Scheduler\Doubles\TestLockFactory;
 use Tests\Orisai\Scheduler\Helpers\CommandOutputHelper;
 use Tests\Orisai\Scheduler\Unit\SchedulerProcessSetup;
 use function explode;
+use function file_put_contents;
 use function putenv;
 use function sort;
+use function sys_get_temp_dir;
+use function uniqid;
+use function unlink;
 use const PHP_EOL;
 
 /**
@@ -273,6 +281,71 @@ MSG,
 		self::assertSame($command::SUCCESS, $tester->getStatusCode());
 	}
 
+	public function testMaintenanceExitCode(): void
+	{
+		$maintenanceFile = sys_get_temp_dir() . '/maintenance-test-' . uniqid();
+		file_put_contents($maintenanceFile, '');
+
+		$checker = new FileExistsMaintenanceChecker($maintenanceFile);
+		$dir = sys_get_temp_dir() . '/scheduler-test-' . uniqid();
+		$registry = new FileRunRegistry($dir);
+		$manager = new MaintenanceManager($checker);
+
+		$clock = new FrozenClock(1, new DateTimeZone('Europe/Prague'));
+		$executor = new ProcessJobExecutor($clock);
+		$scheduler = new SimpleScheduler(null, null, $executor, $clock, null, $manager, $registry);
+
+		$scheduler->addJob(
+			new CallbackJob(static function (): void {
+			}),
+			new CronExpression('* * * * *'),
+		);
+
+		$command = new RunCommand($scheduler, $clock, $manager);
+		$tester = new CommandTester($command);
+
+		putenv('COLUMNS=80');
+		$tester->execute([]);
+
+		self::assertSame(2, $tester->getStatusCode());
+
+		unlink($maintenanceFile);
+	}
+
+	public function testMaintenanceExitCodeJson(): void
+	{
+		$maintenanceFile = sys_get_temp_dir() . '/maintenance-test-' . uniqid();
+		file_put_contents($maintenanceFile, '');
+
+		$checker = new FileExistsMaintenanceChecker($maintenanceFile);
+		$dir = sys_get_temp_dir() . '/scheduler-test-' . uniqid();
+		$registry = new FileRunRegistry($dir);
+		$manager = new MaintenanceManager($checker);
+
+		$clock = new FrozenClock(1, new DateTimeZone('Europe/Prague'));
+		$executor = new ProcessJobExecutor($clock);
+		$scheduler = new SimpleScheduler(null, null, $executor, $clock, null, $manager, $registry);
+
+		$scheduler->addJob(
+			new CallbackJob(static function (): void {
+			}),
+			new CronExpression('* * * * *'),
+		);
+
+		$command = new RunCommand($scheduler, $clock, $manager);
+		$tester = new CommandTester($command);
+
+		$tester->execute(['--json' => true]);
+
+		self::assertSame(2, $tester->getStatusCode());
+		self::assertStringContainsString('"state": "maintenance"', $tester->getDisplay());
+
+		unlink($maintenanceFile);
+	}
+
+	/**
+	 * @group subprocess
+	 */
 	public function testProcessExecutor(): void
 	{
 		$scheduler = SchedulerProcessSetup::createWithErrorHandler();

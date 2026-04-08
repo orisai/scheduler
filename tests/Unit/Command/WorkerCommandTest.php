@@ -8,6 +8,7 @@ use Orisai\Scheduler\Command\WorkerCommand;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Tester\CommandTester;
 use Tests\Orisai\Scheduler\Helpers\CommandOutputHelper;
+use function count;
 use function explode;
 use function putenv;
 use const PHP_EOL;
@@ -36,6 +37,9 @@ MSG,
 		self::assertSame($command::SUCCESS, $tester->getStatusCode());
 	}
 
+	/**
+	 * @group subprocess
+	 */
 	public function testSingleRun(): void
 	{
 		$clock = new FrozenClock(1_020, new DateTimeZone('Europe/Prague'));
@@ -53,6 +57,9 @@ MSG,
 		self::assertCount(4, explode(PHP_EOL, $tester->getDisplay()));
 	}
 
+	/**
+	 * @group subprocess
+	 */
 	public function testExecutableSetter(): void
 	{
 		$clock = new FrozenClock(1_020, new DateTimeZone('Europe/Prague'));
@@ -69,6 +76,9 @@ MSG,
 		self::assertCount(4, explode(PHP_EOL, $tester->getDisplay()));
 	}
 
+	/**
+	 * @group subprocess
+	 */
 	public function testMultipleRuns(): void
 	{
 		$clock = new FrozenClock(1_020, new DateTimeZone('Europe/Prague'));
@@ -86,6 +96,9 @@ MSG,
 		self::assertCount(6, explode(PHP_EOL, $tester->getDisplay()));
 	}
 
+	/**
+	 * @group subprocess
+	 */
 	public function testNoJobs(): void
 	{
 		$clock = new FrozenClock(1_020, new DateTimeZone('Europe/Prague'));
@@ -151,6 +164,40 @@ MSG,
 			CommandOutputHelper::getCommandOutput($tester),
 		);
 		self::assertSame($command::FAILURE, $tester->getStatusCode());
+	}
+
+	/**
+	 * @group subprocess
+	 */
+	public function testSignalStopWaitsForSubprocesses(): void
+	{
+		$clock = new FrozenClock(1_020, new DateTimeZone('Europe/Prague'));
+
+		$command = new WorkerCommand($clock);
+		// Spawn 1 subprocess, then in the callback signal stop.
+		// The subprocess is still in $executions when the main loop breaks,
+		// so the "wait for subprocesses" loop executes.
+		$command->enableTestMode(1, static function () use ($command, $clock): void {
+			$clock->sleep(60);
+			$command->requestStop();
+		});
+		$tester = new CommandTester($command);
+
+		putenv('COLUMNS=80');
+		$tester->execute([
+			'--script' => 'tests/Unit/Command/worker-binary.php',
+		], ['interactive' => true]);
+
+		$output = CommandOutputHelper::getCommandOutput($tester);
+		// Subprocess output was captured (wait loop processed it)
+		self::assertStringContainsString('Running scheduled tasks every minute.', $output);
+		self::assertStringContainsString('Scheduler worker stopped.', $output);
+		self::assertSame($command::SUCCESS, $tester->getStatusCode());
+		// Verify subprocess actually ran by checking for job output lines
+		self::assertGreaterThan(
+			2,
+			count(explode(PHP_EOL, $tester->getDisplay())),
+		);
 	}
 
 	public function testNonInteractiveForce(): void

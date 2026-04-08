@@ -13,9 +13,14 @@ use Orisai\Exceptions\Message;
 use Orisai\Scheduler\Exception\JobFailure;
 use Orisai\Scheduler\Executor\BasicJobExecutor;
 use Orisai\Scheduler\Executor\JobExecutor;
+use Orisai\Scheduler\Executor\ShutdownCheck;
 use Orisai\Scheduler\Job\JobLock;
 use Orisai\Scheduler\Job\JobSchedule;
+use Orisai\Scheduler\Maintenance\CreatesMaintenanceJobSummary;
+use Orisai\Scheduler\Maintenance\MaintenanceManager;
 use Orisai\Scheduler\Manager\JobManager;
+use Orisai\Scheduler\RunRegistry\RunRegistry;
+use Orisai\Scheduler\Status\ActivityStatus;
 use Orisai\Scheduler\Status\JobInfo;
 use Orisai\Scheduler\Status\JobResult;
 use Orisai\Scheduler\Status\JobResultState;
@@ -30,10 +35,16 @@ use Psr\Log\NullLogger;
 use Symfony\Component\Lock\LockFactory;
 use Symfony\Component\Lock\Store\InMemoryStore;
 use Throwable;
+use function bin2hex;
+use function getmypid;
 use function iterator_to_array;
+use function random_bytes;
+use function time;
 
 class ManagedScheduler implements Scheduler
 {
+
+	use CreatesMaintenanceJobSummary;
 
 	private JobManager $jobManager;
 
@@ -47,6 +58,10 @@ class ManagedScheduler implements Scheduler
 	private Clock $clock;
 
 	private LoggerInterface $logger;
+
+	private ?MaintenanceManager $maintenanceManager;
+
+	private ?RunRegistry $runRegistry;
 
 	/** @var list<Closure(JobInfo, JobResult): void> */
 	private array $lockedJobCallbacks = [];
@@ -73,7 +88,9 @@ class ManagedScheduler implements Scheduler
 		?LockFactory $lockFactory = null,
 		?JobExecutor $executor = null,
 		?ClockInterface $clock = null,
-		?LoggerInterface $logger = null
+		?LoggerInterface $logger = null,
+		?MaintenanceManager $maintenanceManager = null,
+		?RunRegistry $runRegistry = null
 	)
 	{
 		$this->jobManager = $jobManager;
@@ -90,6 +107,22 @@ class ManagedScheduler implements Scheduler
 				new RunParameters($runSecond, false),
 			),
 		);
+
+		$this->maintenanceManager = $maintenanceManager;
+		$this->runRegistry = $runRegistry;
+	}
+
+	public function getStatus(): ActivityStatus
+	{
+		$maintenance = $this->maintenanceManager !== null
+			? $this->maintenanceManager->isMaintenance()
+			: null;
+
+		$activeRuns = $this->runRegistry !== null
+			? $this->runRegistry->getActiveRuns()
+			: [];
+
+		return new ActivityStatus($maintenance, $activeRuns);
 	}
 
 	public function getJobSchedules(): array
@@ -161,24 +194,93 @@ class ManagedScheduler implements Scheduler
 	public function runPromise(): Generator
 	{
 		$runStart = $this->clock->now();
-		$jobSchedules = [];
-		foreach ($this->jobManager->getJobSchedules() as $id => $schedule) {
-			$timeZone = $schedule->getTimeZone();
-			$jobDueTime = $timeZone !== null
-				? $runStart->setTimezone($timeZone)
-				: $runStart;
+		$runId = time() . '-' . bin2hex(random_bytes(3));
 
-			if ($schedule->getExpression()->isDue($jobDueTime)) {
-				$jobSchedules[$id] = $schedule;
-			}
+		if ($this->runRegistry !== null) {
+			$pid = getmypid();
+			$this->runRegistry->register($runId, $pid !== false ? $pid : 0);
 		}
 
-		return $this->executor->runJobs(
-			$this->groupJobSchedulesBySecond($jobSchedules),
-			$runStart,
-			$this->getBeforeRunCallback($runStart, $jobSchedules),
-			$this->getAfterRunCallback(),
+		try {
+			$jobSchedules = [];
+			foreach ($this->jobManager->getJobSchedules() as $id => $schedule) {
+				$timeZone = $schedule->getTimeZone();
+				$jobDueTime = $timeZone !== null
+					? $runStart->setTimezone($timeZone)
+					: $runStart;
+
+				if ($schedule->getExpression()->isDue($jobDueTime)) {
+					$jobSchedules[$id] = $schedule;
+				}
+			}
+
+			// Check maintenance before starting any jobs
+			if ($this->maintenanceManager !== null && $this->maintenanceManager->isMaintenance()) {
+				$generator = $this->createMaintenanceRunSummary($runStart, $jobSchedules);
+
+				yield from $generator;
+
+				return $generator->getReturn();
+			}
+
+			$shutdownCheck = $this->createShutdownCheck($runId);
+
+			$generator = $this->executor->runJobs(
+				$this->groupJobSchedulesBySecond($jobSchedules),
+				$runStart,
+				$this->getBeforeRunCallback($runStart, $jobSchedules),
+				$this->getAfterRunCallback(),
+				$shutdownCheck,
+			);
+
+			yield from $generator;
+
+			return $generator->getReturn();
+		} finally {
+			if ($this->runRegistry !== null) {
+				$this->runRegistry->deregister($runId);
+			}
+		}
+	}
+
+	private function createShutdownCheck(string $runId): ?ShutdownCheck
+	{
+		if ($this->maintenanceManager === null) {
+			return null;
+		}
+
+		$manager = $this->maintenanceManager;
+		$registry = $this->runRegistry;
+
+		return new ShutdownCheck(
+			static fn (): bool => $manager->isShutdownRequested() || $manager->isMaintenance(),
+			$manager->getGracePeriodSeconds(),
+			static function () use ($registry, $runId): void {
+				if ($registry !== null) {
+					$registry->refresh($runId);
+				}
+			},
 		);
+	}
+
+	/**
+	 * @param array<int|string, JobSchedule> $jobSchedules
+	 * @return Generator<int, JobSummary, void, RunSummary>
+	 */
+	private function createMaintenanceRunSummary(DateTimeImmutable $runStart, array $jobSchedules): Generator
+	{
+		$jobSummaries = [];
+		foreach ($jobSchedules as $id => $jobSchedule) {
+			yield $jobSummaries[] = $this->createMaintenanceJobSummary($id, $jobSchedule, 0, $runStart);
+		}
+
+		$summary = new RunSummary($runStart, $this->clock->now(), $jobSummaries, true);
+
+		foreach ($this->afterRunCallbacks as $cb) {
+			$cb($summary);
+		}
+
+		return $summary;
 	}
 
 	/**
