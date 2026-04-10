@@ -23,6 +23,7 @@ final class JobResultTest extends TestCase
 			[
 				'end' => [$end->format('U.u'), $end->getTimezone()->getName()],
 				'state' => JobResultState::done()->value,
+				'lockExpired' => false,
 			],
 			$result->toArray(),
 		);

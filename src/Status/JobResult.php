@@ -14,11 +14,19 @@ final class JobResult
 
 	private JobResultState $state;
 
-	public function __construct(CronExpression $expression, DateTimeImmutable $end, JobResultState $state)
+	private bool $lockExpired;
+
+	public function __construct(
+		CronExpression $expression,
+		DateTimeImmutable $end,
+		JobResultState $state,
+		bool $lockExpired = false
+	)
 	{
 		$this->expression = $expression;
 		$this->end = $end;
 		$this->state = $state;
+		$this->lockExpired = $lockExpired;
 	}
 
 	public function getEnd(): DateTimeImmutable
@@ -29,6 +37,11 @@ final class JobResult
 	public function getState(): JobResultState
 	{
 		return $this->state;
+	}
+
+	public function hasLockExpiredEarly(): bool
+	{
+		return $this->lockExpired;
 	}
 
 	/**
@@ -65,6 +78,7 @@ final class JobResult
 		return [
 			'end' => [$this->end->format('U.u'), $this->end->getTimezone()->getName()],
 			'state' => $this->getState()->value,
+			'lockExpired' => $this->lockExpired,
 		];
 	}
 

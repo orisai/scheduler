@@ -263,7 +263,8 @@ MSG,
             "61.000000",
             "Europe\/Prague"
         ],
-        "state": "done"
+        "state": "done",
+        "lockExpired": false
     },
     "stdout": ""
 }
@@ -329,7 +330,8 @@ MSG,
             "1.000000",
             "Europe\/Prague"
         ],
-        "state": "done"
+        "state": "done",
+        "lockExpired": false
     },
     "stdout": "output"
 }

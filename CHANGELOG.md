@@ -40,6 +40,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Multi-server protection via minute lock - prevents the same job from running twice within the same
   minute when scheduler runs on multiple servers with a distributed lock store
 - `JobLock->extendTo(float $seconds)` - sets lock expiration to given seconds from now
+- `JobResult->hasLockExpiredEarly()` - indicates whether the lock expired before the job finished
 
 ### Deprecated
 

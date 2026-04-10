@@ -127,7 +127,8 @@ MSG,
                 "121.000000",
                 "Europe\/Prague"
             ],
-            "state": "done"
+            "state": "done",
+            "lockExpired": false
         }
     },
     {
@@ -148,7 +149,8 @@ MSG,
                 "121.000000",
                 "UTC"
             ],
-            "state": "done"
+            "state": "done",
+            "lockExpired": false
         }
     }
 ]
@@ -218,7 +220,8 @@ MSG,
                 "61.000000",
                 "Europe\/Prague"
             ],
-            "state": "done"
+            "state": "done",
+            "lockExpired": false
         }
     },
     {
@@ -239,7 +242,8 @@ MSG,
                 "61.000000",
                 "Europe\/Prague"
             ],
-            "state": "fail"
+            "state": "fail",
+            "lockExpired": false
         }
     }
 ]

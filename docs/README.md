@@ -685,6 +685,7 @@ Result:
 ```php
 $end = $result->getEnd(); // DateTimeImmutable
 $state = $result->getState(); // JobResultState
+$earlyExpiration = $result->hasLockExpiredEarly(); // bool
 
 // Next runs are computed from time when job was finished
 $nextRun = $info->getNextRunDate(); // DateTimeImmutable

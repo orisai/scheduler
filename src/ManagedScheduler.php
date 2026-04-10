@@ -455,7 +455,8 @@ class ManagedScheduler implements Scheduler
 				// Handled bellow
 			}
 
-			if ($lock->isExpired()) {
+			$lockExpired = $lock->isExpired();
+			if ($lockExpired) {
 				$this->logger->warning("Lock of job '$id' expired before the job finished.", [
 					'id' => $id,
 				]);
@@ -465,6 +466,7 @@ class ManagedScheduler implements Scheduler
 				$expression,
 				$this->getCurrentTime($jobSchedule),
 				$throwable === null ? JobResultState::done() : JobResultState::fail(),
+				$lockExpired,
 			);
 
 			foreach ($this->afterJobCallbacks as $cb) {
