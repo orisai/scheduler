@@ -168,6 +168,10 @@ class ManagedScheduler implements Scheduler
 			return null;
 		}
 
+		if (!$force && $this->maintenanceManager !== null && $this->maintenanceManager->isMaintenance()) {
+			return null;
+		}
+
 		try {
 			[$summary, $throwable] = $this->runInternal($id, $jobSchedule, $parameters);
 		} finally {

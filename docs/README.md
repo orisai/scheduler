@@ -711,6 +711,9 @@ If you still want to respect job schedule and run it only if it is due, set 2nd 
 $scheduler->runJob('id', false); // JobSummary|null
 ```
 
+Non-forced runs (`$scheduler->runJob('id', false)`) also respect [maintenance mode](#maintenance-mode) — the job
+is skipped (returns `null`) when maintenance is active. Forced runs always execute regardless of maintenance.
+
 [Handling errors](#handling-errors) is the same as for `run()` method, except instead of `RunFailure` is
 thrown `JobFailure`.
 

@@ -488,4 +488,36 @@ final class MaintenanceIntegrationTest extends TestCase
 		self::assertSame('Europe/Prague', $jobSummary->getResult()->getEnd()->getTimezone()->getName());
 	}
 
+	public function testRunJobRespectsMaintenanceWhenNotForced(): void
+	{
+		$maintenanceFile = sys_get_temp_dir() . '/maintenance-test-' . uniqid();
+		file_put_contents($maintenanceFile, '');
+
+		$checker = new FileExistsMaintenanceChecker($maintenanceFile);
+		$dir = sys_get_temp_dir() . '/scheduler-test-' . uniqid();
+		$registry = new FileRunRegistry($dir);
+		$manager = new MaintenanceManager($checker);
+
+		$clock = new FrozenClock(1);
+		$scheduler = new SimpleScheduler(null, null, null, $clock, null, $manager, $registry);
+
+		$execCount = 0;
+		$scheduler->addJob(
+			new CallbackJob(static function () use (&$execCount): void {
+				$execCount++;
+			}),
+			new CronExpression('* * * * *'),
+		);
+
+		// Non-forced run during maintenance: returns null (skipped)
+		self::assertNull($scheduler->runJob(0, false));
+		self::assertSame(0, $execCount);
+
+		// Forced run during maintenance: still executes
+		self::assertNotNull($scheduler->runJob(0, true));
+		self::assertSame(1, $execCount);
+
+		unlink($maintenanceFile);
+	}
+
 }

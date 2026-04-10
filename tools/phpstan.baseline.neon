@@ -139,6 +139,18 @@ parameters:
 			path: ../tests/Unit/Job/SymfonyConsoleJobTest.php
 
 		-
+			rawMessage: 'Call to static method PHPUnit\Framework\Assert::assertNotNull() with Orisai\Scheduler\Status\JobSummary will always evaluate to true.'
+			identifier: staticMethod.alreadyNarrowedType
+			count: 1
+			path: ../tests/Unit/Maintenance/MaintenanceIntegrationTest.php
+
+		-
+			rawMessage: 'Call to static method PHPUnit\Framework\Assert::assertSame() with 1 and 0 will always evaluate to false.'
+			identifier: staticMethod.impossibleType
+			count: 1
+			path: ../tests/Unit/Maintenance/MaintenanceIntegrationTest.php
+
+		-
 			rawMessage: 'Call to static method PHPUnit\Framework\Assert::assertTrue() with false will always evaluate to false.'
 			identifier: staticMethod.impossibleType
 			count: 1

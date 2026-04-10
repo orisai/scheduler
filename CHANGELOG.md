@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 	- `--fail-when-not-ready-for-shutdown` option for deploy scripts
 - `Scheduler`
 	- `getStatus()` - returns `ActivityStatus` with active runs and maintenance state (BC break)
+	- `runJob($id, force: true)` ignores maintenance mode
 - `ManagedScheduler`
 	- accepts optional `MaintenanceManager` - enables maintenance mode with two-phase shutdown
 	  (graceful wait, then force-kill after configurable grace period)
@@ -30,6 +31,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 	- accepts optional `MaintenanceManager` - registers signal handlers for graceful shutdown
 	- handles `SIGTERM` and `SIGINT` signals (requires `pcntl` extension, double-signal forces exit)
 	- returns exit code `2` when run was stopped due to maintenance
+	- `--force` parameter ignores maintenance mode
 - `WorkerCommand`
 	- handles `SIGTERM` and `SIGINT` signals for graceful stop (requires `pcntl` extension, double-signal forces exit)
 - `BasicJobExecutor` - supports maintenance mode (shutdown after current job finishes)
