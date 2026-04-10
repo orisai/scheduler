@@ -481,6 +481,10 @@ $lock->getRemainingLifetime(); // float|null - seconds until lock expires
 $lock->isExpired();            // bool - whether the lock TTL has expired
 ```
 
+If a lock expires before the job finishes, a warning is logged via the PSR-3 logger. Configure
+a [logger](#logging-potential-problems) to be notified about this — it indicates the job takes longer
+than the lock TTL and should use `extendTo()` to keep the lock alive.
+
 To make sure locks are correctly used during deployments, specify constant id for every added job, lock identifiers rely
 on that fact. Otherwise, your job id will change when new jobs are added before it and acquired lock will be ignored.
 
