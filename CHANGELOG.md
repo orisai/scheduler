@@ -35,6 +35,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - `BasicJobExecutor` - supports maintenance mode (shutdown after current job finishes)
 - `JobResultState::maintenance()` - for jobs skipped or terminated due to maintenance
 - `RunSummary->isMaintenanceActive()` - indicates whether run was affected by maintenance
+- Multi-server protection via minute lock - prevents the same job from running twice within the same
+  minute when scheduler runs on multiple servers with a distributed lock store
 
 ### Changed
 

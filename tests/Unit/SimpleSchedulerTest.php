@@ -43,7 +43,8 @@ final class SimpleSchedulerTest extends TestCase
 
 	public function testBasic(): void
 	{
-		$scheduler = new SimpleScheduler();
+		$clock = new FrozenClock(1);
+		$scheduler = new SimpleScheduler(null, null, null, $clock);
 
 		$i = 0;
 		$job = new CallbackJob(
@@ -61,12 +62,14 @@ final class SimpleSchedulerTest extends TestCase
 		$scheduler->run();
 		self::assertSame(1, $i);
 
+		$clock->sleep(60);
 		$scheduler->run();
 		self::assertSame(2, $i);
 
 		$scheduler->runJob(0);
 		self::assertSame(3, $i);
 
+		$clock->sleep(60);
 		$scheduler->runJob(0, false);
 		self::assertSame(4, $i);
 	}
@@ -822,6 +825,7 @@ MSG,
 		$lock->release();
 
 		// Lock was released, job is executed
+		$clock->sleep(60);
 		$result = $scheduler->run();
 		self::assertSame(1, $i1);
 		self::assertSame(3, $i2);
@@ -844,6 +848,7 @@ MSG,
 		self::assertSame(2, $i1);
 		self::assertSame(4, $i2);
 
+		$clock->sleep(60);
 		$scheduler->run();
 		self::assertSame(3, $i1);
 		self::assertSame(5, $i2);
@@ -882,6 +887,7 @@ MSG,
 
 		// phpcs:ignore SlevomatCodingStandard.Variables.UnusedVariable.UnusedVariable
 		$throw = false;
+		$clock->sleep(60);
 		$scheduler->run();
 		self::assertSame(3, $i);
 	}
@@ -919,9 +925,11 @@ MSG,
 
 		// phpcs:ignore SlevomatCodingStandard.Variables.UnusedVariable.UnusedVariable
 		$throw = false;
+		$clock->sleep(60);
 		$scheduler->run();
 		self::assertSame(1, $i);
 
+		$clock->sleep(60);
 		$scheduler->run();
 		self::assertSame(2, $i);
 	}
@@ -959,9 +967,11 @@ MSG,
 
 		// phpcs:ignore SlevomatCodingStandard.Variables.UnusedVariable.UnusedVariable
 		$throw = false;
+		$clock->sleep(60);
 		$scheduler->run();
 		self::assertSame(2, $i);
 
+		$clock->sleep(60);
 		$scheduler->run();
 		self::assertSame(3, $i);
 	}
@@ -1088,11 +1098,184 @@ MSG,
 			1,
 		);
 
+		$clock->sleep(60);
 		$summary = $scheduler->run();
 		self::assertSame(4, $i1);
 		self::assertSame(60, $i2);
 		self::assertCount(62, $summary->getJobSummaries());
-		self::assertSame(90, $clock->now()->getTimestamp());
+		self::assertSame(150, $clock->now()->getTimestamp());
+	}
+
+	public function testMinuteLockPreventsReExecutionWithinSameMinute(): void
+	{
+		$clock = new FrozenClock(1);
+		$lockFactory = new TestLockFactory(new InMemoryStore(), true);
+		$scheduler = new SimpleScheduler(null, $lockFactory, null, $clock);
+
+		$execCount = 0;
+		$scheduler->addJob(
+			new CallbackJob(static function () use (&$execCount): void {
+				$execCount++;
+			}),
+			new CronExpression('* * * * *'),
+		);
+
+		// First run: job executes
+		$result1 = $scheduler->run();
+		self::assertSame(1, $execCount);
+		self::assertSame(
+			JobResultState::done(),
+			$result1->getJobSummaries()[0]->getResult()->getState(),
+		);
+
+		// Second run in the same minute: job is locked by minute lock
+		$result2 = $scheduler->run();
+		self::assertSame(1, $execCount);
+		self::assertSame(
+			JobResultState::lock(),
+			$result2->getJobSummaries()[0]->getResult()->getState(),
+		);
+
+		// Advance to next minute: job executes again
+		$clock->sleep(60);
+		$result3 = $scheduler->run();
+		self::assertSame(2, $execCount);
+		self::assertSame(
+			JobResultState::done(),
+			$result3->getJobSummaries()[0]->getResult()->getState(),
+		);
+	}
+
+	public function testMinuteLockPerSecondJobsUseSeparateKeys(): void
+	{
+		$clock = new FrozenClock(1);
+		$lockFactory = new TestLockFactory(new InMemoryStore(), true);
+		$scheduler = new SimpleScheduler(null, $lockFactory, null, $clock);
+
+		$execCount = 0;
+		$scheduler->addJob(
+			new CallbackJob(static function () use (&$execCount): void {
+				$execCount++;
+			}),
+			new CronExpression('* * * * *'),
+			null,
+			30,
+		);
+
+		// Per-second job (every 30s) runs twice in a minute: at second 0 and second 30
+		$scheduler->run();
+		self::assertSame(2, $execCount);
+	}
+
+	public function testMinuteLockSkippedForForcedRuns(): void
+	{
+		$clock = new FrozenClock(1);
+		$lockFactory = new TestLockFactory(new InMemoryStore(), true);
+		$scheduler = new SimpleScheduler(null, $lockFactory, null, $clock);
+
+		$execCount = 0;
+		$scheduler->addJob(
+			new CallbackJob(static function () use (&$execCount): void {
+				$execCount++;
+			}),
+			new CronExpression('* * * * *'),
+		);
+
+		// Scheduled run
+		$scheduler->run();
+		self::assertSame(1, $execCount);
+
+		// Forced run in same minute: should still work (minute lock skipped)
+		$scheduler->runJob(0, true);
+		self::assertSame(2, $execCount);
+	}
+
+	public function testMinuteLockMultiServerSimulation(): void
+	{
+		$clock = new FrozenClock(1);
+		// Shared lock store simulates two servers using the same distributed store
+		$sharedStore = new InMemoryStore();
+		$lockFactory = new TestLockFactory($sharedStore, true);
+
+		$execCountA = 0;
+		$schedulerA = new SimpleScheduler(null, $lockFactory, null, $clock);
+		$schedulerA->addJob(
+			new CallbackJob(static function () use (&$execCountA): void {
+				$execCountA++;
+			}),
+			new CronExpression('* * * * *'),
+			'shared-job',
+		);
+
+		$execCountB = 0;
+		$schedulerB = new SimpleScheduler(null, $lockFactory, null, $clock);
+		$schedulerB->addJob(
+			new CallbackJob(static function () use (&$execCountB): void {
+				$execCountB++;
+			}),
+			new CronExpression('* * * * *'),
+			'shared-job',
+		);
+
+		// Server A runs first
+		$resultA = $schedulerA->run();
+		self::assertSame(1, $execCountA);
+		self::assertSame(
+			JobResultState::done(),
+			$resultA->getJobSummaries()[0]->getResult()->getState(),
+		);
+
+		// Server B runs slightly later in the same minute — blocked by minute lock
+		$clock->sleep(2);
+		$resultB = $schedulerB->run();
+		self::assertSame(0, $execCountB);
+		self::assertSame(
+			JobResultState::lock(),
+			$resultB->getJobSummaries()[0]->getResult()->getState(),
+		);
+
+		// Next minute — both servers can run again
+		$clock->sleep(60);
+		$resultA2 = $schedulerA->run();
+		self::assertSame(2, $execCountA);
+		self::assertSame(
+			JobResultState::done(),
+			$resultA2->getJobSummaries()[0]->getResult()->getState(),
+		);
+	}
+
+	public function testMinuteLockRunJobFromProcessExecutorSubprocess(): void
+	{
+		$clock = new FrozenClock(1);
+		$sharedStore = new InMemoryStore();
+		$lockFactory = new TestLockFactory($sharedStore, true);
+
+		$execCount = 0;
+		$scheduler = new SimpleScheduler(null, $lockFactory, null, $clock);
+		$scheduler->addJob(
+			new CallbackJob(static function () use (&$execCount): void {
+				$execCount++;
+			}),
+			new CronExpression('* * * * *'),
+			'job-1',
+		);
+
+		// Simulate what ProcessJobExecutor subprocess does:
+		// runJob with explicit RunParameters (forcedRun=false) — minute lock IS checked
+		$summary1 = $scheduler->runJob('job-1', true, new RunParameters(0, false));
+		self::assertSame(1, $execCount);
+		self::assertSame(JobResultState::done(), $summary1->getResult()->getState());
+
+		// Second subprocess call in same minute — blocked by minute lock
+		$summary2 = $scheduler->runJob('job-1', true, new RunParameters(0, false));
+		self::assertSame(1, $execCount);
+		self::assertSame(JobResultState::lock(), $summary2->getResult()->getState());
+
+		// Next minute — works again
+		$clock->sleep(60);
+		$summary3 = $scheduler->runJob('job-1', true, new RunParameters(0, false));
+		self::assertSame(2, $execCount);
+		self::assertSame(JobResultState::done(), $summary3->getResult()->getState());
 	}
 
 	/**

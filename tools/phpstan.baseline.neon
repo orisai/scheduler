@@ -231,7 +231,7 @@ parameters:
 		-
 			rawMessage: 'Call to static method PHPUnit\Framework\Assert::assertSame() with 1 and 1 will always evaluate to true.'
 			identifier: staticMethod.alreadyNarrowedType
-			count: 1
+			count: 3
 			path: ../tests/Unit/SimpleSchedulerTest.php
 
 		-
@@ -243,7 +243,7 @@ parameters:
 		-
 			rawMessage: 'Call to static method PHPUnit\Framework\Assert::assertSame() with 2 and 1 will always evaluate to false.'
 			identifier: staticMethod.impossibleType
-			count: 4
+			count: 8
 			path: ../tests/Unit/SimpleSchedulerTest.php
 
 		-

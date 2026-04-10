@@ -33,6 +33,7 @@ use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 use Symfony\Component\Lock\LockFactory;
+use Symfony\Component\Lock\LockInterface;
 use Symfony\Component\Lock\Store\InMemoryStore;
 use Throwable;
 use function bin2hex;
@@ -45,6 +46,8 @@ class ManagedScheduler implements Scheduler
 {
 
 	use CreatesMaintenanceJobSummary;
+
+	private const MinuteLockTtl = 30.0;
 
 	private JobManager $jobManager;
 
@@ -62,6 +65,9 @@ class ManagedScheduler implements Scheduler
 	private ?MaintenanceManager $maintenanceManager;
 
 	private ?RunRegistry $runRegistry;
+
+	/** @var list<array{LockInterface, float}> */
+	private array $minuteLocks = [];
 
 	/** @var list<Closure(JobInfo, JobResult): void> */
 	private array $lockedJobCallbacks = [];
@@ -132,8 +138,10 @@ class ManagedScheduler implements Scheduler
 
 	public function runJob($id, bool $force = true, ?RunParameters $parameters = null): ?JobSummary
 	{
+		$this->releaseMinuteLocks();
+
 		$jobSchedule = $this->jobManager->getJobSchedule($id);
-		$parameters ??= new RunParameters(0, $force);
+		$parameters ??= new RunParameters(0, true);
 
 		if ($jobSchedule === null) {
 			$message = Message::create()
@@ -160,7 +168,11 @@ class ManagedScheduler implements Scheduler
 			return null;
 		}
 
-		[$summary, $throwable] = $this->runInternal($id, $jobSchedule, $parameters);
+		try {
+			[$summary, $throwable] = $this->runInternal($id, $jobSchedule, $parameters);
+		} finally {
+			$this->releaseMinuteLocks();
+		}
 
 		if ($throwable !== null) {
 			throw JobFailure::create($summary, $throwable);
@@ -193,6 +205,8 @@ class ManagedScheduler implements Scheduler
 
 	public function runPromise(): Generator
 	{
+		$this->releaseMinuteLocks();
+
 		$runStart = $this->clock->now();
 		$runId = time() . '-' . bin2hex(random_bytes(3));
 
@@ -240,7 +254,25 @@ class ManagedScheduler implements Scheduler
 			if ($this->runRegistry !== null) {
 				$this->runRegistry->deregister($runId);
 			}
+
+			$this->releaseMinuteLocks();
 		}
+	}
+
+	private function releaseMinuteLocks(): void
+	{
+		$now = (float) $this->clock->now()->format('U.u');
+		$remaining = [];
+
+		foreach ($this->minuteLocks as [$lock, $createdAt]) {
+			if ($now - $createdAt >= self::MinuteLockTtl) {
+				$lock->release();
+			} else {
+				$remaining[] = [$lock, $createdAt];
+			}
+		}
+
+		$this->minuteLocks = $remaining;
 	}
 
 	private function createShutdownCheck(string $runId): ?ShutdownCheck
@@ -360,9 +392,41 @@ class ManagedScheduler implements Scheduler
 			$runParameters->isForcedRun(),
 		);
 
+		$repeatAfterSeconds = $jobSchedule->getRepeatAfterSeconds();
+		$runSecond = $runParameters->getSecond();
+
+		// Minute lock prevents re-execution within the same minute on another server.
+		// 30-second TTL with autoRelease=false — survives subprocess exit, expires naturally.
+		// Skipped for forced (manual) runs — manual execution should always work.
+		$minuteLock = null;
+		if (!$runParameters->isForcedRun()) {
+			$minuteLockKey = $repeatAfterSeconds > 0
+				? "Orisai.Scheduler.Job.Minute/$id/$runSecond"
+				: "Orisai.Scheduler.Job.Minute/$id";
+			$minuteLock = $this->lockFactory->createLock($minuteLockKey, self::MinuteLockTtl, false);
+
+			if (!$minuteLock->acquire()) {
+				$result = new JobResult($expression, $info->getStart(), JobResultState::lock());
+
+				foreach ($this->lockedJobCallbacks as $cb) {
+					$cb($info, $result);
+				}
+
+				return [
+					new JobSummary($info, $result),
+					null,
+				];
+			}
+		}
+
+		// Job lock prevents concurrent execution of the same job.
 		$lock = $this->lockFactory->createLock("Orisai.Scheduler.Job/$id");
 
 		if (!$lock->acquire()) {
+			if ($minuteLock !== null) {
+				$minuteLock->release();
+			}
+
 			$result = new JobResult($expression, $info->getStart(), JobResultState::lock());
 
 			foreach ($this->lockedJobCallbacks as $cb) {
@@ -409,6 +473,11 @@ class ManagedScheduler implements Scheduler
 			}
 		} finally {
 			$lock->release();
+			// Minute lock NOT released — stays in store until 30s TTL expires.
+			// Stored to prevent GC and released at end of run via releaseMinuteLocks().
+			if ($minuteLock !== null) {
+				$this->minuteLocks[] = [$minuteLock, (float) $this->clock->now()->format('U.u')];
+			}
 		}
 
 		return [

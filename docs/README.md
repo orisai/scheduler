@@ -19,6 +19,7 @@ Cron job scheduler - with locks, parallelism and more
 - [Handling errors](#handling-errors)
 - [Logging potential problems](#logging-potential-problems)
 - [Locks and job overlapping](#locks-and-job-overlapping)
+	- [Multi-server protection](#multi-server-protection)
 - [Parallelization and process isolation](#parallelization-and-process-isolation)
 - [Job types](#job-types)
 	- [Callback job](#callback-job)
@@ -478,6 +479,24 @@ $scheduler->addJob(
 	'job-id',
 );
 ```
+
+### Multi-server protection
+
+When running the scheduler on multiple servers, a job can be executed twice within the same minute:
+server A finishes the job and releases its lock, then server B starts slightly later, sees no lock, and runs the same job.
+
+The scheduler prevents this using a **minute lock** — a short-lived lock (30-second TTL) acquired before the job
+runs. Unlike the job lock (which is released when the job finishes), the minute lock is never explicitly released.
+It stays in the lock store until its TTL expires, preventing another server from running the same job within the
+same minute.
+
+This requires a distributed lock store (Redis, database, etc.) — `InMemoryStore` is per-process and does not
+provide multi-server protection.
+
+For sub-minute jobs (`repeatAfterSeconds > 0`), each execution second gets its own minute lock key, so different
+seconds within the same minute don't interfere with each other.
+
+Manual job execution (`$scheduler->runJob($id)`) is not affected — forced runs bypass the minute lock.
 
 ## Parallelization and process isolation
 

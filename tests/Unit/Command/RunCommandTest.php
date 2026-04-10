@@ -90,17 +90,19 @@ MSG,
 
 		putenv('COLUMNS=100');
 
+		$clock->sleep(60);
 		$tester->execute([]);
 		self::assertSame(
 			<<<'MSG'
-1970-01-01 01:00:01 Running [0] Tests\Orisai\Scheduler\Doubles\CallbackList::job1()........ 0ms DONE
-1970-01-01 01:00:01 Running [1] Tests\Orisai\Scheduler\Doubles\CallbackList::job2()........ 0ms DONE
+1970-01-01 01:01:01 Running [0] Tests\Orisai\Scheduler\Doubles\CallbackList::job1()........ 0ms DONE
+1970-01-01 01:01:01 Running [1] Tests\Orisai\Scheduler\Doubles\CallbackList::job2()........ 0ms DONE
 
 MSG,
 			CommandOutputHelper::getCommandOutput($tester),
 		);
 		self::assertSame($command::SUCCESS, $tester->getStatusCode());
 
+		$clock->sleep(60);
 		$tester->execute([
 			'--json' => true,
 		]);
@@ -115,14 +117,14 @@ MSG,
             "repeatAfterSeconds": 0,
             "runSecond": 0,
             "start": [
-                "1.000000",
+                "121.000000",
                 "Europe\/Prague"
             ],
             "forcedRun": false
         },
         "result": {
             "end": [
-                "1.000000",
+                "121.000000",
                 "Europe\/Prague"
             ],
             "state": "done"
@@ -136,14 +138,14 @@ MSG,
             "repeatAfterSeconds": 0,
             "runSecond": 0,
             "start": [
-                "1.000000",
+                "121.000000",
                 "UTC"
             ],
             "forcedRun": false
         },
         "result": {
             "end": [
-                "1.000000",
+                "121.000000",
                 "UTC"
             ],
             "state": "done"
@@ -191,6 +193,7 @@ MSG,
 		);
 		self::assertSame($command::FAILURE, $tester->getStatusCode());
 
+		$clock->sleep(60);
 		$tester->execute([
 			'--json' => true,
 		]);
@@ -205,14 +208,14 @@ MSG,
             "repeatAfterSeconds": 0,
             "runSecond": 0,
             "start": [
-                "1.000000",
+                "61.000000",
                 "Europe\/Prague"
             ],
             "forcedRun": false
         },
         "result": {
             "end": [
-                "1.000000",
+                "61.000000",
                 "Europe\/Prague"
             ],
             "state": "done"
@@ -226,14 +229,14 @@ MSG,
             "repeatAfterSeconds": 0,
             "runSecond": 0,
             "start": [
-                "1.000000",
+                "61.000000",
                 "Europe\/Prague"
             ],
             "forcedRun": false
         },
         "result": {
             "end": [
-                "1.000000",
+                "61.000000",
                 "Europe\/Prague"
             ],
             "state": "fail"
