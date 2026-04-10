@@ -18,6 +18,7 @@ final class JobLockTest extends TestCase
 		self::assertFalse($jobLock->isExpired());
 		self::assertSame(300.0, $jobLock->getRemainingLifetime());
 		$jobLock->refresh(60.0);
+		$jobLock->extendTo(70.0);
 
 		self::assertSame(
 			[
@@ -25,6 +26,7 @@ final class JobLockTest extends TestCase
 				['isExpired'],
 				['getRemainingLifetime'],
 				['refresh', 60.0],
+				['refresh', 70.0],
 			],
 			$lock->calls,
 		);

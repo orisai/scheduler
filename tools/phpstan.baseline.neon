@@ -125,6 +125,24 @@ parameters:
 
 		-
 			rawMessage: '''
+				Call to deprecated method isAcquiredByCurrentProcess() of class Orisai\Scheduler\Job\JobLock:
+				Always returns true inside a job. Will be removed in v3.0.
+			'''
+			identifier: method.deprecated
+			count: 2
+			path: ../tests/Unit/Job/JobLockTest.php
+
+		-
+			rawMessage: '''
+				Call to deprecated method refresh() of class Orisai\Scheduler\Job\JobLock:
+				Use extendTo() instead. Will be removed in v3.0.
+			'''
+			identifier: method.deprecated
+			count: 1
+			path: ../tests/Unit/Job/JobLockTest.php
+
+		-
+			rawMessage: '''
 				Call to deprecated method add() of class Symfony\Component\Console\Application:
 				since Symfony 7.4, use Application::addCommand() instead
 			'''

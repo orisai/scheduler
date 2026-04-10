@@ -39,6 +39,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - `RunSummary->isMaintenanceActive()` - indicates whether run was affected by maintenance
 - Multi-server protection via minute lock - prevents the same job from running twice within the same
   minute when scheduler runs on multiple servers with a distributed lock store
+- `JobLock->extendTo(float $seconds)` - sets lock expiration to given seconds from now
+
+### Deprecated
+
+- `JobLock`
+	- `isAcquiredByCurrentProcess()` - always returns true inside a job, will be removed in v3.0
+	- `refresh()` - use `extendTo()` instead, will be removed in v3.0
 
 ### Changed
 

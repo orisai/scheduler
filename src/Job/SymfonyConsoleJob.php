@@ -56,7 +56,7 @@ final class SymfonyConsoleJob implements Job
 	public function run(JobLock $lock): void
 	{
 		if ($this->lockTtl !== null) {
-			$lock->refresh($this->lockTtl);
+			$lock->extendTo($this->lockTtl);
 		}
 
 		$input = $this->createInput();

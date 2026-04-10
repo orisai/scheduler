@@ -456,17 +456,29 @@ Lock is automatically acquired and released by scheduler even if a (recoverable)
 events. Yet you still have to handle lock expiring in case your jobs take more than 5 minutes, and you are using an
 expiring store.
 
+For long-running jobs, call `extendTo()` periodically to prevent the lock from expiring:
+
 ```php
 use Orisai\Scheduler\Job\CallbackJob;
 use Orisai\Scheduler\Job\JobLock;
 
 new CallbackJob(function (JobLock $lock): void {
-	// Lock methods are the same as symfony/lock provides
-	$lock->isAcquiredByCurrentProcess(); // bool (same is symfony isAcquired(), but with more accurate name)
-	$lock->getRemainingLifetime(); // float|null
-	$lock->isExpired(); // bool
-	$lock->refresh(); // void
+	$items = $this->repository->findUnprocessed();
+
+	foreach ($items as $item) {
+		// Keep the lock alive while processing — expires 120 seconds from now
+		$lock->extendTo(120);
+		$this->process($item);
+	}
 });
+```
+
+Available `JobLock` methods:
+
+```php
+$lock->extendTo(120);          // set lock expiration to 120 seconds from now
+$lock->getRemainingLifetime(); // float|null - seconds until lock expires
+$lock->isExpired();            // bool - whether the lock TTL has expired
 ```
 
 To make sure locks are correctly used during deployments, specify constant id for every added job, lock identifiers rely
