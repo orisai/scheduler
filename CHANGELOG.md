@@ -42,6 +42,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - `JobInfo`
 	- `getExecutionId()` - unique identifier per job execution, for pairing before/after callbacks
 	- `getJobId()` - replaces deprecated `getId()`
+- `PlannedJobInfo`
+	- `getJobId()` - replaces deprecated `getId()`
 - `JobResult`
 	- `hasLockExpiredEarly()` - indicates whether the lock expired before the job finished
 - `JobResultState`
@@ -53,7 +55,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Deprecated
 
-- `JobInfo`
+- `JobInfo`, `PlannedJobInfo`
 	- `getId()` - use `getJobId()` instead, will be removed in v3.0
 - `JobLock`
 	- `isAcquiredByCurrentProcess()` - always returns true inside a job, will be removed in v3.0

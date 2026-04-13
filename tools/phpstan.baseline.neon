@@ -385,6 +385,15 @@ parameters:
 			path: ../tests/Unit/Status/JobResultTest.php
 
 		-
+			rawMessage: '''
+				Call to deprecated method getId() of class Orisai\Scheduler\Status\PlannedJobInfo:
+				Use getJobId() instead. Will be removed in v3.0.
+			'''
+			identifier: method.deprecated
+			count: 1
+			path: ../tests/Unit/Status/PlannedJobInfoTest.php
+
+		-
 			rawMessage: 'Parameter #1 $start of method Tests\Orisai\Scheduler\Unit\Status\PlannedJobInfoTest::testEstimatedStartTimes() expects DateTimeImmutable, DateTimeImmutable|false given.'
 			identifier: argument.type
 			count: 4

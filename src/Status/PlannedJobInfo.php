@@ -50,8 +50,18 @@ final class PlannedJobInfo
 
 	/**
 	 * @return string|int
+	 *
+	 * @deprecated Use getJobId() instead. Will be removed in v3.0.
 	 */
 	public function getId()
+	{
+		return $this->id;
+	}
+
+	/**
+	 * @return string|int
+	 */
+	public function getJobId()
 	{
 		return $this->id;
 	}

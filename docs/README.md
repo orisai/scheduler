@@ -336,7 +336,7 @@ $scheduler->addBeforeRunCallback(
 		$info->getStart(); // DateTimeImmutable
 
 		foreach ($info->getJobInfos() as $jobInfo) {
-			$jobInfo->getId(); // int|string
+			$jobInfo->getJobId(); // int|string
 			$jobInfo->getName(); // string
 			$jobInfo->getExpression(); // string, e.g. * * * * *
 			$jobInfo->getTimeZone(); // DateTimeZone|null

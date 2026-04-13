@@ -29,7 +29,8 @@ final class PlannedJobInfoTest extends TestCase
 	{
 		$info = new PlannedJobInfo($id, $name, $expression, $seconds, $start, $timeZone);
 
-		self::assertSame($id, $info->getId());
+		self::assertSame($id, $info->getJobId());
+		self::assertSame($info->getJobId(), $info->getId());
 		self::assertSame($name, $info->getName());
 		self::assertSame($expression, $info->getExpression());
 		self::assertSame($seconds, $info->getRepeatAfterSeconds());
