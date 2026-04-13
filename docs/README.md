@@ -20,6 +20,7 @@ Cron job scheduler - with locks, parallelism and more
 - [Handling errors](#handling-errors)
 - [Logging potential problems](#logging-potential-problems)
 - [Locks and job overlapping](#locks-and-job-overlapping)
+	- [Lock isolation across applications](#lock-isolation-across-applications)
 	- [Multi-server protection](#multi-server-protection)
 - [Parallelization and process isolation](#parallelization-and-process-isolation)
 - [Job types](#job-types)
@@ -504,6 +505,35 @@ use Symfony\Component\Lock\Store\FlockStore;
 $lockFactory = new LockFactory(new FlockStore());
 $scheduler = new SimpleScheduler(null, $lockFactory);
 ```
+
+### Lock isolation across applications
+
+If multiple applications share the same lock store (e.g. production and development on the same Redis server,
+or two apps using the same Symfony module with identical job IDs), their locks will collide. A job locked by
+one app will block the same job in the other.
+
+Some stores support native isolation — use a unique path, table, or collection per app:
+- **FlockStore**: unique `$lockPath` directory per app
+- **PdoStore** / **DoctrineDbalStore**: unique `db_table` option per app
+- **MongoDbStore**: unique `collection` per app
+- **InMemoryStore**: per-process, no collision possible
+- **PostgreSqlStore**: per-connection, no collision possible
+
+For stores without native isolation (**RedisStore**, **MemcachedStore**, **SemaphoreStore**), use
+`PrefixingLockFactory` which prefixes all lock keys with an app-specific string:
+
+```php
+use Orisai\Scheduler\Lock\PrefixingLockFactory;
+use Orisai\Scheduler\SimpleScheduler;
+use Symfony\Component\Lock\Store\RedisStore;
+
+$store = new RedisStore($redis);
+$lockFactory = new PrefixingLockFactory($store, 'MyApp/');
+$scheduler = new SimpleScheduler(null, $lockFactory);
+```
+
+This turns lock keys like `Orisai.Scheduler.Job/my-job` into `MyApp/Orisai.Scheduler.Job/my-job`,
+preventing collisions between applications.
 
 To choose the right lock store for your use case, please refer
 to [symfony/lock](https://symfony.com/doc/current/components/lock.html) documentation. There are several available

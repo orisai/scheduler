@@ -52,6 +52,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 	- `isMaintenanceActive()` - indicates whether run was affected by maintenance
 - Multi-server protection via minute lock - prevents the same job from running twice within the same
   minute when scheduler runs on multiple servers with a distributed lock store
+- `PrefixingLockFactory` - wraps `LockFactory` to prefix lock keys, preventing collisions
+  between applications sharing the same lock store
 
 ### Deprecated
 
