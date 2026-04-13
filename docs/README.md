@@ -1,6 +1,6 @@
 # Scheduler
 
-Cron job scheduler - with locks, parallelism and more
+Cron job scheduler – with locks, parallelism and more
 
 ## Content
 
@@ -53,31 +53,30 @@ Cron job scheduler - with locks, parallelism and more
 
 ## Why do you need it?
 
-Let's say you already use cron jobs configured via crontab (or custom solution given by hosting). Each cron has to be
-registered in crontab in every single environment (e.g. local, stage, production) and application itself is generally
-not aware of these cron jobs.
+Cron jobs configured via crontab (or a hosting-specific solution) must be registered in every environment
+(e.g. local, stage, production), and the application itself is generally not aware of them.
 
-With this library you can manage all cron jobs in application and setup them in crontab with single line.
+Manage all cron jobs in the application and set them up in crontab with a single line.
 
-> Why not any [alternative library](https://github.com/search?q=php+cron&type=repositories)? There is ton of them.
+> Why not any [alternative library](https://github.com/search?q=php+cron&type=repositories)? There are tons of them.
 
-Well, you are right. But do they manage everything needed? By not using crontab directly you loose several features that
-library has to replicate:
+Most alternatives do not cover everything needed. By not using crontab directly, a library must replicate several
+features:
 
-- [parallelism](#parallelization-and-process-isolation) - jobs should run in parallel and start in time even if one or
+- [parallelism](#parallelization-and-process-isolation) – jobs should run in parallel and start in time even if one or
   more run for a long time
-- [failure protection](#handling-errors) - if one job fails, the failure should be logged and the other jobs should
+- [failure protection](#handling-errors) – if one job fails, the failure should be logged and the other jobs should
   still be executed
-- [cron expressions](#execution-time) - library has to parse and properly evaluate cron expression to determine whether
+- [cron expressions](#execution-time) – library has to parse and properly evaluate cron expression to determine whether
   job should be run
 
 Orisai Scheduler solves all of these problems.
 
-On top of that you get:
+On top of that:
 
-- [locking](#locks-and-job-overlapping) - each job should run only once at a time, without overlapping
-- [per-second scheduling](#seconds) - run jobs multiple times in a minute
-- [timezones](#timezones) - interpret job schedule within specified timezone
+- [locking](#locks-and-job-overlapping) – each job runs only once at a time, without overlapping
+- [per-second scheduling](#seconds) – run jobs multiple times in a minute
+- [timezones](#timezones) – interpret job schedule within specified timezone
 - [events](#events) for accessing job status
 - [overview of all jobs](#list-command), including estimated time of next run
 - running jobs either [once](#run-command) or [periodically](#worker-command) during development
@@ -85,13 +84,13 @@ On top of that you get:
 
 ## Quick start
 
-Install with [Composer](https://getcomposer.org)
+Install with [Composer](https://getcomposer.org):
 
 ```sh
 composer require orisai/scheduler
 ```
 
-Create script with scheduler setup (e.g. `bin/scheduler.php`)
+Create a script with scheduler setup (e.g. `bin/scheduler.php`):
 
 ```php
 use Cron\CronExpression;
@@ -108,7 +107,7 @@ $scheduler->addJob(
 $scheduler->run();
 ```
 
-Configure crontab to run your script each minute
+Configure crontab to run the script each minute:
 
 ```
 * * * * * cd path/to/project && php bin/scheduler.php >> /dev/null 2>&1
@@ -118,13 +117,13 @@ Good to go!
 
 ## Execution time
 
-Execution time is determined by [cron expression](#cron-expression---minutes-and-above) which allows you to schedule
-jobs from anywhere between once a year and once every minute and [seconds], allowing you tu run job several times in a
+Execution time is determined by [cron expression](#cron-expression---minutes-and-above), which allows scheduling
+jobs from once a year to once every minute, and [seconds](#seconds), allowing a job to run several times in a
 minute.
 
-In ideal situation, jobs are executed just in time, but it may not be always the case. Crontab can execute jobs several
-seconds late, serial jobs execution may take way over a minute and long jobs may overlap. To prevent any issues, we
-implement multiple measures:
+In an ideal situation, jobs execute just in time, but that may not always be the case. Crontab can execute jobs several
+seconds late, serial job execution may take over a minute, and long-running jobs may overlap. To prevent issues, the
+scheduler implements multiple measures:
 
 - jobs [repeated after seconds](#seconds) take in account crontab may run late and delay each execution accordingly to
   minimize unwanted gaps between executions (e.g. if crontab starts 10 seconds late, all jobs also run 10 seconds late)
@@ -133,7 +132,7 @@ implement multiple measures:
 
 ### Cron expression - minutes and above
 
-Main job execution time is expressed via `CronExpression`, using crontab syntax
+Main job execution time is expressed via `CronExpression`, using crontab syntax:
 
 ```php
 use Cron\CronExpression;
@@ -144,8 +143,8 @@ $scheduler->addJob(
 );
 ```
 
-It's important to use caution with cron syntax, so please refer to the example below.
-To validate your cron, you can also utilize [explain command](#explain-command) or
+Use caution with cron syntax – refer to the example below.
+To validate a cron, use the [explain command](#explain-command) or
 the [explainer](https://github.com/orisai/cron-expression-explainer) directly.
 
 ```
@@ -162,20 +161,20 @@ the [explainer](https://github.com/orisai/cron-expression-explainer) directly.
 
 Each part of expression can also use wildcard, lists, ranges and steps:
 
-- wildcard - match always
+- wildcard – match always
 	- `* * * * *` - At every minute.
 	- day of week and day of month also support `?`, an alias to `*`
-- lists - match list of values, ranges and steps
+- lists – match list of values, ranges and steps
 	- e.g. `15,30 * * * *` - At minute 15 and 30.
-- ranges - match values in range
+- ranges – match values in range
 	- e.g. `1-9 * * * *` - At every minute from 1 through 9.
-- steps - match every nth value in range
+- steps – match every nth value in range
 	- e.g. `*/5 * * * *` - At every 5th minute.
 	- e.g. `0-30/5 * * * *` - At every 5th minute from 0 through 30.
 - combinations
 	- e.g. `0-14,30-44 * * * *` - At every minute from 0 through 14 and every minute from 30 through 44.
 
-You can also use macro instead of an expression:
+Use a macro instead of an expression:
 
 - `@yearly`, `@annually` - At 00:00 on 1st of January. (same as `0 0 1 1 *`)
 - `@monthly` - At 00:00 on day-of-month 1. (same as `0 0 1 * *`)
@@ -185,7 +184,7 @@ You can also use macro instead of an expression:
 
 Day of month extra features:
 
-- nearest weekday - weekday (Monday-Friday) nearest to the given day
+- nearest weekday – weekday (Monday-Friday) nearest to the given day
 	- e.g. `* * 15W * *` - At every minute on a weekday nearest to the 15th.
 	- If you were to specify `15W` as the value, the meaning is: "the nearest weekday to the 15th of the month"
 	  So if the 15th is a Saturday, the trigger will fire on Friday the 14th.
@@ -201,7 +200,7 @@ Day of month extra features:
 
 Day of week extra features:
 
-- nth day
+- nth day:
 	- e.g. `* * * * 7#4` - At every minute on 4th Sunday.
 	- 1-5
 	- Every day of week repeats 4-5 times a month. To target the last one, use "last day" feature instead.
@@ -210,7 +209,7 @@ Day of week extra features:
 
 ### Seconds
 
-Run a job every n seconds within a minute.
+Run a job every n seconds within a minute:
 
 ```php
 use Cron\CronExpression;
@@ -224,8 +223,6 @@ $scheduler->addJob(
 ```
 
 ```php
-use Cron\CronExpression;
-
 $scheduler->addJob(
 	/* ... */,
 	new CronExpression('* * * * *'),
@@ -234,15 +231,15 @@ $scheduler->addJob(
 );
 ```
 
-With default, synchronous job executor, all jobs scheduled for current second are executed and just after it is
-finished, jobs for the next second are executed. With [parallel](#parallelization-and-process-isolation) executor it is
-different - all jobs are executed as soon as it is their time. Therefore, it is strongly recommended to
+With the default synchronous job executor, all jobs scheduled for the current second are executed, and only after they
+finish do jobs for the next second start. With the [parallel](#parallelization-and-process-isolation) executor,
+all jobs execute as soon as it is their time. Therefore, it is strongly recommended to
 use [locking](#locks-and-job-overlapping) to prevent overlapping.
 
 ### Timezones
 
-All jobs run within timezone used by your application. You may specify that your job execution time should be
-interpreted within different timezone, e.g. every midnight in Europe/Prague.
+All jobs run within the timezone used by the application. Specify a different timezone for job execution time
+interpretation – e.g. every midnight in Europe/Prague:
 
 ```php
 use Cron\CronExpression;
@@ -257,22 +254,22 @@ $scheduler->addJob(
 );
 ```
 
-Some timezones use daylight savings time. When daylight saving time changes occur, scheduled job may run twice or even
-not run at all during that period. Make sure you run your tasks often enough and that running them more often gives you
-expected results.
+Some timezones use daylight saving time. When daylight saving time changes occur, a scheduled job may run twice or even
+not run at all during that period. Run tasks often enough and ensure that running them more often produces expected
+results.
 
-If you want job to run at specific time (e.g. midnight) in timezone of each user, run it every 15 minutes and implement
-timezone checking logic yourself. Several time zones have deviations of either 30 or 45 minutes. For instance, UTC-03:30
+To run a job at a specific time (e.g. midnight) in each user's timezone, run it every 15 minutes and implement
+timezone-checking logic yourself. Several time zones have deviations of either 30 or 45 minutes. For instance, UTC-03:30
 is the standard time in Newfoundland, while Nepal's standard time is UTC+05:45. Indian Standard Time is UTC+05:30, and
 Myanmar Standard Time is UTC+06:30.
 
 ## Events
 
-Run callbacks to collect statistics, etc.
+Run callbacks to collect statistics, etc.:
 
 ### Before job event
 
-Executes before job start
+Executes before a job starts.
 
 - has [JobInfo](#job-info-and-result) available as a parameter
 - does not execute if job is [locked](#locks-and-job-overlapping), see [locked job event](#locked-job-event)
@@ -289,10 +286,10 @@ $scheduler->addBeforeJobCallback(
 
 ### After job event
 
-Executes after job finish
+Executes after a job finishes.
 
 - has [JobInfo and JobResult](#job-info-and-result) available as a parameter
-- executes even if job failed with an exception
+- executes even if the job failed with an exception
 
 ```php
 use Orisai\Scheduler\Status\JobInfo;
@@ -307,8 +304,8 @@ $scheduler->addAfterJobCallback(
 
 ### Locked job event
 
-Executes when [lock](#locks-and-job-overlapping) for given job is acquired by another process and therefore job does not
-execute
+Executes when the [lock](#locks-and-job-overlapping) for a given job is acquired by another process and the job does not
+execute.
 
 - has [JobInfo and JobResult](#job-info-and-result) available as a parameter
 
@@ -325,7 +322,7 @@ $scheduler->addLockedJobCallback(
 
 ### Before run event
 
-Executes before every run (every minute), even if no jobs will be executed
+Executes before every run (every minute), even if no jobs will be executed.
 
 - has RunInfo available as a parameter
 
@@ -352,7 +349,7 @@ $scheduler->addBeforeRunCallback(
 
 ### After run event
 
-Executes after every run (every minute), even if no jobs were executed
+Executes after every run (every minute), even if no jobs were executed.
 
 - has [RunSummary](#run-summary) available as a parameter
 
@@ -369,9 +366,9 @@ $scheduler->addAfterRunCallback(
 ### Tracking job executions
 
 Use `beforeJob` and `afterJob` callbacks for real-time tracking of job executions. The `beforeJob` callback
-fires as soon as a job starts, allowing you to record it immediately — before it finishes.
+fires as soon as a job starts, allowing you to record it immediately – before it finishes.
 
-Pair the callbacks using `$info->getExecutionId()` — a unique identifier derived from the job ID, run second
+Pair the callbacks using `$info->getExecutionId()` – a unique identifier derived from the job ID, run second
 and start time. The same `JobInfo` instance (with the same execution ID) is passed to both callbacks.
 
 ```php
@@ -424,15 +421,15 @@ $scheduler->addAfterJobCallback([$tracker, 'afterJob']);
 
 ## Handling errors
 
-After all jobs finish, an exception `RunFailure` composing exceptions thrown by all jobs is thrown. This
-exception will inform you about which exceptions were thrown, including their messages and source. But this still makes
-exceptions hard to access by application error handler and causes [CLI commands](#cli-commands) to hard fail.
+After all jobs finish, a `RunFailure` exception composing exceptions thrown by all jobs is thrown. This
+exception reports which exceptions were thrown, including their messages and source. However, this still makes
+exceptions hard to access by the application error handler and causes [CLI commands](#cli-commands) to hard fail.
 
-To overcome this limitation, add minimal error handler into scheduler. When an error handler is
+To overcome this limitation, add a minimal error handler to the scheduler. When an error handler is
 set, `RunFailure` is *not thrown*.
 
-Assuming you have a [PSR-3 logger](https://github.com/php-fig/log), e.g. [Monolog](https://github.com/Seldaek/monolog)
-installed, it would look like this:
+Assuming a [PSR-3 logger](https://github.com/php-fig/log), e.g. [Monolog](https://github.com/Seldaek/monolog),
+is installed:
 
 ```php
 use DateTimeInterface;
@@ -462,11 +459,11 @@ $scheduler = new SimpleScheduler($errorHandler);
 ## Logging potential problems
 
 Using a [PSR-3](https://www.php-fig.org/psr/psr-3/)-compatible logger
-(like [Monolog](https://github.com/Seldaek/monolog)) you may log some situations which do not fail the job, but are most
+(like [Monolog](https://github.com/Seldaek/monolog)), log situations that do not fail the job but are most
 certainly unwanted:
 
-- [Lock](#locks-and-job-overlapping) was released before the job finished. Your job has access to the lock and should
-  extend the lock time so this does not happen.
+- [Lock](#locks-and-job-overlapping) was released before the job finished. The job has access to the lock and should
+  extend the lock time to prevent this.
 
 ```php
 use Orisai\Scheduler\SimpleScheduler;
@@ -474,11 +471,11 @@ use Orisai\Scheduler\SimpleScheduler;
 $scheduler = new SimpleScheduler(null, null, null, null, $logger);
 ```
 
-If you use [process job executor](#parallelization-and-process-isolation), then also these situations are logged:
+With the [process job executor](#parallelization-and-process-isolation), these situations are also logged:
 
-- Subprocess running the job produced unexpected *stdout* output. Job should never echo or write directly to stdout.
-- Subprocess running the job produced unexpected *stderr* output. This may happen just due to deprecation notices but may
-  also be caused by more serious problem occurring in CLI.
+- Subprocess running the job produced unexpected *stdout* output. A job should never echo or write directly to stdout.
+- Subprocess running the job produced unexpected *stderr* output. This may happen due to deprecation notices but may
+  also be caused by a more serious problem occurring in CLI.
 
 ```php
 use Orisai\Scheduler\SimpleScheduler;
@@ -490,12 +487,10 @@ $scheduler = new SimpleScheduler(null, null, $executor, null, $logger);
 
 ## Locks and job overlapping
 
-Jobs are time-based and simply run at specified intervals. If they take too long, they may overlap and run
-simultaneously. This may cause issues if the jobs access the same resources, such as files or databases, leading to
-conflicts or data corruption.
+Prevent time-based jobs from overlapping when they take too long and run simultaneously. Overlapping jobs accessing the
+same resources (files, databases) can lead to conflicts or data corruption.
 
-To avoid such issues, we provide locking mechanism which ensures that only one instance of a job is running at any given
-time.
+The locking mechanism ensures that only one instance of a job runs at any given time:
 
 ```php
 use Orisai\Scheduler\SimpleScheduler;
@@ -512,7 +507,7 @@ If multiple applications share the same lock store (e.g. production and developm
 or two apps using the same Symfony module with identical job IDs), their locks will collide. A job locked by
 one app will block the same job in the other.
 
-Some stores support native isolation — use a unique path, table, or collection per app:
+Some stores support native isolation – use a unique path, table, or collection per app:
 - **FlockStore**: unique `$lockPath` directory per app
 - **PdoStore** / **DoctrineDbalStore**: unique `db_table` option per app
 - **MongoDbStore**: unique `collection` per app
@@ -535,9 +530,9 @@ $scheduler = new SimpleScheduler(null, $lockFactory);
 This turns lock keys like `Orisai.Scheduler.Job/my-job` into `MyApp/Orisai.Scheduler.Job/my-job`,
 preventing collisions between applications.
 
-To choose the right lock store for your use case, please refer
+To choose the right lock store, refer
 to [symfony/lock](https://symfony.com/doc/current/components/lock.html) documentation. There are several available
-stores with various levels of reliability, affecting when lock is released.
+stores with various levels of reliability, affecting when the lock is released.
 
 > [!WARNING]
 > Locks must work across processes — each `scheduler:run` invocation and each job run
@@ -549,11 +544,10 @@ stores with various levels of reliability, affecting when lock is released.
 >
 > Use a cross-process store instead: FlockStore, RedisStore, PdoStore, MemcachedStore, SemaphoreStore, etc.
 
-Lock is automatically acquired and released by scheduler even if a (recoverable) error occurred during job or its
-events. Yet you still have to handle lock expiring in case your jobs take more than 5 minutes, and you are using an
-expiring store.
+The lock is automatically acquired and released by the scheduler even if a (recoverable) error occurred during the job or
+its events. Handle lock expiration if jobs take more than 5 minutes and an expiring store is used.
 
-For long-running jobs, call `extendTo()` periodically to prevent the lock from expiring:
+For long-running jobs, call `extendTo()` periodically to prevent lock expiration:
 
 ```php
 use Orisai\Scheduler\Job\CallbackJob;
@@ -579,11 +573,11 @@ $lock->isExpired();            // bool - whether the lock TTL has expired
 ```
 
 If a lock expires before the job finishes, a warning is logged via the PSR-3 logger. Configure
-a [logger](#logging-potential-problems) to be notified about this — it indicates the job takes longer
+a [logger](#logging-potential-problems) to be notified – this indicates the job takes longer
 than the lock TTL and should use `extendTo()` to keep the lock alive.
 
-To make sure locks are correctly used during deployments, specify constant id for every added job, lock identifiers rely
-on that fact. Otherwise, your job id will change when new jobs are added before it and acquired lock will be ignored.
+Specify a constant ID for every added job to ensure locks work correctly during deployments – lock identifiers rely
+on it. Otherwise, the job ID changes when new jobs are added before it and the acquired lock is ignored:
 
 ```php
 $scheduler->addJob(
@@ -598,41 +592,32 @@ $scheduler->addJob(
 When running the scheduler on multiple servers, a job can be executed twice within the same minute:
 server A finishes the job and releases its lock, then server B starts slightly later, sees no lock, and runs the same job.
 
-The scheduler prevents this using a **minute lock** — a short-lived lock (30-second TTL) acquired before the job
+The scheduler prevents this using a **minute lock** – a short-lived lock (30-second TTL) acquired before the job
 runs. Unlike the job lock (which is released when the job finishes), the minute lock is never explicitly released.
 It stays in the lock store until its TTL expires, preventing another server from running the same job within the
 same minute.
 
-This requires a distributed lock store (Redis, database, etc.) — `InMemoryStore` is per-process and does not
+This requires a distributed lock store (Redis, database, etc.) – `InMemoryStore` is per-process and does not
 provide multi-server protection.
 
 For sub-minute jobs (`repeatAfterSeconds > 0`), each execution second gets its own minute lock key, so different
 seconds within the same minute don't interfere with each other.
 
-Manual job execution (`$scheduler->runJob($id)`) is not affected — forced runs bypass the minute lock.
+Manual job execution (`$scheduler->runJob($id)`) is not affected – forced runs bypass the minute lock.
 
 ## Parallelization and process isolation
 
-It is important for crontab scheduler tasks to be executed asynchronously and in separate processes because this
-approach provides several benefits, including:
+Execute scheduler tasks asynchronously in separate processes. This approach provides:
 
-- Isolation: Each task runs in its own separate process, which ensures that it is isolated from other tasks and any
-  errors or issues that occur in one task will not affect the execution of other tasks.
-- Resource management: Asynchronous execution of tasks allows for better resource management as multiple tasks can be
-  executed simultaneously without causing resource conflicts.
-- Efficiency: Asynchronous execution also allows for greater efficiency as tasks can be executed concurrently, reducing
-  the overall execution time.
-- Scalability: Asynchronous execution enables the system to scale more easily as additional tasks can be added without
-  increasing the load on any one process.
-- Flexibility: Asynchronous execution also allows for greater flexibility in scheduling as tasks can be scheduled to run
-  at different times and frequencies without interfering with each other.
+- **Isolation** – each task runs in its own process, so errors in one task do not affect others
+- **Resource management** – multiple tasks execute simultaneously without causing resource conflicts
+- **Efficiency** – concurrent execution reduces overall execution time
+- **Scalability** – additional tasks can be added without increasing the load on any one process
+- **Flexibility** – tasks run at different times and frequencies without interfering with each other
 
-Overall, asynchronous and separate process execution of crontab scheduler tasks provides better performance,
-reliability, and flexibility than running tasks synchronously in a single process.
-
-To set up scheduler for parallelization and process isolation, you need to
-have [proc_*](https://www.php.net/manual/en/ref.exec.php) functions enabled. Also in the background is
-used [run-job command](#run-job-command), so you need to have [console](#cli-commands) set up as well.
+Set up the scheduler for parallelization and process isolation. This requires
+[proc_*](https://www.php.net/manual/en/ref.exec.php) functions to be enabled. The [run-job command](#run-job-command)
+is used in the background, so [console](#cli-commands) must be set up as well:
 
 ```php
 use Orisai\Scheduler\Executor\ProcessJobExecutor;
@@ -642,7 +627,7 @@ $executor = new ProcessJobExecutor();
 $scheduler = new SimpleScheduler(null, null, $executor);
 ```
 
-If your executable script is not `bin/console` or if you are using multiple scheduler setups, specify the executable:
+If the executable script is not `bin/console` or multiple scheduler setups are used, specify the executable:
 
 ```php
 use Orisai\Scheduler\Executor\ProcessJobExecutor;
@@ -655,7 +640,7 @@ $executor->setExecutable('bin/console', 'scheduler:run-job');
 
 ### Callback job
 
-Calls given Closure, when job is run
+Call a given Closure when the job runs:
 
 ```php
 use Closure;
@@ -673,8 +658,8 @@ $scheduler->addJob(
 );
 ```
 
-Callback must be a function/method matching following signature (unused parameters may be omitted). Functionality is
-equal with `run()` method of a [custom job](#custom-job).
+Callback must be a function/method matching the following signature (unused parameters may be omitted). Functionality is
+equal to the `run()` method of a [custom job](#custom-job):
 
 ```php
 use Orisai\Scheduler\Job\JobLock;
@@ -687,12 +672,12 @@ public function example(JobLock $lock): void
 
 ### Custom job
 
-Create own job implementation
+Create a custom job implementation.
 
-- name should be preferably unique - it is used for [logging](#handling-errors), [event](#events) metadata and listing
+- name should preferably be unique – it is used for [logging](#handling-errors), [event](#events) metadata and listing
   jobs in [commands](#cli-commands)
-- `run()` method must throw an exception in order to mark the job failed
-- `run()` method may manipulate [locking mechanism](#locks-and-job-overlapping)
+- `run()` method must throw an exception to mark the job as failed
+- `run()` method may manipulate the [locking mechanism](#locks-and-job-overlapping)
 
 ```php
 use Orisai\Scheduler\Job\Job;
@@ -724,11 +709,11 @@ $scheduler->addJob(
 
 ### Symfony console job
 
-Run [symfony/console](https://github.com/symfony/console) command as a job
+Run a [symfony/console](https://github.com/symfony/console) command as a job.
 
-- if job succeeds (returns zero code), command output is ignored
-- if job fails (returns non-zero code), exception is thrown, including command return code, output and if thrown by the
-  command, the exception
+- if the job succeeds (returns zero code), command output is ignored
+- if the job fails (returns non-zero code), an exception is thrown, including command return code, output and, if thrown
+  by the command, the exception
 
 ```php
 use Orisai\Scheduler\Job\SymfonyConsoleJob;
@@ -741,7 +726,7 @@ $scheduler->addJob(
 
 ```
 
-Command can be parametrized:
+Parametrize the command:
 
 ```php
 $job->setCommandParameters([
@@ -752,8 +737,8 @@ $job->setCommandParameters([
 ]);
 ```
 
-When running command as a job, [lock](#locks-and-job-overlapping) cannot be simply refreshed as with other jobs.
-Instead, you can change lock's default time to live to ensure lock was not released before the job finished.
+When running a command as a job, the [lock](#locks-and-job-overlapping) cannot be refreshed as with other jobs.
+Instead, change the lock's default time to live to ensure the lock is not released before the job finishes:
 
 ```php
 $job->setLockTtl(600); // Time in seconds
@@ -761,7 +746,7 @@ $job->setLockTtl(600); // Time in seconds
 
 ## Job info and result
 
-Status information available via [events](#events) and [run summary](#run-summary)
+Status information available via [events](#events) and [run summary](#run-summary).
 
 Info:
 
@@ -791,7 +776,7 @@ $threeNextRuns = $info->getNextRunDates(3); // list<DateTimeImmutable>
 
 ## Run summary
 
-Scheduler run returns summary for inspection
+Scheduler run returns a summary for inspection:
 
 ```php
 $summary = $scheduler->run(); // RunSummary
@@ -805,35 +790,36 @@ foreach ($summary->getJobSummaries() as $jobSummary) {
 }
 ```
 
-Check [job info and result](#job-info-and-result) for available jobs status info
+Check [job info and result](#job-info-and-result) for available job status info.
 
 ## Run single job
 
-For testing purposes it may be useful to run single job
+Run a single job for testing purposes.
 
-To do so, assign an ID to job when adding it to scheduler. You may also use an auto-assigned ID visible
-in [list command](#list-command) but that's not recommended because it depends just on order in which jobs were added.
+Assign an ID to the job when adding it to the scheduler. An auto-assigned ID visible
+in [list command](#list-command) also works, but is not recommended because it depends on the order in which jobs were
+added:
 
 ```php
 $scheduler->addJob($job, $expression, 'id');
 $scheduler->runJob('id'); // JobSummary
 ```
 
-If you still want to respect job schedule and run it only if it is due, set 2nd parameter to false
+To respect the job schedule and run it only if it is due, set the 2nd parameter to `false`:
 
 ```php
 $scheduler->runJob('id', false); // JobSummary|null
 ```
 
-Non-forced runs (`$scheduler->runJob('id', false)`) also respect [maintenance mode](#maintenance-mode) — the job
+Non-forced runs (`$scheduler->runJob('id', false)`) also respect [maintenance mode](#maintenance-mode) – the job
 is skipped (returns `null`) when maintenance is active. Forced runs always execute regardless of maintenance.
 
-[Handling errors](#handling-errors) is the same as for `run()` method, except instead of `RunFailure` is
-thrown `JobFailure`.
+[Handling errors](#handling-errors) is the same as for the `run()` method, except `JobFailure` is thrown instead
+of `RunFailure`.
 
 ## CLI commands
 
-For [symfony/console](https://github.com/symfony/console) you may use our commands:
+Commands for [symfony/console](https://github.com/symfony/console):
 
 - [Run](#run-command)
 - [Run job](#run-job-command)
@@ -841,9 +827,10 @@ For [symfony/console](https://github.com/symfony/console) you may use our comman
 - [Worker](#worker-command)
 - [Explain](#explain-command)
 
-> Examples assume you run console via executable php script `bin/console`
+> [!NOTE]
+> Examples assume console is run via executable PHP script `bin/console`.
 
-Assuming you don't use some DI library for handling services, register commands like this:
+Without a DI library for handling services, register commands like this:
 
 ```php
 use Symfony\Component\Console\Application;
@@ -865,7 +852,7 @@ $app->addCommands([
 
 ### Run command
 
-Run scheduler once, executing jobs scheduled for the current minute
+Run the scheduler once, executing jobs scheduled for the current minute.
 
 `bin/console scheduler:run`
 
@@ -873,7 +860,7 @@ Options:
 
 - `--json` - output json with job info and result
 
-You can also change crontab settings to use command instead:
+Alternatively, change crontab settings to use the command:
 
 ```
 * * * * * cd path/to/project && php bin/console scheduler:run >> /dev/null 2>&1
@@ -881,7 +868,7 @@ You can also change crontab settings to use command instead:
 
 ### Run job command
 
-Run single job, ignoring scheduled time
+Run a single job, ignoring scheduled time.
 
 `bin/console scheduler:run-job <id>`
 
@@ -892,7 +879,7 @@ Options:
 
 ### List command
 
-List all scheduled jobs (in `expression / second (timezone) [id] name... next-due` format)
+List all scheduled jobs (in `expression / second (timezone) [id] name... next-due` format):
 
 ```shell
 bin/console scheduler:list
@@ -916,15 +903,16 @@ Options:
 
 ### Worker command
 
-Run scheduler repeatedly, once every minute
+Run the scheduler repeatedly, once every minute.
 
+> [!NOTE]
 > This command should be used only for local development and requires interactive CLI.
-> In production environment should be used crontab with the [run command](#run-command).
+> In production, use crontab with the [run command](#run-command).
 
 `bin/console scheduler:worker`
 
 - requires [proc_*](https://www.php.net/manual/en/ref.exec.php) functions to be enabled
-- if your executable script is not `bin/console` or if you are using multiple scheduler setups, specify the executable:
+- if the executable script is not `bin/console` or multiple scheduler setups are used, specify the executable:
 	- via `your/console scheduler:worker -s=your/console -c=scheduler:run`
 	- or via setter `$workerCommand->setExecutable('your/console', 'scheduler:run')`
 
@@ -932,11 +920,11 @@ Options:
 
 - `--script=<script>` (or `-s`) - script executed by worker (defaults to `bin/console`)
 - `--command=<command>` (or `-c`) - command executed by worker (defaults to `scheduler:run`)
-- `--force` - force run when non-interactive CLI is detected (!make sure you can terminate the worker!)
+- `--force` - force run when non-interactive CLI is detected (ensure the worker can be terminated!)
 
 ### Explain command
 
-Explain cron expression syntax
+Explain cron expression syntax:
 
 ```shell
 bin/console scheduler:explain
@@ -957,9 +945,8 @@ Options:
 
 ## Run tracking
 
-`RunRegistry` tracks active `scheduler:run` processes. This is useful for monitoring and for deploy scripts
-to check if it's safe to proceed. Run tracking works independently of maintenance mode - you can use it
-with any executor.
+`RunRegistry` tracks active `scheduler:run` processes, useful for monitoring and for deploy scripts
+to check if it is safe to proceed. Run tracking works independently of maintenance mode with any executor.
 
 Two implementations are provided:
 
@@ -988,7 +975,7 @@ $registry = new LockPoolRunRegistry($lockFactory, 10); // pool of 10 slots
 
 Uses `symfony/lock` with a fixed pool of lock keys. Works with any lock store (Redis, database, etc.).
 Locks are refreshed periodically to prevent TTL expiry during long runs.
-If all pool slots are taken, throws `LogicException` - increase the pool size.
+If all pool slots are taken, throws `LogicException` – increase the pool size.
 
 Pass the registry to the scheduler:
 
@@ -1037,7 +1024,7 @@ Each `ActiveRun` provides `getId()`, `getPid()` and `getStartTimestamp()`.
 
 ## Maintenance mode
 
-During deployments, you typically want to stop running cron jobs to prevent interference. The scheduler supports
+Stop running cron jobs during deployments to prevent interference. The scheduler supports
 a two-phase shutdown: first it waits for running jobs to finish naturally (graceful), then force-kills any remaining
 processes after a configurable grace period.
 
@@ -1047,7 +1034,7 @@ Both executors support maintenance mode:
 
 ### Maintenance setup
 
-Create a `MaintenanceChecker` implementation for your environment:
+Create a `MaintenanceChecker` implementation for the environment:
 
 ```php
 use Orisai\Scheduler\Maintenance\MaintenanceChecker;
@@ -1089,8 +1076,8 @@ $runCommand = new RunCommand($scheduler, null, $manager);
 ```
 
 The grace period (time before force-kill) defaults to 30 seconds. This matches the Kubernetes
-`terminationGracePeriodSeconds` default - long enough for most jobs to finish DB transactions, API calls
-and file operations, short enough to not block deploys excessively.
+`terminationGracePeriodSeconds` default – long enough for most jobs to finish DB transactions, API calls
+and file operations, short enough to not block deploys excessively. Customize it:
 
 ```php
 $manager = new MaintenanceManager($checker, 60); // 60 second grace period
@@ -1106,13 +1093,13 @@ $manager = new MaintenanceManager($checker, 60); // 60 second grace period
 Signal handling in `RunCommand` requires `MaintenanceManager` to be passed to the command constructor.
 
 Signal handling requires the `pcntl` extension (available on Linux/macOS CLI, not on Windows).
-When pcntl is not available, signals are silently skipped - the `MaintenanceChecker` polling approach still works.
+When pcntl is not available, signals are silently skipped – the `MaintenanceChecker` polling approach still works.
 
 ### Deploy integration
 
 Typical deploy flow:
 
-1. Enable maintenance (create your maintenance flag)
+1. Enable maintenance (create the maintenance flag)
 2. Poll `scheduler:status` with `--fail-when-not-ready-for-shutdown` until ready (exits with `0` when ready, `1` when not):
 
 ```bash
@@ -1122,7 +1109,7 @@ done
 ```
 
 3. Deploy the application
-4. Disable maintenance (remove your maintenance flag)
+4. Disable maintenance (remove the maintenance flag)
 
 ### Exit codes
 
@@ -1134,9 +1121,9 @@ The `scheduler:run` command returns:
 
 ## Lazy loading
 
-Jobs are executed only when it is their due time. To prevent initializing potentially heavy job dependencies when they
-are not needed, you may lazy load the jobs. This is especially helpful
-if [separate processes](#parallelization-and-process-isolation) are used for jobs.
+Jobs execute only when their due time arrives. Lazy load jobs to prevent initializing potentially heavy dependencies
+when they are not needed. This is especially helpful
+when [separate processes](#parallelization-and-process-isolation) are used:
 
 ```php
 use Orisai\Scheduler\Job\Job;
@@ -1147,14 +1134,13 @@ $jobConstructor = function(): Job {
 $scheduler->addLazyJob($jobConstructor, $expression, /* ... */);
 ```
 
-For the same purpose you can also use `ManagedScheduler` instead of `SimpleScheduler`. It is functionally identical,
-except:
+`ManagedScheduler` serves the same purpose as `SimpleScheduler`. It is functionally identical, except:
 
 - it requires a `JobManager` implementation as a first argument
 - `addJob()` method is in `JobManager` instead of scheduler
 
-Either use our `SimpleJobManager` implementation to construct job via a callback or use it as an inspiration to create
-your own DI-specific version.
+Use the `SimpleJobManager` implementation to construct a job via a callback, or use it as an inspiration to create
+a DI-specific version:
 
 ```php
 use Orisai\Scheduler\Job\CallbackJob;
@@ -1173,52 +1159,52 @@ $scheduler = new ManagedScheduler($manager);
 
 ## Integrations and extensions
 
-- [Nette](https://github.com/nette) integration - [orisai/nette-scheduler](https://github.com/orisai/nette-scheduler)
+- [Nette](https://github.com/nette) integration – [orisai/nette-scheduler](https://github.com/orisai/nette-scheduler)
 
 ## Troubleshooting guide
 
-Common errors and how to solve them.
+Common errors and solutions.
 
 ### Running a job throws JobProcessFailure exception
 
-Process can fail due to various reasons. Here are covered the most common (and known) ones.
+A process can fail for various reasons. The most common (and known) ones are covered below.
 
 *Stdout is empty:*
 
-Stdout is used to return job result as a json. Being empty means that either executed command is completely wrong and
-does not run the job or that job was terminated prematurely. Premature termination may happen when job or one of its
-before/after events call the `exit()` (or `die()`) function or when the process is killed on system level.
+Stdout is used to return the job result as JSON. Being empty means that either the executed command is completely wrong
+and does not run the job, or that the job was terminated prematurely. Premature termination may happen when the job or
+one of its before/after events calls the `exit()` (or `die()`) function, or when the process is killed at system level.
 
 *Stdout contains different output than json with job result:*
 
-If the message says something like *Could not open input file: bin/console* then either executable file does not exist
-(you can change path to executable, as described [here](#parallelization-and-process-isolation)) or permissions are set
-up badly, and you don't have rights to execute the file.
+If the message says something like *Could not open input file: bin/console*, either the executable file does not exist
+(change the path to executable, as described [here](#parallelization-and-process-isolation)) or permissions are set
+up incorrectly.
 
-In case of other stdout outputs you may run completely wrong command or the command writes to stdout. While we are able
-to catch most output to `php://output` (like `print` and `echo`) and handle it properly, it is not always possible.
-Output may still be produced outside the PHP script, you may have defined output buffer with higher priority than the
-one from job runner or terminated the job.
+For other stdout outputs, the command may be wrong or the command writes to stdout. While most output to
+`php://output` (like `print` and `echo`) is caught and handled properly, this is not always possible.
+Output may still be produced outside the PHP script, an output buffer with higher priority than the
+one from job runner may be defined, or the job may have been terminated.
 
 *Stderr contains a suppressed error:*
 
-That means you don't have an [error handler](#handling-errors) set or that the error handler throws an exception. Set an
-error handler and make sure that it does not throw any exception.
+This means no [error handler](#handling-errors) is set or the error handler throws an exception. Set an
+error handler and ensure it does not throw any exception.
 
 ### Job starts too late
 
-Make sure to set up [parallel job executor](#parallelization-and-process-isolation). Otherwise, jobs are executed one
-after the other and every preceding job will delay execution of the next job.
+Set up [parallel job executor](#parallelization-and-process-isolation). Otherwise, jobs execute one
+after the other and every preceding job delays execution of the next job.
 
-Before run/job events must finish before any jobs are started. Optimize them well and never use functions
+Before-run/before-job events must finish before any jobs start. Optimize them well and never use functions
 like `sleep()`.
 
 ### Job does not start at scheduled time
 
-Cron expressions are quite complex and interpreting them may not be always easy. Use `--explain` parameter of
+Cron expressions are complex and interpreting them is not always easy. Use the `--explain` parameter of
 the [list command](#list-command) or the [explain command](#explain-command) to explain the expression.
 
-You can also check the next run date computed from cron expression
+Check the next run date computed from the cron expression:
 
 ```php
 $scheduler->getJobSchedules()['job-id']->getExpression()->getNextRunDate();
@@ -1226,9 +1212,9 @@ $scheduler->getJobSchedules()['job-id']->getExpression()->getNextRunDate();
 
 ### Job executions overlap
 
-Set up [locking](#locks-and-job-overlapping) and make sure the lock storage is sufficient for your setup. E.g. flock (
-lock files on the disk) will not work for applications running across multiple servers.
+Set up [locking](#locks-and-job-overlapping) and ensure the lock storage is sufficient for the setup. E.g. flock (
+lock files on the disk) does not work for applications running across multiple servers.
 
-Default lock timeout is set to 5 minutes. If your lock storage supports expiration and job takes over 5 minutes, lock
-will be released before job finishes. In such case it is up to you to prolong the expiration time.
-Each [job type](#job-types) allows you to control the lock.
+Default lock timeout is set to 5 minutes. If the lock storage supports expiration and a job takes over 5 minutes, the
+lock is released before the job finishes. In that case, prolong the expiration time.
+Each [job type](#job-types) allows controlling the lock.
