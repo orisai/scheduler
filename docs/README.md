@@ -50,6 +50,8 @@ Cron job scheduler – with locks, parallelism and more
 	- [Job starts too late](#job-starts-too-late)
 	- [Job does not start at scheduled time](#job-does-not-start-at-scheduled-time)
 	- [Job executions overlap](#job-executions-overlap)
+	- [Job runs twice on multi-server](#job-runs-twice-on-multi-server)
+	- [Scheduler does not stop during deploy](#scheduler-does-not-stop-during-deploy)
 
 ## Why do you need it?
 
@@ -1212,9 +1214,20 @@ $scheduler->getJobSchedules()['job-id']->getExpression()->getNextRunDate();
 
 ### Job executions overlap
 
-Set up [locking](#locks-and-job-overlapping) and ensure the lock storage is sufficient for the setup. E.g. flock (
-lock files on the disk) does not work for applications running across multiple servers.
+Set up [locking](#locks-and-job-overlapping) and ensure the lock store works across processes. `InMemoryStore`
+and `PostgreSqlStore` / `DoctrineDbalPostgreSqlStore` do not work – see the
+[warning in the locks section](#locks-and-job-overlapping).
 
-Default lock timeout is set to 5 minutes. If the lock storage supports expiration and a job takes over 5 minutes, the
-lock is released before the job finishes. In that case, prolong the expiration time.
-Each [job type](#job-types) allows controlling the lock.
+Default lock timeout is 5 minutes. If a job takes longer, the lock expires and another instance can start.
+Use [`$lock->extendTo()`](#locks-and-job-overlapping) inside the job to keep the lock alive.
+
+### Job runs twice on multi-server
+
+The scheduler uses a [minute lock](#multi-server-protection) to prevent re-execution within the same minute.
+This requires a distributed lock store (Redis, database, etc.). If two servers share the same lock store
+with identical job IDs, also configure [lock isolation](#lock-isolation-across-applications).
+
+### Scheduler does not stop during deploy
+
+Configure [maintenance mode](#maintenance-mode) and use `scheduler:status --fail-when-not-ready-for-shutdown` to wait
+for running jobs to finish before proceeding with the deploy.
