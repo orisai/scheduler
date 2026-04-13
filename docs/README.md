@@ -539,6 +539,16 @@ To choose the right lock store for your use case, please refer
 to [symfony/lock](https://symfony.com/doc/current/components/lock.html) documentation. There are several available
 stores with various levels of reliability, affecting when lock is released.
 
+> [!WARNING]
+> Locks must work across processes — each `scheduler:run` invocation and each job run
+> with [process job executor](#parallelization-and-process-isolation) is a separate process.
+> The following stores are **incompatible** with the scheduler:
+> - **InMemoryStore** — per-process, locks are not shared between separate runs
+> - **PostgreSqlStore** / **DoctrineDbalPostgreSqlStore** — advisory locks are per-connection,
+>   each process opens its own connection
+>
+> Use a cross-process store instead: FlockStore, RedisStore, PdoStore, MemcachedStore, SemaphoreStore, etc.
+
 Lock is automatically acquired and released by scheduler even if a (recoverable) error occurred during job or its
 events. Yet you still have to handle lock expiring in case your jobs take more than 5 minutes, and you are using an
 expiring store.
