@@ -1,6 +1,15 @@
 parameters:
 	ignoreErrors:
 		-
+			rawMessage: '''
+				Call to deprecated method getId() of class Orisai\Scheduler\Status\JobInfo:
+				Use getJobId() instead. Will be removed in v3.0.
+			'''
+			identifier: method.deprecated
+			count: 1
+			path: ../src/Command/BaseRunCommand.php
+
+		-
 			rawMessage: 'Parameter #1 $expression of method Orisai\CronExpressionExplainer\CronExpressionExplainer::explain() expects string, string|null given.'
 			identifier: argument.type
 			count: 1
@@ -359,6 +368,15 @@ parameters:
 			identifier: deadCode.unreachable
 			count: 1
 			path: ../tests/Unit/SimpleSchedulerTest.php
+
+		-
+			rawMessage: '''
+				Call to deprecated method getId() of class Orisai\Scheduler\Status\JobInfo:
+				Use getJobId() instead. Will be removed in v3.0.
+			'''
+			identifier: method.deprecated
+			count: 1
+			path: ../tests/Unit/Status/JobInfoTest.php
 
 		-
 			rawMessage: 'Parameter #2 $end of class Orisai\Scheduler\Status\JobResult constructor expects DateTimeImmutable, DateTimeImmutable|false given.'

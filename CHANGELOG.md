@@ -34,16 +34,27 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 	- `--force` parameter ignores maintenance mode
 - `WorkerCommand`
 	- handles `SIGTERM` and `SIGINT` signals for graceful stop (requires `pcntl` extension, double-signal forces exit)
-- `BasicJobExecutor` - supports maintenance mode (shutdown after current job finishes)
-- `JobResultState::maintenance()` - for jobs skipped or terminated due to maintenance
-- `RunSummary->isMaintenanceActive()` - indicates whether run was affected by maintenance
+- `BasicJobExecutor`
+	- supports maintenance mode (shutdown after current job finishes)
+- `ProcessJobExecutor`
+	- supports maintenance mode (shuts down running jobs gracefully + forcefully after timeout)
+- `JobLock->extendTo(float $seconds)` - sets lock expiration to given seconds from now
+- `JobInfo`
+	- `getExecutionId()` - unique identifier per job execution, for pairing before/after callbacks
+	- `getJobId()` - replaces deprecated `getId()`
+- `JobResult`
+	- `hasLockExpiredEarly()` - indicates whether the lock expired before the job finished
+- `JobResultState`
+	- `maintenance()` - for jobs skipped or terminated due to maintenance
+- `RunSummary`
+	- `isMaintenanceActive()` - indicates whether run was affected by maintenance
 - Multi-server protection via minute lock - prevents the same job from running twice within the same
   minute when scheduler runs on multiple servers with a distributed lock store
-- `JobLock->extendTo(float $seconds)` - sets lock expiration to given seconds from now
-- `JobResult->hasLockExpiredEarly()` - indicates whether the lock expired before the job finished
 
 ### Deprecated
 
+- `JobInfo`
+	- `getId()` - use `getJobId()` instead, will be removed in v3.0
 - `JobLock`
 	- `isAcquiredByCurrentProcess()` - always returns true inside a job, will be removed in v3.0
 	- `refresh()` - use `extendTo()` instead, will be removed in v3.0

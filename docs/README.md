@@ -16,6 +16,7 @@ Cron job scheduler - with locks, parallelism and more
 	- [Locked job event](#locked-job-event)
 	- [Before run event](#before-run-event)
 	- [After run event](#after-run-event)
+	- [Tracking job executions](#tracking-job-executions)
 - [Handling errors](#handling-errors)
 - [Logging potential problems](#logging-potential-problems)
 - [Locks and job overlapping](#locks-and-job-overlapping)
@@ -364,6 +365,62 @@ $scheduler->addAfterRunCallback(
 );
 ```
 
+### Tracking job executions
+
+Use `beforeJob` and `afterJob` callbacks for real-time tracking of job executions. The `beforeJob` callback
+fires as soon as a job starts, allowing you to record it immediately — before it finishes.
+
+Pair the callbacks using `$info->getExecutionId()` — a unique identifier derived from the job ID, run second
+and start time. The same `JobInfo` instance (with the same execution ID) is passed to both callbacks.
+
+```php
+use Example\Core\Scheduler\Db\JobRunEntity;
+use Orisai\Scheduler\Status\JobInfo;
+use Orisai\Scheduler\Status\JobResult;
+
+final class JobExecutionTracker
+{
+
+	/** @var array<string, JobRunEntity> */
+	private array $pendingRuns = [];
+
+	public function beforeJob(JobInfo $info): void
+	{
+		$entity = new JobRunEntity();
+		$entity->jobId = $info->getJobId();
+		$entity->name = $info->getName();
+		$entity->startedAt = $info->getStart();
+		$entity->status = 'running';
+
+		$this->entityManager->persist($entity);
+		$this->entityManager->flush();
+
+		$this->pendingRuns[$info->getExecutionId()] = $entity;
+	}
+
+	public function afterJob(JobInfo $info, JobResult $result): void
+	{
+		$entity = $this->pendingRuns[$info->getExecutionId()];
+		unset($this->pendingRuns[$info->getExecutionId()]);
+
+		$entity->finishedAt = $result->getEnd();
+		$entity->status = $result->getState()->value;
+		$entity->lockExpired = $result->hasLockExpiredEarly();
+
+		$this->entityManager->flush();
+	}
+
+}
+```
+
+Register the callbacks:
+
+```php
+$tracker = new JobExecutionTracker(/* ... */);
+$scheduler->addBeforeJobCallback([$tracker, 'beforeJob']);
+$scheduler->addAfterJobCallback([$tracker, 'afterJob']);
+```
+
 ## Handling errors
 
 After all jobs finish, an exception `RunFailure` composing exceptions thrown by all jobs is thrown. This
@@ -384,7 +441,7 @@ use Orisai\Scheduler\Status\JobResult;
 use Throwable;
 
 $errorHandler = function(Throwable $throwable, JobInfo $info, JobResult $result): void {
-	$id = $info->getId();
+	$id = $info->getJobId();
 	$name = $info->getName();
 
 	$this->logger->error("Job [$id] $name failed", [
@@ -669,7 +726,7 @@ Status information available via [events](#events) and [run summary](#run-summar
 Info:
 
 ```php
-$id = $info->getId(); // string|int
+$id = $info->getJobId(); // string|int
 $name = $info->getName(); // string
 $expression = $info->getExpression(); // string, e.g. '* * * * *'
 $repeatAfterSeconds = $info->getRepeatAfterSeconds(); // int<0, 30>

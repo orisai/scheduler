@@ -13,6 +13,8 @@ final class JobInfo
 
 	private string $name;
 
+	private string $executionId;
+
 	private string $expression;
 
 	/** @var int<0, 30> */
@@ -51,12 +53,23 @@ final class JobInfo
 		$this->start = $start;
 		$this->timeZone = $timeZone;
 		$this->forcedRun = $forcedRun;
+		$this->executionId = "$id-$runSecond-{$start->format('U.u')}";
+	}
+
+	/**
+	 * @return string|int
+	 *
+	 * @deprecated Use getJobId() instead. Will be removed in v3.0.
+	 */
+	public function getId()
+	{
+		return $this->id;
 	}
 
 	/**
 	 * @return string|int
 	 */
-	public function getId()
+	public function getJobId()
 	{
 		return $this->id;
 	}
@@ -64,6 +77,16 @@ final class JobInfo
 	public function getName(): string
 	{
 		return $this->name;
+	}
+
+	/**
+	 * Unique identifier for this specific job execution.
+	 * Use to pair before/after job callbacks — the same JobInfo instance
+	 * (and therefore the same executionId) is passed to both callbacks.
+	 */
+	public function getExecutionId(): string
+	{
+		return $this->executionId;
 	}
 
 	public function getExpression(): string
@@ -126,7 +149,7 @@ final class JobInfo
 	public function toArray(): array
 	{
 		return [
-			'id' => $this->getId(),
+			'id' => $this->getJobId(),
 			'name' => $this->getName(),
 			'expression' => $this->getExpression(),
 			'repeatAfterSeconds' => $this->getRepeatAfterSeconds(),

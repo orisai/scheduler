@@ -1278,6 +1278,99 @@ MSG,
 		self::assertSame(JobResultState::done(), $summary3->getResult()->getState());
 	}
 
+	public function testExecutionIdMatchesInBeforeAndAfterCallbacks(): void
+	{
+		$clock = new FrozenClock(1);
+		$scheduler = new SimpleScheduler(null, null, null, $clock);
+
+		$beforeIds = [];
+		$afterIds = [];
+
+		$scheduler->addBeforeJobCallback(static function (JobInfo $info) use (&$beforeIds): void {
+			$beforeIds[] = $info->getExecutionId();
+		});
+
+		$scheduler->addAfterJobCallback(static function (JobInfo $info) use (&$afterIds): void {
+			$afterIds[] = $info->getExecutionId();
+		});
+
+		$scheduler->addJob(
+			new CallbackJob(static function (): void {
+			}),
+			new CronExpression('* * * * *'),
+			'job-a',
+		);
+		$scheduler->addJob(
+			new CallbackJob(static function (): void {
+			}),
+			new CronExpression('* * * * *'),
+			'job-b',
+		);
+
+		$scheduler->run();
+
+		self::assertCount(2, $beforeIds);
+		self::assertCount(2, $afterIds);
+		self::assertSame($beforeIds, $afterIds);
+		self::assertNotSame($beforeIds[0], $beforeIds[1]);
+		self::assertStringContainsString('job-a', $beforeIds[0]);
+		self::assertStringContainsString('job-b', $beforeIds[1]);
+	}
+
+	public function testExecutionIdUniqueAcrossMinutesWithSameSecond(): void
+	{
+		$clock = new FrozenClock(60);
+		$scheduler = new SimpleScheduler(null, null, null, $clock);
+
+		$executionIds = [];
+
+		$scheduler->addAfterJobCallback(static function (JobInfo $info) use (&$executionIds): void {
+			$executionIds[] = $info->getExecutionId();
+		});
+
+		// Per-second job (every 30s) runs at seconds 0 and 30 each minute
+		$scheduler->addJob(
+			new CallbackJob(static function (): void {
+			}),
+			new CronExpression('* * * * *'),
+			'job-x',
+			30,
+		);
+
+		$scheduler->run();
+		$clock->sleep(60);
+		$scheduler->run();
+
+		// 2 executions per minute (seconds 0 and 30) × 2 minutes = 4 total
+		self::assertCount(4, $executionIds);
+
+		// Same job id + same run second (0) across minutes — still unique due to different start time
+		self::assertNotSame($executionIds[0], $executionIds[2]);
+	}
+
+	public function testGetJobId(): void
+	{
+		$clock = new FrozenClock(1);
+		$scheduler = new SimpleScheduler(null, null, null, $clock);
+
+		$capturedInfo = null;
+		$scheduler->addBeforeJobCallback(static function (JobInfo $info) use (&$capturedInfo): void {
+			$capturedInfo = $info;
+		});
+
+		$scheduler->addJob(
+			new CallbackJob(static function (): void {
+			}),
+			new CronExpression('* * * * *'),
+			'my-job',
+		);
+
+		$scheduler->run();
+
+		self::assertNotNull($capturedInfo);
+		self::assertSame('my-job', $capturedInfo->getJobId());
+	}
+
 	/**
 	 * @group subprocess
 	 */

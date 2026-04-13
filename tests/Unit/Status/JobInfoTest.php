@@ -31,7 +31,8 @@ final class JobInfoTest extends TestCase
 	): void
 	{
 		$info = new JobInfo($id, $name, $expression, $repeatAfterSeconds, $runSecond, $start, $timeZone, $forcedRun);
-		self::assertSame($id, $info->getId());
+		self::assertSame($id, $info->getJobId());
+		self::assertSame($info->getJobId(), $info->getId());
 		self::assertSame($name, $info->getName());
 		self::assertSame($expression, $info->getExpression());
 		self::assertSame($repeatAfterSeconds, $info->getRepeatAfterSeconds());
