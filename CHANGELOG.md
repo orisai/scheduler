@@ -62,6 +62,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - `JobLock`
 	- `isAcquiredByCurrentProcess()` - always returns true inside a job, will be removed in v3.0
 	- `refresh()` - use `extendTo()` instead, will be removed in v3.0
+- `ManagedScheduler`
+	- `addLockedJobCallback()` - use `addAfterJobCallback()` and check
+	  `$result->getState() === JobResultState::lock()`; the after-job callback now fires for
+	  every job outcome including `lock`, making this callback redundant. Will be removed in v3.0
 
 ### Changed
 

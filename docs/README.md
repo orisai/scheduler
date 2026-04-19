@@ -13,7 +13,6 @@ Cron job scheduler – with locks, parallelism and more
 - [Events](#events)
 	- [Before job event](#before-job-event)
 	- [After job event](#after-job-event)
-	- [Locked job event](#locked-job-event)
 	- [Before run event](#before-run-event)
 	- [After run event](#after-run-event)
 	- [Tracking job executions](#tracking-job-executions)
@@ -280,7 +279,7 @@ Run callbacks to collect statistics, etc.
 Executes before a job starts.
 
 - has [JobInfo](#job-info-and-result) available as a parameter
-- does not execute if job is [locked](#locks-and-job-overlapping), see [locked job event](#locked-job-event)
+- does not execute if job is [locked](#locks-and-job-overlapping) — check `$result->getState() === JobResultState::lock()` in the [after job event](#after-job-event) instead
 - does not execute if job is skipped due to [maintenance mode](#maintenance-mode)
 
 ```php
@@ -308,24 +307,6 @@ use Orisai\Scheduler\Status\JobResult;
 $scheduler->addAfterJobCallback(
 	function(JobInfo $info, JobResult $result): void {
 		// Executes after every job, whether it ran, failed, was locked or skipped
-	},
-);
-```
-
-### Locked job event
-
-Executes when the [lock](#locks-and-job-overlapping) for a given job is acquired by another process and the job does not execute.
-
-- has [JobInfo and JobResult](#job-info-and-result) available as a parameter
-- fires in addition to the [after job event](#after-job-event) — both callbacks run for a locked job
-
-```php
-use Orisai\Scheduler\Status\JobInfo;
-use Orisai\Scheduler\Status\JobResult;
-
-$scheduler->addLockedJobCallback(
-	function(JobInfo $info, JobResult $result): void {
-		// Executes when lock for given job is acquired by another process
 	},
 );
 ```
@@ -832,7 +813,7 @@ foreach ($scheduler->runPromise() as $jobSummary) {
 
 ### Scheduler run lifecycle
 
-Each run: filter due jobs by cron + timezone, check [maintenance mode](#maintenance-mode), then run the jobs through the [executor](#inside-the-executor). `beforeRun` and `afterRun` fire once per run; `afterJob` (and `lockedJob` for locked jobs) fires once per due job.
+Each run: filter due jobs by cron + timezone, check [maintenance mode](#maintenance-mode), then run the jobs through the [executor](#inside-the-executor). `beforeRun` and `afterRun` fire once per run; `afterJob` fires once per due job.
 
 ```mermaid
 flowchart TD
@@ -841,7 +822,7 @@ flowchart TD
 	BeforeRun --> MaintCheck{In maintenance<br/>mode?}
 	MaintCheck -- yes --> MaintPath[Mark every due job<br/>with state = maintenance]
 	MaintCheck -- no --> ExecPath[Execute jobs]
-	MaintPath --> PerJob[🔔 afterJob for every job<br/>🔔 lockedJob if job was locked]
+	MaintPath --> PerJob[🔔 afterJob for every job]
 	ExecPath --> PerJob
 	PerJob --> AfterRun[🔔 afterRun]
 	AfterRun --> End([Return RunSummary<br/>throw RunFailure<br/>if any job threw<br/>without errorHandler])
@@ -863,12 +844,12 @@ The callback contract is identical for both: `beforeJob` fires right before the 
 
 ### Callback timing summary
 
-| Job state | `beforeJob` | `afterJob` | `lockedJob` |
-|-----------|-------------|------------|-------------|
-| done | ✓ | ✓ | |
-| fail | ✓ | ✓ | |
-| lock | | ✓ | ✓ |
-| maintenance | | ✓ | |
+| Job state   | `beforeJob` | `afterJob` |
+|-------------|-------------|------------|
+| done        | ✓           | ✓          |
+| fail        | ✓           | ✓          |
+| lock        |             | ✓          |
+| maintenance |             | ✓          |
 
 ## Run single job
 
@@ -907,11 +888,11 @@ flowchart TD
 	MaintCheck -- yes --> RetNull
 	MaintCheck -- no --> MinLock[🔒 Acquire minute lock<br/>skipped for forced runs]
 	MinLock --> MinLockOk{Minute lock<br/>acquired?}
-	MinLockOk -- no --> LockEvents[🔔 lockedJob<br/>🔔 afterJob]
-	LockEvents --> RetLock([return JobSummary<br/>state = lock])
+	MinLockOk -- no --> LockEvent[🔔 afterJob<br/>state = lock]
+	LockEvent --> RetLock([return JobSummary<br/>state = lock])
 	MinLockOk -- yes --> JobLock[🔒 Acquire job lock]
 	JobLock --> JobLockOk{Job lock<br/>acquired?}
-	JobLockOk -- no --> LockEvents
+	JobLockOk -- no --> LockEvent
 	JobLockOk -- yes --> BeforeJob[🔔 beforeJob]
 	BeforeJob --> Run[Run the job]
 	Run --> AfterJob[🔔 afterJob<br/>state = done or fail]
@@ -927,17 +908,17 @@ flowchart TD
 	classDef terminal fill:#fafbfc,stroke:#586069,color:#24292e
 	class Start,RetNull,RetLock,RetOk,RetFail,ThrowJF terminal
 	class MinLock,MinLockOk,JobLock,JobLockOk lock
-	class LockEvents,BeforeJob,Run,AfterJob,HandleErr event
+	class LockEvent,BeforeJob,Run,AfterJob,HandleErr event
 ```
 
-| Outcome | `beforeJob` | `afterJob` | `lockedJob` | throws |
-|---------|-------------|------------|-------------|--------|
-| done | ✓ | ✓ | | — |
-| fail + errorHandler | ✓ | ✓ | | — |
-| fail − errorHandler | ✓ | ✓ | | `JobFailure` |
-| lock (minute or job) | | ✓ | ✓ | — |
-| not due + !force | | | | returns `null` |
-| maintenance + !force | | | | returns `null` |
+| Outcome | `beforeJob` | `afterJob` | throws |
+|---------|-------------|------------|--------|
+| done | ✓ | ✓ | — |
+| fail + errorHandler | ✓ | ✓ | — |
+| fail − errorHandler | ✓ | ✓ | `JobFailure` |
+| lock (minute or job) | | ✓ | — |
+| not due + !force | | | returns `null` |
+| maintenance + !force | | | returns `null` |
 
 ## CLI commands
 

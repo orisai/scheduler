@@ -606,6 +606,8 @@ class ManagedScheduler implements Scheduler
 	/**
 	 * @param Closure(JobInfo, JobResult): void $callback
 	 * @param-later-invoked-callable $callback
+	 *
+	 * @deprecated Use addAfterJobCallback() and check $result->getState() === JobResultState::lock(). Will be removed in v3.0.
 	 */
 	public function addLockedJobCallback(Closure $callback): void
 	{
