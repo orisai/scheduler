@@ -767,7 +767,7 @@ $timeZone = $info->getTimeZone(); // DateTimeZone|null
 $extendedExpression = $info->getExtendedExpression(); // string, e.g. '* * * * * / 30 (Europe/Prague)'
 $runSecond = $info->getRunSecond(); // int
 $start = $info->getStart(); // DateTimeImmutable
-$forcedRun = $info->isManualRun(); // bool, happens when running job via $scheduler->runJob() or scheduler:run-job command, ignoring the cron expression
+$manualRun = $info->isManualRun(); // bool, happens when running job via $scheduler->runJob() or scheduler:run-job command, ignoring the cron expression
 ```
 
 Result:
@@ -1126,13 +1126,13 @@ Pass the registry to the scheduler:
 use Orisai\Scheduler\SimpleScheduler;
 
 $scheduler = new SimpleScheduler(
-    null,      // errorHandler
-    null,      // lockFactory
-    null,      // executor
-    null,      // clock
-    null,      // logger
-    null,      // maintenanceManager
-    $registry,
+	null,      // errorHandler
+	null,      // lockFactory
+	null,      // executor
+	null,      // clock
+	null,      // logger
+	null,      // maintenanceManager
+	$registry,
 );
 ```
 
@@ -1182,13 +1182,14 @@ Create a `MaintenanceChecker` implementation for the environment:
 ```php
 use Orisai\Scheduler\Maintenance\MaintenanceChecker;
 
-class AppMaintenanceChecker implements MaintenanceChecker
+final class AppMaintenanceChecker implements MaintenanceChecker
 {
 
-    public function isMaintenance(): bool
-    {
-        return file_exists(__DIR__ . '/maintenance.running');
-    }
+	public function isMaintenance(): bool
+	{
+		// TODO - implement maintenance check
+		return file_exists(__DIR__ . '/maintenance.running');
+	}
 
 }
 ```
@@ -1206,13 +1207,13 @@ $registry = new FileRunRegistry(__DIR__ . '/var/scheduler-runs');
 $manager = new MaintenanceManager($checker);
 
 $scheduler = new SimpleScheduler(
-    null,      // errorHandler
-    null,      // lockFactory
-    null,      // executor
-    null,      // clock
-    null,      // logger
-    $manager,
-    $registry,
+	null,      // errorHandler
+	null,      // lockFactory
+	null,      // executor
+	null,      // clock
+	null,      // logger
+	$manager,
+	$registry,
 );
 
 $runCommand = new RunCommand($scheduler, null, $manager);
@@ -1247,7 +1248,7 @@ Typical deploy flow:
 
 ```bash
 while ! php bin/console scheduler:status --fail-when-not-ready-for-shutdown; do
-    sleep 1
+	sleep 1
 done
 ```
 
