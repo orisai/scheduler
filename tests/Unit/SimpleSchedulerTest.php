@@ -670,7 +670,7 @@ MSG,
 				$second,
 				$now,
 				null,
-				$parameters !== null ? $parameters->isForcedRun() : true,
+				$parameters !== null ? $parameters->isManualRun() : true,
 			),
 			$summary->getInfo(),
 		);
@@ -1261,7 +1261,7 @@ MSG,
 		);
 
 		// Simulate what ProcessJobExecutor subprocess does:
-		// runJob with explicit RunParameters (forcedRun=false) — minute lock IS checked
+		// runJob with explicit RunParameters (manualRun=false) — minute lock IS checked
 		$summary1 = $scheduler->runJob('job-1', true, new RunParameters(0, false));
 		self::assertSame(1, $execCount);
 		self::assertSame(JobResultState::done(), $summary1->getResult()->getState());

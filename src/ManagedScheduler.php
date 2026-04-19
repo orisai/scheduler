@@ -151,7 +151,9 @@ class ManagedScheduler implements Scheduler
 		$jobSchedule = $this->jobManager->getJobSchedule($id);
 		// Explicit RunParameters signals subprocess context — parent's runPromise() handles
 		// all callback firing, so runInternal must suppress to prevent double-firing.
-		$fireCallbacks = $parameters === null;
+		// Subprocesses also trust the parent's earlier maintenance check rather than
+		// re-checking (which would surface a narrow mid-spawn race as a RunFailure).
+		$isSubprocess = $parameters !== null;
 		$parameters ??= new RunParameters(0, true);
 
 		if ($jobSchedule === null) {
@@ -174,14 +176,25 @@ class ManagedScheduler implements Scheduler
 			? $this->clock->now()->setTimezone($timeZone)
 			: $this->clock->now();
 
-		// Intentionally ignores repeat after seconds
+		// $force only controls the due check — intentionally ignores repeat after seconds.
 		if (!$force && !$expression->isDue($jobDueTime)) {
 			return null;
 		}
 
-		if (!$force && $this->maintenanceManager !== null && $this->maintenanceManager->isMaintenance()) {
-			return null;
+		// Maintenance applies to every direct call regardless of $force. Only subprocesses
+		// bypass, because the parent already checked before spawning. When maintenance is
+		// active, return a synthetic `maintenance`-state summary so forced callers still
+		// get a JobSummary (matching the conditional return type).
+		if (!$isSubprocess && $this->maintenanceManager !== null && $this->maintenanceManager->isMaintenance()) {
+			return $this->createMaintenanceJobSummary(
+				$id,
+				$jobSchedule,
+				$parameters->getSecond(),
+				$this->clock->now(),
+			);
 		}
+
+		$fireCallbacks = !$isSubprocess;
 
 		try {
 			[$summary, $throwable] = $this->runInternal(
@@ -462,7 +475,7 @@ class ManagedScheduler implements Scheduler
 			$runParameters->getSecond(),
 			$this->getCurrentTime($jobSchedule),
 			$jobSchedule->getTimeZone(),
-			$runParameters->isForcedRun(),
+			$runParameters->isManualRun(),
 		);
 
 		$repeatAfterSeconds = $jobSchedule->getRepeatAfterSeconds();
@@ -470,9 +483,9 @@ class ManagedScheduler implements Scheduler
 
 		// Minute lock prevents re-execution within the same minute on another server.
 		// 30-second TTL with autoRelease=false — survives subprocess exit, expires naturally.
-		// Skipped for forced (manual) runs — manual execution should always work.
+		// Skipped for manual runs — manual execution should always work.
 		$minuteLock = null;
-		if (!$runParameters->isForcedRun()) {
+		if (!$runParameters->isManualRun()) {
 			$minuteLockKey = $repeatAfterSeconds > 0
 				? "Orisai.Scheduler.Job.Minute/$id/$runSecond"
 				: "Orisai.Scheduler.Job.Minute/$id";

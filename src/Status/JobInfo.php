@@ -27,7 +27,7 @@ final class JobInfo
 
 	private ?DateTimeZone $timeZone;
 
-	private bool $forcedRun;
+	private bool $manualRun;
 
 	/**
 	 * @param string|int  $id
@@ -42,7 +42,7 @@ final class JobInfo
 		int $runSecond,
 		DateTimeImmutable $start,
 		?DateTimeZone $timeZone,
-		bool $forcedRun
+		bool $manualRun
 	)
 	{
 		$this->id = $id;
@@ -52,7 +52,7 @@ final class JobInfo
 		$this->runSecond = $runSecond;
 		$this->start = $start;
 		$this->timeZone = $timeZone;
-		$this->forcedRun = $forcedRun;
+		$this->manualRun = $manualRun;
 		$this->executionId = "$id-$runSecond-{$start->format('U.u')}";
 	}
 
@@ -138,9 +138,21 @@ final class JobInfo
 		return $this->timeZone;
 	}
 
+	/**
+	 * @deprecated Use isManualRun() instead. Will be removed in v3.0.
+	 */
 	public function isForcedRun(): bool
 	{
-		return $this->forcedRun;
+		return $this->manualRun;
+	}
+
+	/**
+	 * True when the job was invoked manually (via `runJob()` directly or `scheduler:run-job`),
+	 * false when it's part of a scheduled run dispatched by the executor.
+	 */
+	public function isManualRun(): bool
+	{
+		return $this->manualRun;
 	}
 
 	/**
@@ -155,7 +167,7 @@ final class JobInfo
 			'repeatAfterSeconds' => $this->getRepeatAfterSeconds(),
 			'runSecond' => $this->getRunSecond(),
 			'start' => [$this->start->format('U.u'), $this->start->getTimezone()->getName()],
-			'forcedRun' => $this->forcedRun,
+			'manualRun' => $this->manualRun,
 		];
 	}
 

@@ -442,7 +442,7 @@ final class ProcessJobExecutor implements JobExecutor
 			DateTimeImmutable::createFromFormat('U.u', $rawInfo['start'][0])
 				->setTimezone(new DateTimeZone($rawInfo['start'][1])),
 			$jobSchedule->getTimeZone(),
-			$rawInfo['forcedRun'],
+			$rawInfo['manualRun'],
 		);
 	}
 

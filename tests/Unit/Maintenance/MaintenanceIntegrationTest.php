@@ -569,7 +569,7 @@ final class MaintenanceIntegrationTest extends TestCase
 		self::assertSame('Europe/Prague', $jobSummary->getResult()->getEnd()->getTimezone()->getName());
 	}
 
-	public function testRunJobRespectsMaintenanceWhenNotForced(): void
+	public function testRunJobAlwaysRespectsMaintenance(): void
 	{
 		$maintenanceFile = sys_get_temp_dir() . '/maintenance-test-' . uniqid();
 		file_put_contents($maintenanceFile, '');
@@ -590,13 +590,17 @@ final class MaintenanceIntegrationTest extends TestCase
 			new CronExpression('* * * * *'),
 		);
 
-		// Non-forced run during maintenance: returns null (skipped)
-		self::assertNull($scheduler->runJob(0, false));
+		// Direct runJob() always respects maintenance — `$force` controls the due-time check
+		// only. During maintenance, runJob() returns a JobSummary with state=maintenance
+		// (rather than null) so callers can distinguish skip-reason from "not due".
+		$nonForced = $scheduler->runJob(0, false);
+		self::assertNotNull($nonForced);
+		self::assertSame(JobResultState::maintenance(), $nonForced->getResult()->getState());
 		self::assertSame(0, $execCount);
 
-		// Forced run during maintenance: still executes
-		self::assertNotNull($scheduler->runJob(0, true));
-		self::assertSame(1, $execCount);
+		$forced = $scheduler->runJob(0, true);
+		self::assertSame(JobResultState::maintenance(), $forced->getResult()->getState());
+		self::assertSame(0, $execCount);
 
 		unlink($maintenanceFile);
 	}

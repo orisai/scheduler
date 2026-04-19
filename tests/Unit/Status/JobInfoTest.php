@@ -27,10 +27,10 @@ final class JobInfoTest extends TestCase
 		DateTimeImmutable $start,
 		?DateTimeZone $timeZone,
 		string $extendedExpression,
-		bool $forcedRun
+		bool $manualRun
 	): void
 	{
-		$info = new JobInfo($id, $name, $expression, $repeatAfterSeconds, $runSecond, $start, $timeZone, $forcedRun);
+		$info = new JobInfo($id, $name, $expression, $repeatAfterSeconds, $runSecond, $start, $timeZone, $manualRun);
 		self::assertSame($id, $info->getJobId());
 		self::assertSame($info->getJobId(), $info->getId());
 		self::assertSame($name, $info->getName());
@@ -40,7 +40,8 @@ final class JobInfoTest extends TestCase
 		self::assertSame($extendedExpression, $info->getExtendedExpression());
 		self::assertSame($runSecond, $info->getRunSecond());
 		self::assertSame($start, $info->getStart());
-		self::assertSame($forcedRun, $info->isForcedRun());
+		self::assertSame($manualRun, $info->isForcedRun());
+		self::assertSame($manualRun, $info->isManualRun());
 
 		self::assertSame(
 			[
@@ -50,7 +51,7 @@ final class JobInfoTest extends TestCase
 				'repeatAfterSeconds' => $repeatAfterSeconds,
 				'runSecond' => $runSecond,
 				'start' => [$start->format('U.u'), $start->getTimezone()->getName()],
-				'forcedRun' => $forcedRun,
+				'manualRun' => $manualRun,
 			],
 			$info->toArray(),
 		);

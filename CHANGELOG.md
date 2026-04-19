@@ -22,7 +22,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 	- `--fail-when-not-ready-for-shutdown` option for deploy scripts
 - `Scheduler`
 	- `getStatus()` - returns `ActivityStatus` with active runs and maintenance state (BC break)
-	- `runJob($id, force: true)` ignores maintenance mode
 - `ManagedScheduler`
 	- accepts optional `MaintenanceManager` - enables maintenance mode with two-phase shutdown
 	  (graceful wait, then force-kill after configurable grace period)
@@ -59,6 +58,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 - `JobInfo`, `PlannedJobInfo`
 	- `getId()` - use `getJobId()` instead, will be removed in v3.0
+- `JobInfo`
+	- `isForcedRun()` - use `isManualRun()` instead, will be removed in v3.0
 - `JobLock`
 	- `isAcquiredByCurrentProcess()` - always returns true inside a job, will be removed in v3.0
 	- `refresh()` - use `extendTo()` instead, will be removed in v3.0
@@ -84,6 +85,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - `Scheduler` interface (BC break)
   - `runJob()` accepts optional `?Closure $onJobStarted` and `?Closure $onJobFinished` parameters
     — framework-internal hooks used by `ProcessJobExecutor`'s subprocess protocol
+- `Scheduler::runJob()` respects [maintenance mode](#maintenance-mode) regardless of `$force` — when
+  maintenance is active the returned `JobSummary` has state `JobResultState::maintenance()`
+  (previously `$force=true` bypassed maintenance and `$force=false` returned `null`)
+- `JobInfo::toArray()` / `RunParameters::toArray()` expose the flag as `manualRun` (was `forcedRun`)
+- `RunParameters` constructor parameter and getter renamed: `forcedRun` → `manualRun`,
+  `isForcedRun()` → `isManualRun()` (`RunParameters` is `@internal`)
 
 ## [2.2.2](https://github.com/orisai/scheduler/compare/2.2.1...2.2.2) - 2026-02-12
 

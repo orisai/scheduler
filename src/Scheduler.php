@@ -37,6 +37,9 @@ interface Scheduler
 	public function run(): RunSummary;
 
 	/**
+	 * With `$force=false` returns `null` when the job is not due. Maintenance mode yields a
+	 * `JobSummary` whose result state is `JobResultState::maintenance()` (any `$force`).
+	 *
 	 * @param string|int $id
 	 * @param (Closure(JobInfo): void)|null $onJobStarted `@internal` — framework-internal hook
 	 *        fired right after the job's lock is acquired, before $job->run(). Used by

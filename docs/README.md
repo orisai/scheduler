@@ -456,7 +456,7 @@ $errorHandler = function(Throwable $throwable, JobInfo $info, JobResult $result)
 		'runSecond' => $info->getRunSecond(),
 		'start' => $info->getStart()->format(DateTimeInterface::ATOM),
 		'end' => $result->getEnd()->format(DateTimeInterface::ATOM),
-		'forcedRun' => $info->isForcedRun(),
+		'forcedRun' => $info->isManualRun(),
 	]);
 },
 $scheduler = new SimpleScheduler($errorHandler);
@@ -765,7 +765,7 @@ $timeZone = $info->getTimeZone(); // DateTimeZone|null
 $extendedExpression = $info->getExtendedExpression(); // string, e.g. '* * * * * / 30 (Europe/Prague)'
 $runSecond = $info->getRunSecond(); // int
 $start = $info->getStart(); // DateTimeImmutable
-$forcedRun = $info->isForcedRun(); // bool, happens when running job via $scheduler->runJob() or scheduler:run-job command, ignoring the cron expression
+$forcedRun = $info->isManualRun(); // bool, happens when running job via $scheduler->runJob() or scheduler:run-job command, ignoring the cron expression
 ```
 
 Result:
@@ -870,8 +870,9 @@ To respect the job schedule and run it only if it is due, set the 2nd parameter 
 $scheduler->runJob('id', false); // JobSummary|null
 ```
 
-Non-forced runs (`$scheduler->runJob('id', false)`) also respect [maintenance mode](#maintenance-mode) – the job
-is skipped (returns `null`) when maintenance is active. Forced runs always execute regardless of maintenance.
+Runs respect [maintenance mode](#maintenance-mode) regardless of the `force` parameter — when maintenance is active
+the job is skipped and the returned `JobSummary` has state `maintenance`. To actually execute a job during maintenance,
+disable maintenance first.
 
 [Handling errors](#handling-errors) is the same as for the `run()` method, except `JobFailure` is thrown instead
 of `RunFailure`.
@@ -884,8 +885,8 @@ Same flow whether you call `$scheduler->runJob()` directly in PHP or invoke [`sc
 flowchart TD
 	Start([$scheduler-&gt;runJob id, force]) --> DueCheck{Not due and not forced?}
 	DueCheck -- yes --> RetNull([return null])
-	DueCheck -- no --> MaintCheck{In maintenance<br/>and not forced?}
-	MaintCheck -- yes --> RetNull
+	DueCheck -- no --> MaintCheck{In maintenance?}
+	MaintCheck -- yes --> RetMaint([return JobSummary<br/>state = maintenance])
 	MaintCheck -- no --> MinLock[🔒 Acquire minute lock<br/>skipped for forced runs]
 	MinLock --> MinLockOk{Minute lock<br/>acquired?}
 	MinLockOk -- no --> LockEvent[🔔 afterJob<br/>state = lock]
@@ -906,19 +907,19 @@ flowchart TD
 	classDef lock fill:#f5e8ff,stroke:#6f42c1,color:#2b0c4d
 	classDef event fill:#e6ffed,stroke:#28a745,color:#0d2818
 	classDef terminal fill:#fafbfc,stroke:#586069,color:#24292e
-	class Start,RetNull,RetLock,RetOk,RetFail,ThrowJF terminal
+	class Start,RetNull,RetMaint,RetLock,RetOk,RetFail,ThrowJF terminal
 	class MinLock,MinLockOk,JobLock,JobLockOk lock
 	class LockEvent,BeforeJob,Run,AfterJob,HandleErr event
 ```
 
-| Outcome | `beforeJob` | `afterJob` | throws |
-|---------|-------------|------------|--------|
-| done | ✓ | ✓ | — |
-| fail + errorHandler | ✓ | ✓ | — |
-| fail − errorHandler | ✓ | ✓ | `JobFailure` |
-| lock (minute or job) | | ✓ | — |
-| not due + !force | | | returns `null` |
-| maintenance + !force | | | returns `null` |
+| Outcome | `beforeJob` | `afterJob` | returns |
+|---------|-------------|------------|---------|
+| done | ✓ | ✓ | `JobSummary` (state = `done`) |
+| fail + errorHandler | ✓ | ✓ | `JobSummary` (state = `fail`) |
+| fail − errorHandler | ✓ | ✓ | throws `JobFailure` |
+| lock (minute or job) | | ✓ | `JobSummary` (state = `lock`) |
+| maintenance | | | `JobSummary` (state = `maintenance`) |
+| not due + !force | | | `null` |
 
 ## CLI commands
 

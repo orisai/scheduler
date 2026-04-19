@@ -256,7 +256,7 @@ MSG,
             "61.000000",
             "Europe\/Prague"
         ],
-        "forcedRun": false
+        "manualRun": false
     },
     "result": {
         "end": [
@@ -323,7 +323,7 @@ MSG,
             "1.000000",
             "Europe\/Prague"
         ],
-        "forcedRun": true
+        "manualRun": true
     },
     "result": {
         "end": [

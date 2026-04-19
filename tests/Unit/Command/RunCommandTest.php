@@ -120,7 +120,7 @@ MSG,
                 "121.000000",
                 "Europe\/Prague"
             ],
-            "forcedRun": false
+            "manualRun": false
         },
         "result": {
             "end": [
@@ -142,7 +142,7 @@ MSG,
                 "121.000000",
                 "UTC"
             ],
-            "forcedRun": false
+            "manualRun": false
         },
         "result": {
             "end": [
@@ -213,7 +213,7 @@ MSG,
                 "61.000000",
                 "Europe\/Prague"
             ],
-            "forcedRun": false
+            "manualRun": false
         },
         "result": {
             "end": [
@@ -235,7 +235,7 @@ MSG,
                 "61.000000",
                 "Europe\/Prague"
             ],
-            "forcedRun": false
+            "manualRun": false
         },
         "result": {
             "end": [

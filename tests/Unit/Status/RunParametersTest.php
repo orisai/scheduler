@@ -14,12 +14,12 @@ final class RunParametersTest extends TestCase
 	 *
 	 * @dataProvider provide
 	 */
-	public function test(int $second, bool $forcedRun): void
+	public function test(int $second, bool $manualRun): void
 	{
-		$parameters = new RunParameters($second, $forcedRun);
+		$parameters = new RunParameters($second, $manualRun);
 
 		self::assertSame($second, $parameters->getSecond());
-		self::assertSame($forcedRun, $parameters->isForcedRun());
+		self::assertSame($manualRun, $parameters->isManualRun());
 		self::assertEquals($parameters, RunParameters::fromArray($parameters->toArray()));
 	}
 
