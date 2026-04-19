@@ -279,7 +279,7 @@ parameters:
 		-
 			rawMessage: 'Call to static method PHPUnit\Framework\Assert::assertSame() with 2 and 1 will always evaluate to false.'
 			identifier: staticMethod.impossibleType
-			count: 8
+			count: 9
 			path: ../tests/Unit/SimpleSchedulerTest.php
 
 		-

@@ -1146,6 +1146,46 @@ MSG,
 		);
 	}
 
+	public function testMinuteLockKeyIsolatesAdjacentClockMinutes(): void
+	{
+		// Clock starts at second 45 of minute 0 (Unix epoch). Lock acquired here
+		// does NOT block the next run at second 0 of minute 1, even though only 15s
+		// have elapsed (well within the 60s TTL) — because the key now includes the
+		// clock minute, the two runs address different locks.
+		//
+		// This is what enables the worker's immediate-start: spawning a run at :45
+		// doesn't lock out the scheduled run at :00 of the next minute.
+		$clock = new FrozenClock(45);
+		$lockFactory = new TestLockFactory(new InMemoryStore(), true);
+		$scheduler = new SimpleScheduler(null, $lockFactory, null, $clock);
+
+		$execCount = 0;
+		$scheduler->addJob(
+			new CallbackJob(static function () use (&$execCount): void {
+				$execCount++;
+			}),
+			new CronExpression('* * * * *'),
+		);
+
+		// Minute 0, second 45
+		$result1 = $scheduler->run();
+		self::assertSame(1, $execCount);
+		self::assertSame(
+			JobResultState::done(),
+			$result1->getJobSummaries()[0]->getResult()->getState(),
+		);
+
+		// 15s later: minute 1, second 0. 15s < 60s TTL — the minute-0 lock is still
+		// in the store, but the new run uses a different key (minute 1), so it acquires.
+		$clock->sleep(15);
+		$result2 = $scheduler->run();
+		self::assertSame(2, $execCount);
+		self::assertSame(
+			JobResultState::done(),
+			$result2->getJobSummaries()[0]->getResult()->getState(),
+		);
+	}
+
 	public function testMinuteLockPerSecondJobsUseSeparateKeys(): void
 	{
 		$clock = new FrozenClock(1);
@@ -1241,6 +1281,56 @@ MSG,
 		self::assertSame(
 			JobResultState::done(),
 			$resultA2->getJobSummaries()[0]->getResult()->getState(),
+		);
+	}
+
+	public function testMinuteLockHoldsForWholeMinuteAcrossServers(): void
+	{
+		// Server A acquires at second 0, server B arrives 45s later in the same
+		// clock minute. With the old 30s TTL the lock would have expired and B
+		// would have executed a duplicate; with the 60s TTL the lock covers the
+		// full clock minute and B is correctly blocked.
+		$clock = new FrozenClock(0);
+		$sharedStore = new InMemoryStore();
+		$lockFactory = new TestLockFactory($sharedStore, true);
+
+		$execCountA = 0;
+		$schedulerA = new SimpleScheduler(null, $lockFactory, null, $clock);
+		$schedulerA->addJob(
+			new CallbackJob(static function () use (&$execCountA): void {
+				$execCountA++;
+			}),
+			new CronExpression('* * * * *'),
+			'shared-job',
+		);
+
+		$execCountB = 0;
+		$schedulerB = new SimpleScheduler(null, $lockFactory, null, $clock);
+		$schedulerB->addJob(
+			new CallbackJob(static function () use (&$execCountB): void {
+				$execCountB++;
+			}),
+			new CronExpression('* * * * *'),
+			'shared-job',
+		);
+
+		// Server A runs at second 0 of minute 0
+		$resultA = $schedulerA->run();
+		self::assertSame(1, $execCountA);
+		self::assertSame(
+			JobResultState::done(),
+			$resultA->getJobSummaries()[0]->getResult()->getState(),
+		);
+
+		// Server B arrives 45s later — still within the same clock minute.
+		// Under the old 30s TTL the lock would have expired at second 30 and
+		// B would produce a duplicate run.
+		$clock->sleep(45);
+		$resultB = $schedulerB->run();
+		self::assertSame(0, $execCountB);
+		self::assertSame(
+			JobResultState::lock(),
+			$resultB->getJobSummaries()[0]->getResult()->getState(),
 		);
 	}
 

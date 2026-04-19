@@ -4,6 +4,7 @@ namespace Orisai\Scheduler;
 
 use Closure;
 use DateTimeImmutable;
+use DateTimeZone;
 use Generator;
 use Orisai\Clock\Adapter\ClockAdapterFactory;
 use Orisai\Clock\Clock;
@@ -47,7 +48,7 @@ class ManagedScheduler implements Scheduler
 
 	use CreatesMaintenanceJobSummary;
 
-	private const MinuteLockTtl = 30.0;
+	private const MinuteLockTtl = 60.0;
 
 	private JobManager $jobManager;
 
@@ -481,14 +482,19 @@ class ManagedScheduler implements Scheduler
 		$repeatAfterSeconds = $jobSchedule->getRepeatAfterSeconds();
 		$runSecond = $runParameters->getSecond();
 
-		// Minute lock prevents re-execution within the same minute on another server.
-		// 30-second TTL with autoRelease=false — survives subprocess exit, expires naturally.
+		// Minute lock prevents re-execution of the same job for the same clock minute.
+		// The key includes the minute (UTC `YmdHi`) so different minutes never collide —
+		// this lets the worker spawn immediately on startup without the previous minute's
+		// lock blocking the next minute's run.
+		// 60-second TTL with autoRelease=false — covers the whole clock minute and survives
+		// subprocess exit; expires naturally after its minute ends.
 		// Skipped for manual runs — manual execution should always work.
 		$minuteLock = null;
 		if (!$runParameters->isManualRun()) {
+			$minute = $info->getStart()->setTimezone(new DateTimeZone('UTC'))->format('YmdHi');
 			$minuteLockKey = $repeatAfterSeconds > 0
-				? "Orisai.Scheduler.Job.Minute/$id/$runSecond"
-				: "Orisai.Scheduler.Job.Minute/$id";
+				? "Orisai.Scheduler.Job.Minute/$id/$minute/$runSecond"
+				: "Orisai.Scheduler.Job.Minute/$id/$minute";
 			$minuteLock = $this->lockFactory->createLock($minuteLockKey, self::MinuteLockTtl, false);
 
 			if (!$minuteLock->acquire()) {

@@ -123,6 +123,10 @@ final class WorkerCommand extends Command
 
 		$output->writeln('<info>Running scheduled tasks every minute.</info>');
 
+		// First iteration spawns immediately — subsequent iterations wait for the next
+		// minute boundary. The minute-scoped lock (see Multi-server protection) prevents
+		// duplicate runs if another server is already handling the current minute.
+		$immediate = true;
 		$lastExecutionStartedAt = $this->nullSeconds($this->clock->now()->modify('-1 minute'));
 		$executions = [];
 		while (true) {
@@ -134,11 +138,11 @@ final class WorkerCommand extends Command
 
 			$currentTime = $this->clock->now();
 
-			if (
-				(int) $currentTime->format('s') === 0
-				&& $this->nullSeconds($currentTime)->format('U') !== $lastExecutionStartedAt->format('U')
-				&& $this->testRuns !== 0
-			) {
+			$minuteBoundaryReached = (int) $currentTime->format('s') === 0
+				&& $this->nullSeconds($currentTime)->format('U') !== $lastExecutionStartedAt->format('U');
+
+			if (($immediate || $minuteBoundaryReached) && $this->testRuns !== 0) {
+				$immediate = false;
 				$executions[] = $execution = new Process($phpCommand);
 
 				// @codeCoverageIgnoreStart

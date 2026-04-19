@@ -77,6 +77,31 @@ MSG,
 	}
 
 	/**
+	 * The worker spawns the first subprocess immediately on startup — without waiting
+	 * for the next minute boundary. FrozenClock starts at timestamp 1045 (second 25 of
+	 * a minute); FrozenClock does not advance on `usleep()`, so under the previous
+	 * "wait for second == 0" gate this test would hang in the worker's polling loop.
+	 * Terminating here proves the immediate-start code path fired.
+	 *
+	 * @group subprocess
+	 */
+	public function testImmediateStartSpawnsBeforeMinuteBoundary(): void
+	{
+		$clock = new FrozenClock(1_045, new DateTimeZone('Europe/Prague'));
+
+		$command = new WorkerCommand($clock);
+		$command->enableTestMode(1, static fn () => $clock->sleep(60));
+		$tester = new CommandTester($command);
+
+		putenv('COLUMNS=80');
+		$tester->execute([
+			'--script' => 'tests/Unit/Command/worker-binary.php',
+		], ['interactive' => true]);
+
+		self::assertSame($command::SUCCESS, $tester->getStatusCode());
+	}
+
+	/**
 	 * @group subprocess
 	 */
 	public function testMultipleRuns(): void

@@ -598,10 +598,12 @@ $scheduler->addJob(
 When running the scheduler on multiple servers, a job can be executed twice within the same minute:
 server A finishes the job and releases its lock, then server B starts slightly later, sees no lock, and runs the same job.
 
-The scheduler prevents this using a **minute lock** – a short-lived lock (30-second TTL) acquired before the job
-runs. Unlike the job lock (which is released when the job finishes), the minute lock is never explicitly released.
-It stays in the lock store until its TTL expires, preventing another server from running the same job within the
-same minute.
+The scheduler prevents this using a **minute lock** – a lock keyed by `{jobId}/{clockMinute}` with a 60-second TTL,
+acquired before the job runs. Unlike the job lock (which is released when the job finishes), the minute lock is never
+explicitly released; it stays in the lock store until its TTL expires. Because the key includes the clock minute,
+different minutes never share a lock — this is what makes the worker's immediate start at any second of a minute
+safe (see [Worker lifecycle](#worker-lifecycle)), and the 60-second TTL keeps the lock in place for the entire
+clock minute so servers arriving anywhere within that minute see the same lock and skip.
 
 This requires a distributed lock store (Redis, database, etc.) – `InMemoryStore` is per-process and does not
 provide multi-server protection.
@@ -609,7 +611,7 @@ provide multi-server protection.
 For sub-minute jobs (`repeatAfterSeconds > 0`), each execution second gets its own minute lock key, so different
 seconds within the same minute don't interfere with each other.
 
-Manual job execution (`$scheduler->runJob($id)`) is not affected – forced runs bypass the minute lock.
+Manual job execution (`$scheduler->runJob($id)`) is not affected – manual runs bypass the minute lock.
 
 ## Parallelization and process isolation
 
@@ -1028,7 +1030,7 @@ Options:
 
 #### Worker lifecycle
 
-The worker is a thin loop that spawns one `scheduler:run` subprocess per minute. It holds no locks and fires no events — everything interesting happens inside the subprocess (see [Run scheduler](#run-scheduler)).
+The worker is a thin loop that spawns one `scheduler:run` subprocess per minute. On startup it spawns immediately so the worker doesn't idle until the next minute boundary — the [minute lock](#multi-server-protection) prevents duplicate execution if another server is already handling the current minute. Subsequent runs fire at the start of each minute. The worker itself holds no locks and fires no events — everything interesting happens inside the subprocess (see [Run scheduler](#run-scheduler)).
 
 ```mermaid
 sequenceDiagram
@@ -1041,6 +1043,8 @@ sequenceDiagram
 	end
 
 	Cron->>W: start
+	W->>R: spawn immediately (first tick)
+	R-->>W: stdout / stderr streamed to output
 	loop every 100ms
 		W->>W: poll signal flag
 		alt new minute boundary
