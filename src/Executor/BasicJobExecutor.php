@@ -42,7 +42,8 @@ final class BasicJobExecutor implements JobExecutor
 		DateTimeImmutable $runStart,
 		Closure $beforeRunCallback,
 		Closure $afterRunCallback,
-		?ShutdownCheck $shutdownCheck = null
+		?ShutdownCheck $shutdownCheck = null,
+		?Closure $onJobEvent = null
 	): Generator
 	{
 		$beforeRunCallback();

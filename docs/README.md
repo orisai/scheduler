@@ -29,12 +29,18 @@ Cron job scheduler – with locks, parallelism and more
 	- [Symfony console job](#symfony-console-job)
 - [Job info and result](#job-info-and-result)
 - [Run summary](#run-summary)
+- [Run scheduler](#run-scheduler)
+	- [Scheduler run lifecycle](#scheduler-run-lifecycle)
+	- [Inside the executor](#inside-the-executor)
+	- [Callback timing summary](#callback-timing-summary)
 - [Run single job](#run-single-job)
+	- [Single job lifecycle](#single-job-lifecycle)
 - [CLI commands](#cli-commands)
 	- [Run command - run jobs once](#run-command)
 	- [Run job command - run single job](#run-job-command)
 	- [List command - show all jobs](#list-command)
 	- [Worker command - run jobs periodically](#worker-command)
+		- [Worker lifecycle](#worker-lifecycle)
 	- [Explain command - explain cron expression syntax](#explain-command)
 - [Run tracking](#run-tracking)
 	- [Status command](#status-command)
@@ -267,7 +273,7 @@ Myanmar Standard Time is UTC+06:30.
 
 ## Events
 
-Run callbacks to collect statistics, etc.:
+Run callbacks to collect statistics, etc.
 
 ### Before job event
 
@@ -275,6 +281,7 @@ Executes before a job starts.
 
 - has [JobInfo](#job-info-and-result) available as a parameter
 - does not execute if job is [locked](#locks-and-job-overlapping), see [locked job event](#locked-job-event)
+- does not execute if job is skipped due to [maintenance mode](#maintenance-mode)
 
 ```php
 use Orisai\Scheduler\Status\JobInfo;
@@ -288,10 +295,11 @@ $scheduler->addBeforeJobCallback(
 
 ### After job event
 
-Executes after a job finishes.
+Executes after a job reaches its final state — regardless of outcome.
 
 - has [JobInfo and JobResult](#job-info-and-result) available as a parameter
-- executes even if the job failed with an exception
+- executes for every job state: `done`, `fail`, `lock`, `maintenance`
+- inspect `$result->getState()` to distinguish between outcomes
 
 ```php
 use Orisai\Scheduler\Status\JobInfo;
@@ -299,17 +307,17 @@ use Orisai\Scheduler\Status\JobResult;
 
 $scheduler->addAfterJobCallback(
 	function(JobInfo $info, JobResult $result): void {
-		// Executes after job finish
+		// Executes after every job, whether it ran, failed, was locked or skipped
 	},
 );
 ```
 
 ### Locked job event
 
-Executes when the [lock](#locks-and-job-overlapping) for a given job is acquired by another process and the job does not
-execute.
+Executes when the [lock](#locks-and-job-overlapping) for a given job is acquired by another process and the job does not execute.
 
 - has [JobInfo and JobResult](#job-info-and-result) available as a parameter
+- fires in addition to the [after job event](#after-job-event) — both callbacks run for a locked job
 
 ```php
 use Orisai\Scheduler\Status\JobInfo;
@@ -373,40 +381,55 @@ fires as soon as a job starts, allowing you to record it immediately – before 
 Pair the callbacks using `$info->getExecutionId()` – a unique identifier derived from the job ID, run second
 and start time. The same `JobInfo` instance (with the same execution ID) is passed to both callbacks.
 
+`afterJob` fires for every job, but `beforeJob` only fires for jobs that actually ran
+(see [Callback timing summary](#callback-timing-summary)). Handle the "no pending entry" case in `afterJob`
+by recording the final state directly – the job never reached the `running` phase.
+
 ```php
-use Example\Core\Scheduler\Db\JobRunEntity;
+use Example\Core\Scheduler\Db\JobRun;
 use Orisai\Scheduler\Status\JobInfo;
 use Orisai\Scheduler\Status\JobResult;
 
 final class JobExecutionTracker
 {
 
-	/** @var array<string, JobRunEntity> */
+	/** @var array<string, JobRun> */
 	private array $pendingRuns = [];
 
 	public function beforeJob(JobInfo $info): void
 	{
-		$entity = new JobRunEntity();
-		$entity->jobId = $info->getJobId();
-		$entity->name = $info->getName();
-		$entity->startedAt = $info->getStart();
-		$entity->status = 'running';
+		$jobRun = new JobRun(
+			jobId: $info->getJobId(),
+			name: $info->getName(),
+			startedAt: $info->getStart(),
+		);
+		$jobRun->status = 'running';
 
-		$this->entityManager->persist($entity);
+		$this->entityManager->persist($jobRun);
 		$this->entityManager->flush();
 
-		$this->pendingRuns[$info->getExecutionId()] = $entity;
+		$this->pendingRuns[$info->getExecutionId()] = $jobRun;
 	}
 
 	public function afterJob(JobInfo $info, JobResult $result): void
 	{
-		$entity = $this->pendingRuns[$info->getExecutionId()];
+		$jobRun = $this->pendingRuns[$info->getExecutionId()] ?? null;
 		unset($this->pendingRuns[$info->getExecutionId()]);
 
-		$entity->finishedAt = $result->getEnd();
-		$entity->status = $result->getState()->value;
-		$entity->lockExpired = $result->hasLockExpiredEarly();
+		// lock or maintenance – job never ran, no prior beforeJob call.
+		if ($jobRun === null) {
+			$jobRun = new JobRun(
+				jobId: $info->getJobId(),
+				name: $info->getName(),
+				startedAt: $info->getStart(),
+			);
+		}
 
+		$jobRun->finishedAt = $result->getEnd();
+		$jobRun->status = $result->getState()->value;
+		$jobRun->lockExpired = $result->hasLockExpiredEarly();
+
+		$this->entityManager->persist($jobRun);
 		$this->entityManager->flush();
 	}
 
@@ -794,6 +817,59 @@ foreach ($summary->getJobSummaries() as $jobSummary) {
 
 Check [job info and result](#job-info-and-result) for available job status info.
 
+## Run scheduler
+
+Run all due jobs once. Equivalent to invoking [`scheduler:run`](#run-command) on the CLI.
+
+```php
+$summary = $scheduler->run(); // RunSummary
+
+// Or iterate summaries as each job finishes:
+foreach ($scheduler->runPromise() as $jobSummary) {
+	// inspect $jobSummary incrementally
+}
+```
+
+### Scheduler run lifecycle
+
+Each run: filter due jobs by cron + timezone, check [maintenance mode](#maintenance-mode), then run the jobs through the [executor](#inside-the-executor). `beforeRun` and `afterRun` fire once per run; `afterJob` (and `lockedJob` for locked jobs) fires once per due job.
+
+```mermaid
+flowchart TD
+	Start([Run scheduler]) --> FilterDue[Filter jobs due now]
+	FilterDue --> BeforeRun[🔔 beforeRun]
+	BeforeRun --> MaintCheck{In maintenance<br/>mode?}
+	MaintCheck -- yes --> MaintPath[Mark every due job<br/>with state = maintenance]
+	MaintCheck -- no --> ExecPath[Execute jobs]
+	MaintPath --> PerJob[🔔 afterJob for every job<br/>🔔 lockedJob if job was locked]
+	ExecPath --> PerJob
+	PerJob --> AfterRun[🔔 afterRun]
+	AfterRun --> End([Return RunSummary<br/>throw RunFailure<br/>if any job threw<br/>without errorHandler])
+
+	classDef event fill:#e6ffed,stroke:#28a745,color:#0d2818
+	classDef terminal fill:#fafbfc,stroke:#586069,color:#24292e
+	class Start,End terminal
+	class BeforeRun,PerJob,AfterRun,MaintPath,ExecPath event
+```
+
+### Inside the executor
+
+Two executors are available:
+
+- **Basic executor** (default) runs every due job in the current process, one after another.
+- **Process executor** runs each due job in its own subprocess, so jobs execute in parallel — see [Parallelization and process isolation](#parallelization-and-process-isolation).
+
+The callback contract is identical for both: `beforeJob` fires right before the job runs, `afterJob` fires once the job reaches a terminal state, and pairing via `$info->getExecutionId()` works transparently across the process boundary.
+
+### Callback timing summary
+
+| Job state | `beforeJob` | `afterJob` | `lockedJob` |
+|-----------|-------------|------------|-------------|
+| done | ✓ | ✓ | |
+| fail | ✓ | ✓ | |
+| lock | | ✓ | ✓ |
+| maintenance | | ✓ | |
+
 ## Run single job
 
 Run a single job for testing purposes.
@@ -818,6 +894,50 @@ is skipped (returns `null`) when maintenance is active. Forced runs always execu
 
 [Handling errors](#handling-errors) is the same as for the `run()` method, except `JobFailure` is thrown instead
 of `RunFailure`.
+
+### Single job lifecycle
+
+Same flow whether you call `$scheduler->runJob()` directly in PHP or invoke [`scheduler:run-job`](#run-job-command) on the CLI.
+
+```mermaid
+flowchart TD
+	Start([$scheduler-&gt;runJob id, force]) --> DueCheck{Not due and not forced?}
+	DueCheck -- yes --> RetNull([return null])
+	DueCheck -- no --> MaintCheck{In maintenance<br/>and not forced?}
+	MaintCheck -- yes --> RetNull
+	MaintCheck -- no --> MinLock[🔒 Acquire minute lock<br/>skipped for forced runs]
+	MinLock --> MinLockOk{Minute lock<br/>acquired?}
+	MinLockOk -- no --> LockEvents[🔔 lockedJob<br/>🔔 afterJob]
+	LockEvents --> RetLock([return JobSummary<br/>state = lock])
+	MinLockOk -- yes --> JobLock[🔒 Acquire job lock]
+	JobLock --> JobLockOk{Job lock<br/>acquired?}
+	JobLockOk -- no --> LockEvents
+	JobLockOk -- yes --> BeforeJob[🔔 beforeJob]
+	BeforeJob --> Run[Run the job]
+	Run --> AfterJob[🔔 afterJob<br/>state = done or fail]
+	AfterJob --> FailCheck{Job failed?}
+	FailCheck -- no --> RetOk([return JobSummary<br/>state = done])
+	FailCheck -- yes --> ErrHandler{errorHandler<br/>configured?}
+	ErrHandler -- yes --> HandleErr[errorHandler runs]
+	HandleErr --> RetFail([return JobSummary<br/>state = fail])
+	ErrHandler -- no --> ThrowJF([throw JobFailure])
+
+	classDef lock fill:#f5e8ff,stroke:#6f42c1,color:#2b0c4d
+	classDef event fill:#e6ffed,stroke:#28a745,color:#0d2818
+	classDef terminal fill:#fafbfc,stroke:#586069,color:#24292e
+	class Start,RetNull,RetLock,RetOk,RetFail,ThrowJF terminal
+	class MinLock,MinLockOk,JobLock,JobLockOk lock
+	class LockEvents,BeforeJob,Run,AfterJob,HandleErr event
+```
+
+| Outcome | `beforeJob` | `afterJob` | `lockedJob` | throws |
+|---------|-------------|------------|-------------|--------|
+| done | ✓ | ✓ | | — |
+| fail + errorHandler | ✓ | ✓ | | — |
+| fail − errorHandler | ✓ | ✓ | | `JobFailure` |
+| lock (minute or job) | | ✓ | ✓ | — |
+| not due + !force | | | | returns `null` |
+| maintenance + !force | | | | returns `null` |
 
 ## CLI commands
 
@@ -854,7 +974,7 @@ $app->addCommands([
 
 ### Run command
 
-Run the scheduler once, executing jobs scheduled for the current minute.
+Run the scheduler once, executing jobs scheduled for the current minute. CLI wrapper around [`$scheduler->run()`](#run-scheduler) — see that section for the execution lifecycle.
 
 `bin/console scheduler:run`
 
@@ -870,7 +990,7 @@ Alternatively, change crontab settings to use the command:
 
 ### Run job command
 
-Run a single job, ignoring scheduled time.
+Run a single job, ignoring scheduled time. CLI wrapper around [`$scheduler->runJob()`](#run-single-job) — see that section for the execution lifecycle.
 
 `bin/console scheduler:run-job <id>`
 
@@ -923,6 +1043,41 @@ Options:
 - `--script=<script>` (or `-s`) - script executed by worker (defaults to `bin/console`)
 - `--command=<command>` (or `-c`) - command executed by worker (defaults to `scheduler:run`)
 - `--force` - force run when non-interactive CLI is detected (ensure the worker can be terminated!)
+
+#### Worker lifecycle
+
+The worker is a thin loop that spawns one `scheduler:run` subprocess per minute. It holds no locks and fires no events — everything interesting happens inside the subprocess (see [Run scheduler](#run-scheduler)).
+
+```mermaid
+sequenceDiagram
+	actor Cron as Cron / supervisor
+	box #96c3f5 Worker process (parent)
+	participant W as scheduler:worker loop
+	end
+	box #f5b482 Subprocess (spawned every minute)
+	participant R as scheduler:run
+	end
+
+	Cron->>W: start
+	loop every 100ms
+		W->>W: poll signal flag
+		alt new minute boundary
+			W->>R: spawn (Process::start)
+			R-->>W: stdout / stderr streamed to output
+		end
+	end
+	Cron->>W: SIGTERM / SIGINT
+	W->>W: shouldStop = true
+	Note over W: second signal forces exit(1)
+	W->>W: wait for in-flight subprocess(es)
+	W->>Cron: exit 0
+```
+
+Notes:
+
+- First signal sets the `shouldStop` flag; second signal force-exits.
+- The worker does *not* actively terminate the in-flight subprocess. If the signal comes from the terminal (Ctrl-C), it propagates to the subprocess too and triggers its own graceful shutdown. If the signal targets only the worker PID, the subprocess finishes its current minute naturally.
+- All locks, events, and job orchestration live inside the `scheduler:run` subprocess.
 
 ### Explain command
 

@@ -1371,6 +1371,227 @@ MSG,
 		self::assertSame('my-job', $capturedInfo->getJobId());
 	}
 
+	public function testRunJobFromSubprocessSuppressesCallbacks(): void
+	{
+		$clock = new FrozenClock(1);
+		$scheduler = new SimpleScheduler(null, null, null, $clock);
+
+		$beforeCount = 0;
+		$afterCount = 0;
+		$lockedCount = 0;
+
+		$scheduler->addBeforeJobCallback(static function () use (&$beforeCount): void {
+			$beforeCount++;
+		});
+		$scheduler->addAfterJobCallback(static function () use (&$afterCount): void {
+			$afterCount++;
+		});
+		$scheduler->addLockedJobCallback(static function () use (&$lockedCount): void {
+			$lockedCount++;
+		});
+
+		$scheduler->addJob(
+			new CallbackJob(static function (): void {
+			}),
+			new CronExpression('* * * * *'),
+			'job-a',
+		);
+
+		// Explicit RunParameters signals subprocess context — callbacks must not fire
+		// to prevent double-firing when parent's runPromise() wraps the generator.
+		$scheduler->runJob('job-a', true, new RunParameters(0, false));
+
+		self::assertSame(0, $beforeCount);
+		self::assertSame(0, $afterCount);
+		self::assertSame(0, $lockedCount);
+	}
+
+	public function testAfterJobCallbackFiresForLockedJob(): void
+	{
+		$lockFactory = new TestLockFactory(new InMemoryStore(), false);
+		$clock = new FrozenClock(1);
+		$scheduler = new SimpleScheduler(null, $lockFactory, null, $clock);
+
+		$scheduler->addJob(
+			new CallbackJob(static function (): void {
+			}),
+			new CronExpression('* * * * *'),
+			'job-a',
+		);
+
+		$afterCollected = [];
+		$scheduler->addAfterJobCallback(
+			static function (JobInfo $info, JobResult $result) use (&$afterCollected): void {
+				$afterCollected[] = $result->getState();
+			},
+		);
+
+		// Hold the job lock so the next run can't acquire it
+		$lock = $lockFactory->createLock('Orisai.Scheduler.Job/job-a');
+		$lock->acquire();
+
+		$scheduler->run();
+
+		self::assertCount(1, $afterCollected);
+		self::assertSame(JobResultState::lock(), $afterCollected[0]);
+	}
+
+	public function testBeforeJobCallbackDoesNotFireForLockedJob(): void
+	{
+		$lockFactory = new TestLockFactory(new InMemoryStore(), false);
+		$clock = new FrozenClock(1);
+		$scheduler = new SimpleScheduler(null, $lockFactory, null, $clock);
+
+		$scheduler->addJob(
+			new CallbackJob(static function (): void {
+			}),
+			new CronExpression('* * * * *'),
+			'job-a',
+		);
+
+		$beforeCount = 0;
+		$scheduler->addBeforeJobCallback(static function () use (&$beforeCount): void {
+			$beforeCount++;
+		});
+
+		// Hold the job lock so the next run can't acquire it
+		$lock = $lockFactory->createLock('Orisai.Scheduler.Job/job-a');
+		$lock->acquire();
+
+		$scheduler->run();
+
+		self::assertSame(0, $beforeCount);
+	}
+
+	public function testJobCallbacksFireExactlyOnce(): void
+	{
+		$clock = new FrozenClock(1);
+		$scheduler = new SimpleScheduler(null, null, null, $clock);
+
+		$scheduler->addJob(
+			new CallbackJob(static function (): void {
+			}),
+			new CronExpression('* * * * *'),
+			'job-a',
+		);
+
+		$beforeCount = 0;
+		$afterCount = 0;
+		$scheduler->addBeforeJobCallback(static function () use (&$beforeCount): void {
+			$beforeCount++;
+		});
+		$scheduler->addAfterJobCallback(static function () use (&$afterCount): void {
+			$afterCount++;
+		});
+
+		$scheduler->run();
+
+		self::assertSame(1, $beforeCount);
+		self::assertSame(1, $afterCount);
+	}
+
+	public function testExecutionIdMatchesAcrossBeforeAndAfterForAllStates(): void
+	{
+		$lockFactory = new TestLockFactory(new InMemoryStore(), false);
+		$clock = new FrozenClock(1);
+		$scheduler = new SimpleScheduler(null, $lockFactory, null, $clock);
+
+		$scheduler->addJob(
+			new CallbackJob(static function (): void {
+			}),
+			new CronExpression('* * * * *'),
+			'job-done',
+		);
+		$scheduler->addJob(
+			new CallbackJob(static function (): void {
+			}),
+			new CronExpression('* * * * *'),
+			'job-locked',
+		);
+
+		$beforeIds = [];
+		$afterIds = [];
+		$scheduler->addBeforeJobCallback(static function (JobInfo $info) use (&$beforeIds): void {
+			$beforeIds[$info->getJobId()] = $info->getExecutionId();
+		});
+		$scheduler->addAfterJobCallback(
+			static function (JobInfo $info) use (&$afterIds): void {
+				$afterIds[$info->getJobId()] = $info->getExecutionId();
+			},
+		);
+
+		// Hold lock for job-locked so it fails to acquire
+		$lock = $lockFactory->createLock('Orisai.Scheduler.Job/job-locked');
+		$lock->acquire();
+
+		$scheduler->run();
+
+		// Done job: both before and after have same executionId
+		self::assertArrayHasKey('job-done', $beforeIds);
+		self::assertArrayHasKey('job-done', $afterIds);
+		self::assertSame($beforeIds['job-done'], $afterIds['job-done']);
+
+		// Locked job: before not fired, after fired
+		self::assertArrayNotHasKey('job-locked', $beforeIds);
+		self::assertArrayHasKey('job-locked', $afterIds);
+	}
+
+	/**
+	 * @group subprocess
+	 */
+	public function testProcessExecutorParsesEventsEvenWhenJobEchoes(): void
+	{
+		// `createWithStdoutJob` has a job that `echo`s user output. Verify the
+		// framework event protocol still parses correctly around user output
+		// (SOH-marker lines are distinguishable from arbitrary text).
+		[$scheduler] = SchedulerProcessSetup::createWithStdoutJob();
+
+		$beforeCount = 0;
+		$afterCount = 0;
+
+		$scheduler->addBeforeJobCallback(static function () use (&$beforeCount): void {
+			$beforeCount++;
+		});
+		$scheduler->addAfterJobCallback(static function () use (&$afterCount): void {
+			$afterCount++;
+		});
+
+		$scheduler->run();
+
+		self::assertSame(1, $beforeCount);
+		self::assertSame(1, $afterCount);
+	}
+
+	/**
+	 * @group subprocess
+	 */
+	public function testProcessExecutorFiresBeforeJobWithSubprocessJobInfo(): void
+	{
+		$scheduler = SchedulerProcessSetup::createWithErrorHandler();
+
+		$beforeCollected = [];
+		$scheduler->addBeforeJobCallback(static function (JobInfo $info) use (&$beforeCollected): void {
+			$beforeCollected[$info->getJobId()] = $info;
+		});
+
+		$afterCollected = [];
+		$scheduler->addAfterJobCallback(
+			static function (JobInfo $info, JobResult $result) use (&$afterCollected): void {
+				$afterCollected[$info->getJobId()] = [$info, $result];
+			},
+		);
+
+		$scheduler->run();
+
+		// Every afterJob has a matching beforeJob with the same executionId.
+		// `finished` and `started` events carry the same JobInfo from the subprocess,
+		// so executionId is consistent across both parent-side callbacks.
+		foreach ($afterCollected as $id => [$afterInfo, $afterResult]) {
+			self::assertArrayHasKey($id, $beforeCollected);
+			self::assertSame($beforeCollected[$id]->getExecutionId(), $afterInfo->getExecutionId());
+		}
+	}
+
 	/**
 	 * @group subprocess
 	 */

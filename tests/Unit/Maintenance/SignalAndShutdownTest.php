@@ -6,6 +6,7 @@ use Cron\CronExpression;
 use Orisai\Clock\FrozenClock;
 use Orisai\Scheduler\Command\RunCommand;
 use Orisai\Scheduler\Command\WorkerCommand;
+use Orisai\Scheduler\Exception\RunFailure;
 use Orisai\Scheduler\Executor\ProcessJobExecutor;
 use Orisai\Scheduler\Job\CallbackJob;
 use Orisai\Scheduler\Maintenance\MaintenanceManager;
@@ -13,6 +14,8 @@ use Orisai\Scheduler\ManagedScheduler;
 use Orisai\Scheduler\Manager\SimpleJobManager;
 use Orisai\Scheduler\RunRegistry\FileRunRegistry;
 use Orisai\Scheduler\SimpleScheduler;
+use Orisai\Scheduler\Status\JobInfo;
+use Orisai\Scheduler\Status\JobResult;
 use Orisai\Scheduler\Status\JobResultState;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Tester\CommandTester;
@@ -348,13 +351,11 @@ final class SignalAndShutdownTest extends TestCase
 		$executor = new ProcessJobExecutor($clock);
 		$executor->setExecutable(__DIR__ . '/../scheduler-process-binary-blocking-after-output.php');
 
-		// Delays shutdown detection so subprocess has time to write JSON.
-		// Each throttle check needs 100 loop iterations (100ms of FrozenClock time).
-		// 1000 throttle passes = ~100,000 iterations with isRunning() calls,
-		// giving the subprocess enough real wall time to write JSON
-		// even on slower environments (macOS CI).
-		// The process blocks on sleep(15) so isRunning() stays true.
-		$checker = new DelayedMaintenanceChecker(1_000);
+		// Delays shutdown detection so subprocess has time to emit its framework events
+		// (started + finished) before force-kill. Each throttle check requires 1 FrozenClock
+		// second = 1M loop iterations. 50 activates shutdown within ~50M iterations — well
+		// before the subprocess's sleep(15) completes on any reasonable CI speed.
+		$checker = new DelayedMaintenanceChecker(50);
 		$dir = sys_get_temp_dir() . '/scheduler-test-' . uniqid();
 		$registry = new FileRunRegistry($dir);
 		$manager = new MaintenanceManager($checker, 0);
@@ -493,6 +494,138 @@ final class SignalAndShutdownTest extends TestCase
 			JobResultState::maintenance(),
 			$summary->getJobSummaries()[0]->getResult()->getState(),
 		);
+	}
+
+	/**
+	 * Fix A: when ProcessJobExecutor force-kills a subprocess that already emitted `started`,
+	 * the parent's beforeJob and afterJob callbacks must share the same executionId. The
+	 * parent reuses the JobInfo from the `started` event for the synthesised maintenance
+	 * summary rather than creating a new one with parent-clock time.
+	 *
+	 * @group subprocess
+	 */
+	public function testForceKillPreservesExecutionIdPairing(): void
+	{
+		$clock = new FrozenClock(1);
+
+		$executor = new ProcessJobExecutor($clock);
+		$executor->setExecutable(__DIR__ . '/../scheduler-process-binary-sleeping-job.php');
+
+		// Delay shutdown detection so the subprocess has real wall time to
+		// boot PHP and emit its `started` event before the parent force-kills.
+		// 50 throttle checks ≈ 50M iterations — enough for PHP boot on CI but
+		// well under the subprocess's sleep(15) fallback exit.
+		$checker = new DelayedMaintenanceChecker(50);
+		$dir = sys_get_temp_dir() . '/scheduler-test-' . uniqid();
+		$registry = new FileRunRegistry($dir);
+		$manager = new MaintenanceManager($checker, 0);
+
+		$jobManager = new SimpleJobManager();
+		$jobManager->addJob(
+			new CallbackJob(static function (): void {
+				sleep(15);
+			}),
+			new CronExpression('* * * * *'),
+		);
+
+		$scheduler = new ManagedScheduler(
+			$jobManager,
+			null,
+			null,
+			$executor,
+			$clock,
+			null,
+			$manager,
+			$registry,
+		);
+
+		$beforeIds = [];
+		$afterIds = [];
+		$afterStates = [];
+
+		$scheduler->addBeforeJobCallback(static function (JobInfo $info) use (&$beforeIds): void {
+			$beforeIds[] = $info->getExecutionId();
+		});
+		$scheduler->addAfterJobCallback(
+			static function (JobInfo $info, JobResult $result) use (&$afterIds, &$afterStates): void {
+				$afterIds[] = $info->getExecutionId();
+				$afterStates[] = $result->getState();
+			},
+		);
+
+		$scheduler->run();
+
+		self::assertCount(1, $beforeIds);
+		self::assertCount(1, $afterIds);
+		self::assertSame(
+			$beforeIds[0],
+			$afterIds[0],
+			'beforeJob and afterJob must share executionId even when subprocess was force-killed',
+		);
+		self::assertSame(JobResultState::maintenance(), $afterStates[0]);
+	}
+
+	/**
+	 * Fix B: when a subprocess crashes (exits without `finished`) after emitting `started`,
+	 * the parent must still fire afterJob for that job. Without the fix, `afterJob` was
+	 * silently dropped, breaking the invariant that every beforeJob is paired with afterJob.
+	 * RunFailure is still raised to surface the crash.
+	 *
+	 * @group subprocess
+	 */
+	public function testSubprocessCrashAfterStartedStillFiresAfterJob(): void
+	{
+		$clock = new FrozenClock(1);
+
+		$executor = new ProcessJobExecutor($clock);
+		$executor->setExecutable(__DIR__ . '/../scheduler-process-binary-crashing-after-started.php');
+
+		$jobManager = new SimpleJobManager();
+		$jobManager->addJob(
+			new CallbackJob(static function (): void {
+				exit(1);
+			}),
+			new CronExpression('* * * * *'),
+		);
+
+		$scheduler = new ManagedScheduler(
+			$jobManager,
+			null,
+			null,
+			$executor,
+			$clock,
+		);
+
+		$beforeIds = [];
+		$afterIds = [];
+		$afterStates = [];
+
+		$scheduler->addBeforeJobCallback(static function (JobInfo $info) use (&$beforeIds): void {
+			$beforeIds[] = $info->getExecutionId();
+		});
+		$scheduler->addAfterJobCallback(
+			static function (JobInfo $info, JobResult $result) use (&$afterIds, &$afterStates): void {
+				$afterIds[] = $info->getExecutionId();
+				$afterStates[] = $result->getState();
+			},
+		);
+
+		$caught = null;
+		try {
+			$scheduler->run();
+		} catch (RunFailure $caught) {
+			// Expected: subprocess crash surfaces as RunFailure with JobProcessFailure suppressed
+		}
+
+		self::assertNotNull($caught);
+		self::assertCount(1, $beforeIds);
+		self::assertCount(
+			1,
+			$afterIds,
+			'afterJob must still fire when subprocess crashes after emitting `started`',
+		);
+		self::assertSame($beforeIds[0], $afterIds[0]);
+		self::assertSame(JobResultState::fail(), $afterStates[0]);
 	}
 
 }

@@ -10,7 +10,10 @@ use Orisai\Scheduler\Job\CallbackJob;
 use Orisai\Scheduler\Maintenance\MaintenanceManager;
 use Orisai\Scheduler\RunRegistry\FileRunRegistry;
 use Orisai\Scheduler\SimpleScheduler;
+use Orisai\Scheduler\Status\JobInfo;
+use Orisai\Scheduler\Status\JobResult;
 use Orisai\Scheduler\Status\JobResultState;
+use Orisai\Scheduler\Status\RunInfo;
 use Orisai\Scheduler\Status\RunSummary;
 use PHPUnit\Framework\TestCase;
 use Tests\Orisai\Scheduler\Doubles\DelayedMaintenanceChecker;
@@ -60,6 +63,84 @@ final class MaintenanceIntegrationTest extends TestCase
 
 		// Verify run was deregistered after completion
 		self::assertSame([], $registry->getActiveRuns());
+
+		unlink($maintenanceFile);
+	}
+
+	public function testMaintenanceAtRunStartCallsBeforeRunCallback(): void
+	{
+		$maintenanceFile = sys_get_temp_dir() . '/maintenance-test-' . uniqid();
+		file_put_contents($maintenanceFile, '');
+
+		$checker = new FileExistsMaintenanceChecker($maintenanceFile);
+		$dir = sys_get_temp_dir() . '/scheduler-test-' . uniqid();
+		$registry = new FileRunRegistry($dir);
+		$manager = new MaintenanceManager($checker);
+
+		$clock = new FrozenClock(1);
+		$executor = new ProcessJobExecutor($clock);
+
+		$scheduler = new SimpleScheduler(null, null, $executor, $clock, null, $manager, $registry);
+
+		$scheduler->addJob(
+			new CallbackJob(static function (): void {
+			}),
+			new CronExpression('* * * * *'),
+		);
+
+		$beforeRunInfo = null;
+		$scheduler->addBeforeRunCallback(static function (RunInfo $info) use (&$beforeRunInfo): void {
+			$beforeRunInfo = $info;
+		});
+
+		$scheduler->run();
+
+		self::assertNotNull($beforeRunInfo);
+		self::assertCount(1, $beforeRunInfo->getJobInfos());
+
+		unlink($maintenanceFile);
+	}
+
+	public function testMaintenanceAtRunStartFiresAfterJobCallbacks(): void
+	{
+		$maintenanceFile = sys_get_temp_dir() . '/maintenance-test-' . uniqid();
+		file_put_contents($maintenanceFile, '');
+
+		$checker = new FileExistsMaintenanceChecker($maintenanceFile);
+		$dir = sys_get_temp_dir() . '/scheduler-test-' . uniqid();
+		$registry = new FileRunRegistry($dir);
+		$manager = new MaintenanceManager($checker);
+
+		$clock = new FrozenClock(1);
+		$executor = new ProcessJobExecutor($clock);
+
+		$scheduler = new SimpleScheduler(null, null, $executor, $clock, null, $manager, $registry);
+
+		$scheduler->addJob(
+			new CallbackJob(static function (): void {
+			}),
+			new CronExpression('* * * * *'),
+			'job-a',
+		);
+		$scheduler->addJob(
+			new CallbackJob(static function (): void {
+			}),
+			new CronExpression('* * * * *'),
+			'job-b',
+		);
+
+		$afterStates = [];
+		$scheduler->addAfterJobCallback(
+			static function (JobInfo $info, JobResult $result) use (&$afterStates): void {
+				$afterStates[$info->getJobId()] = $result->getState();
+			},
+		);
+
+		$scheduler->run();
+
+		self::assertCount(2, $afterStates);
+		self::assertSame(JobResultState::maintenance(), $afterStates['job-a']);
+		self::assertSame(JobResultState::maintenance(), $afterStates['job-b']);
 
 		unlink($maintenanceFile);
 	}

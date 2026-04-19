@@ -7,6 +7,7 @@ use DateTimeImmutable;
 use Generator;
 use Orisai\Scheduler\Exception\RunFailure;
 use Orisai\Scheduler\Job\JobSchedule;
+use Orisai\Scheduler\Status\JobInfo;
 use Orisai\Scheduler\Status\JobSummary;
 use Orisai\Scheduler\Status\RunSummary;
 
@@ -17,8 +18,10 @@ interface JobExecutor
 	 * @param array<int, array<int|string, JobSchedule>> $jobSchedulesBySecond
 	 * @param Closure(): void $beforeRunCallback
 	 * @param Closure(RunSummary): void $afterRunCallback
+	 * @param (Closure(int|string, JobSchedule, int<0, max>, JobInfo): void)|null $onJobEvent
 	 * @param-immediately-invoked-callable $beforeRunCallback
 	 * @param-immediately-invoked-callable $afterRunCallback
+	 * @param-immediately-invoked-callable $onJobEvent
 	 * @return Generator<int, JobSummary, void, RunSummary>
 	 * @throws RunFailure
 	 */
@@ -27,7 +30,8 @@ interface JobExecutor
 		DateTimeImmutable $runStart,
 		Closure $beforeRunCallback,
 		Closure $afterRunCallback,
-		?ShutdownCheck $shutdownCheck = null
+		?ShutdownCheck $shutdownCheck = null,
+		?Closure $onJobEvent = null
 	): Generator;
 
 }

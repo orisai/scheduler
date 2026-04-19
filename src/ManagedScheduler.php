@@ -111,6 +111,8 @@ class ManagedScheduler implements Scheduler
 				$id,
 				$jobSchedule,
 				new RunParameters($runSecond, false),
+				true,
+				false,
 			),
 		);
 
@@ -136,11 +138,20 @@ class ManagedScheduler implements Scheduler
 		return $this->jobManager->getJobSchedules();
 	}
 
-	public function runJob($id, bool $force = true, ?RunParameters $parameters = null): ?JobSummary
+	public function runJob(
+		$id,
+		bool $force = true,
+		?RunParameters $parameters = null,
+		?Closure $onJobStarted = null,
+		?Closure $onJobFinished = null
+	): ?JobSummary
 	{
 		$this->releaseMinuteLocks();
 
 		$jobSchedule = $this->jobManager->getJobSchedule($id);
+		// Explicit RunParameters signals subprocess context — parent's runPromise() handles
+		// all callback firing, so runInternal must suppress to prevent double-firing.
+		$fireCallbacks = $parameters === null;
 		$parameters ??= new RunParameters(0, true);
 
 		if ($jobSchedule === null) {
@@ -173,7 +184,15 @@ class ManagedScheduler implements Scheduler
 		}
 
 		try {
-			[$summary, $throwable] = $this->runInternal($id, $jobSchedule, $parameters);
+			[$summary, $throwable] = $this->runInternal(
+				$id,
+				$jobSchedule,
+				$parameters,
+				$fireCallbacks,
+				$fireCallbacks,
+				$onJobStarted,
+				$onJobFinished,
+			);
 		} finally {
 			$this->releaseMinuteLocks();
 		}
@@ -236,7 +255,7 @@ class ManagedScheduler implements Scheduler
 			if ($this->maintenanceManager !== null && $this->maintenanceManager->isMaintenance()) {
 				$generator = $this->createMaintenanceRunSummary($runStart, $jobSchedules);
 
-				yield from $generator;
+				yield from $this->wrapGeneratorWithJobCallbacks($generator);
 
 				return $generator->getReturn();
 			}
@@ -249,9 +268,10 @@ class ManagedScheduler implements Scheduler
 				$this->getBeforeRunCallback($runStart, $jobSchedules),
 				$this->getAfterRunCallback(),
 				$shutdownCheck,
+				$this->getOnJobEventCallback(),
 			);
 
-			yield from $generator;
+			yield from $this->wrapGeneratorWithJobCallbacks($generator);
 
 			return $generator->getReturn();
 		} finally {
@@ -305,18 +325,21 @@ class ManagedScheduler implements Scheduler
 	 */
 	private function createMaintenanceRunSummary(DateTimeImmutable $runStart, array $jobSchedules): Generator
 	{
+		$beforeRunCb = $this->getBeforeRunCallback($runStart, $jobSchedules);
+		$beforeRunCb();
+
 		$jobSummaries = [];
 		foreach ($jobSchedules as $id => $jobSchedule) {
 			yield $jobSummaries[] = $this->createMaintenanceJobSummary($id, $jobSchedule, 0, $runStart);
 		}
 
-		$summary = new RunSummary($runStart, $this->clock->now(), $jobSummaries, true);
+		$runSummary = new RunSummary($runStart, $this->clock->now(), $jobSummaries, true);
 
 		foreach ($this->afterRunCallbacks as $cb) {
-			$cb($summary);
+			$cb($runSummary);
 		}
 
-		return $summary;
+		return $runSummary;
 	}
 
 	/**
@@ -367,6 +390,42 @@ class ManagedScheduler implements Scheduler
 		};
 	}
 
+	/**
+	 * Called by ProcessJobExecutor when the subprocess emits a "started" event.
+	 * Fires parent's beforeJobCallbacks with the JobInfo from the subprocess.
+	 *
+	 * @return Closure(int|string, JobSchedule, int<0, max>, JobInfo): void
+	 */
+	private function getOnJobEventCallback(): Closure
+	{
+		return function ($id, JobSchedule $jobSchedule, int $runSecond, JobInfo $info): void {
+			foreach ($this->beforeJobCallbacks as $cb) {
+				$cb($info);
+			}
+		};
+	}
+
+	/**
+	 * @param Generator<int, JobSummary, void, RunSummary> $generator
+	 * @return Generator<int, JobSummary, void, void>
+	 */
+	private function wrapGeneratorWithJobCallbacks(Generator $generator): Generator
+	{
+		foreach ($generator as $summary) {
+			if ($summary->getResult()->getState() === JobResultState::lock()) {
+				foreach ($this->lockedJobCallbacks as $cb) {
+					$cb($summary->getInfo(), $summary->getResult());
+				}
+			}
+
+			foreach ($this->afterJobCallbacks as $cb) {
+				$cb($summary->getInfo(), $summary->getResult());
+			}
+
+			yield $summary;
+		}
+	}
+
 	public function run(): RunSummary
 	{
 		$generator = $this->runPromise();
@@ -377,10 +436,20 @@ class ManagedScheduler implements Scheduler
 	}
 
 	/**
-	 * @param string|int  $id
+	 * @param string|int $id
+	 * @param (Closure(JobInfo): void)|null $onJobStarted
+	 * @param (Closure(JobInfo, JobResult): void)|null $onJobFinished
 	 * @return array{JobSummary, Throwable|null}
 	 */
-	private function runInternal($id, JobSchedule $jobSchedule, RunParameters $runParameters): array
+	private function runInternal(
+		$id,
+		JobSchedule $jobSchedule,
+		RunParameters $runParameters,
+		bool $fireBeforeJobCallbacks = true,
+		bool $fireAfterJobCallbacks = true,
+		?Closure $onJobStarted = null,
+		?Closure $onJobFinished = null
+	): array
 	{
 		$job = $jobSchedule->getJob();
 		$expression = $jobSchedule->getExpression();
@@ -412,8 +481,18 @@ class ManagedScheduler implements Scheduler
 			if (!$minuteLock->acquire()) {
 				$result = new JobResult($expression, $info->getStart(), JobResultState::lock());
 
-				foreach ($this->lockedJobCallbacks as $cb) {
-					$cb($info, $result);
+				if ($fireAfterJobCallbacks) {
+					foreach ($this->lockedJobCallbacks as $cb) {
+						$cb($info, $result);
+					}
+
+					foreach ($this->afterJobCallbacks as $cb) {
+						$cb($info, $result);
+					}
+				}
+
+				if ($onJobFinished !== null) {
+					$onJobFinished($info, $result);
 				}
 
 				return [
@@ -433,8 +512,18 @@ class ManagedScheduler implements Scheduler
 
 			$result = new JobResult($expression, $info->getStart(), JobResultState::lock());
 
-			foreach ($this->lockedJobCallbacks as $cb) {
-				$cb($info, $result);
+			if ($fireAfterJobCallbacks) {
+				foreach ($this->lockedJobCallbacks as $cb) {
+					$cb($info, $result);
+				}
+
+				foreach ($this->afterJobCallbacks as $cb) {
+					$cb($info, $result);
+				}
+			}
+
+			if ($onJobFinished !== null) {
+				$onJobFinished($info, $result);
 			}
 
 			return [
@@ -445,8 +534,14 @@ class ManagedScheduler implements Scheduler
 
 		$throwable = null;
 		try {
-			foreach ($this->beforeJobCallbacks as $cb) {
-				$cb($info);
+			if ($fireBeforeJobCallbacks) {
+				foreach ($this->beforeJobCallbacks as $cb) {
+					$cb($info);
+				}
+			}
+
+			if ($onJobStarted !== null) {
+				$onJobStarted($info);
 			}
 
 			try {
@@ -469,8 +564,14 @@ class ManagedScheduler implements Scheduler
 				$lockExpired,
 			);
 
-			foreach ($this->afterJobCallbacks as $cb) {
-				$cb($info, $result);
+			if ($fireAfterJobCallbacks) {
+				foreach ($this->afterJobCallbacks as $cb) {
+					$cb($info, $result);
+				}
+			}
+
+			if ($onJobFinished !== null) {
+				$onJobFinished($info, $result);
 			}
 
 			if ($throwable !== null && $this->errorHandler !== null) {

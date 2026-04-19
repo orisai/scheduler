@@ -67,8 +67,19 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 - `JobExecutor` (BC break)
 	- `runJobs()` accepts optional `?ShutdownCheck $shutdownCheck` parameter
+	- `runJobs()` accepts optional `?Closure $onJobEvent` parameter
 - `RunSummary`
 	- constructor accepts optional `bool $maintenanceActive` parameter
+- `afterJob` callback fires for every job outcome — `done`, `fail`, `lock` and `maintenance`
+  (previously only `done` and `fail`)
+- Under `ProcessJobExecutor`, `beforeJob` and `afterJob` callbacks now fire in the parent process
+  — subprocesses stream framework events back to the parent, which dispatches callbacks with the
+  subprocess's `JobInfo`. Callback pairing via `$info->getExecutionId()` works transparently
+  across the process boundary, including when subprocesses are force-killed during maintenance
+  or crash after starting
+- `Scheduler` interface (BC break)
+  - `runJob()` accepts optional `?Closure $onJobStarted` and `?Closure $onJobFinished` parameters
+    — framework-internal hooks used by `ProcessJobExecutor`'s subprocess protocol
 
 ## [2.2.2](https://github.com/orisai/scheduler/compare/2.2.1...2.2.2) - 2026-02-12
 

@@ -32,6 +32,9 @@ use function assert;
 use function is_array;
 use function json_decode;
 use function json_encode;
+use function strlen;
+use function strpos;
+use function substr;
 use function trim;
 use const JSON_THROW_ON_ERROR;
 
@@ -68,7 +71,8 @@ final class ProcessJobExecutor implements JobExecutor
 		DateTimeImmutable $runStart,
 		Closure $beforeRunCallback,
 		Closure $afterRunCallback,
-		?ShutdownCheck $shutdownCheck = null
+		?ShutdownCheck $shutdownCheck = null,
+		?Closure $onJobEvent = null
 	): Generator
 	{
 		$finder = new PhpExecutableFinder();
@@ -84,6 +88,7 @@ final class ProcessJobExecutor implements JobExecutor
 
 		$beforeRunCallback();
 
+		/** @var array<int, SubprocessExecutionState> $jobExecutions */
 		$jobExecutions = [];
 		$jobSummaries = [];
 		$suppressedExceptions = [];
@@ -135,24 +140,36 @@ final class ProcessJobExecutor implements JobExecutor
 			if ($shutdownDetectedAt !== null && $shutdownCheck !== null && $jobExecutions !== []) {
 				$elapsed = (float) $this->clock->now()->format('U.u') - $shutdownDetectedAt;
 				if ($elapsed >= $shutdownCheck->getGracePeriodSeconds()) {
-					foreach ($jobExecutions as $i => [$execution, $jobSchedule, $jobId]) {
-						assert($execution instanceof Process);
-						if ($execution->isRunning()) {
-							$execution->stop(10);
+					foreach ($jobExecutions as $i => $state) {
+						if ($state->process->isRunning()) {
+							$state->process->stop(10);
 						}
+
+						// Final drain of subprocess output after stop()
+						$this->pollSubprocess($state, $onJobEvent);
 
 						unset($jobExecutions[$i]);
 
-						$summary = $this->tryCollectJobSummary($execution, $jobSchedule, $jobId);
+						$summary = $this->tryCollectJobSummary($state);
 						if ($summary === null) {
-							// Process was killed before producing output
-							$summary = $this->createMaintenanceJobSummary(
-								$jobId,
-								$jobSchedule,
-								0,
-								$runStart,
-							);
+							// Subprocess was killed before emitting `finished`. Reuse the
+							// JobInfo from `started` (if received) to preserve executionId
+							// pairing with the already-fired beforeJob callback.
+							$summary = $state->startedInfo !== null
+								? $this->createJobSummaryFromStartedInfo(
+									$state->startedInfo,
+									$state->schedule,
+									JobResultState::maintenance(),
+								)
+								: $this->createMaintenanceJobSummary(
+									$state->id,
+									$state->schedule,
+									0,
+									$runStart,
+								);
 						}
+
+						$this->logUnexpectedOutputIfAny($state);
 
 						yield $jobSummaries[] = $summary;
 					}
@@ -182,31 +199,76 @@ final class ProcessJobExecutor implements JobExecutor
 			}
 
 			// Check running jobs
-			foreach ($jobExecutions as $i => [$execution, $jobSchedule, $jobId]) {
-				assert($execution instanceof Process);
-				if ($execution->isRunning()) {
+			foreach ($jobExecutions as $i => $state) {
+				// Poll subprocess for new framework events (dispatches `started`)
+				$this->pollSubprocess($state, $onJobEvent);
+
+				if ($state->process->isRunning()) {
 					continue;
 				}
 
+				// Subprocess exited — drain any remaining output (finished event may
+				// arrive right before exit and not be visible until after isRunning() flipped).
+				$this->pollSubprocess($state, $onJobEvent);
+
 				unset($jobExecutions[$i]);
 
-				$summary = $this->tryCollectJobSummary($execution, $jobSchedule, $jobId);
+				$summary = $this->tryCollectJobSummary($state);
 				if ($summary === null) {
 					// Check shutdown directly - SIGINT may have killed the subprocess before
 					// the throttled shutdown check had a chance to set $shutdownDetectedAt
 					if ($shutdownCheck !== null && $shutdownCheck->shouldShutdown()) {
-						$summary = $this->createMaintenanceJobSummary($jobId, $jobSchedule, 0, $runStart);
+						// Reuse startedInfo if received (preserves executionId pairing).
+						$summary = $state->startedInfo !== null
+							? $this->createJobSummaryFromStartedInfo(
+								$state->startedInfo,
+								$state->schedule,
+								JobResultState::maintenance(),
+							)
+							: $this->createMaintenanceJobSummary(
+								$state->id,
+								$state->schedule,
+								0,
+								$runStart,
+							);
 						$maintenanceActive = true;
-					} else {
+					} elseif ($state->startedInfo !== null) {
+						// Subprocess crashed after `started` but before `finished`. beforeJob
+						// was already fired for this job — yield a synthetic fail summary so
+						// afterJob fires and the pairing invariant holds. Also surface the
+						// subprocess-level failure via RunFailure.
+						$summary = $this->createJobSummaryFromStartedInfo(
+							$state->startedInfo,
+							$state->schedule,
+							JobResultState::fail(),
+						);
 						$suppressedExceptions[] = $this->createSubprocessFail(
-							$execution,
-							trim($execution->getOutput()),
-							trim($execution->getErrorOutput()),
+							$state->process,
+							trim($state->process->getOutput()),
+							trim($state->process->getErrorOutput()),
+						);
+					} else {
+						// Subprocess died before emitting any event. beforeJob never fired
+						// either, so skipping yield keeps the invariant intact.
+						$suppressedExceptions[] = $this->createSubprocessFail(
+							$state->process,
+							trim($state->process->getOutput()),
+							trim($state->process->getErrorOutput()),
 						);
 
 						continue;
 					}
+				} elseif ($state->failureEvent !== null) {
+					// Job threw in the subprocess and had no errorHandler — surface it as a
+					// suppressed exception so runPromise throws RunFailure (parity with
+					// BasicJobExecutor behavior, parity with pre-events-protocol behavior).
+					$suppressedExceptions[] = $this->createUnhandledJobFailure(
+						$state->process,
+						$state->failureEvent,
+					);
 				}
+
+				$this->logUnexpectedOutputIfAny($state);
 
 				yield $jobSummaries[] = $summary;
 			}
@@ -229,8 +291,8 @@ final class ProcessJobExecutor implements JobExecutor
 	/**
 	 * @param list<string> $phpCommand
 	 * @param array<int|string, JobSchedule> $jobSchedules
-	 * @param array<int, array{Process, JobSchedule, int|string}> $jobExecutions
-	 * @return array<int, array{Process, JobSchedule, int|string}>
+	 * @param array<int, SubprocessExecutionState> $jobExecutions
+	 * @return array<int, SubprocessExecutionState>
 	 */
 	private function startJobs(
 		array $phpCommand,
@@ -245,47 +307,143 @@ final class ProcessJobExecutor implements JobExecutor
 					$this->script,
 					$this->command,
 					$id,
-					'--json',
+					'--events',
 					'--parameters',
 					json_encode($parameters->toArray(), JSON_THROW_ON_ERROR),
 				]),
 			);
 			$execution->start();
 
-			$jobExecutions[] = [$execution, $jobSchedule, $id];
+			$jobExecutions[] = new SubprocessExecutionState($execution, $jobSchedule, $id);
 		}
 
 		return $jobExecutions;
 	}
 
 	/**
-	 * Reads process output, parses JSON, logs unexpected stdout/stderr.
-	 * Returns null if JSON parsing fails (caller decides how to handle).
+	 * Reads incremental subprocess stdout, parses marker-prefixed JSON lines as
+	 * framework events, and dispatches `started` events to $onJobEvent. Non-marker
+	 * lines accumulate in the state's unexpectedStdout buffer.
 	 *
-	 * @param int|string $jobId
+	 * @param (Closure(int|string, JobSchedule, int<0, max>, JobInfo): void)|null $onJobEvent
 	 */
-	private function tryCollectJobSummary(Process $execution, JobSchedule $jobSchedule, $jobId): ?JobSummary
+	private function pollSubprocess(SubprocessExecutionState $state, ?Closure $onJobEvent): void
 	{
-		$stdout = trim($execution->getOutput());
-		$stderr = trim($execution->getErrorOutput());
+		$state->unparsedBuffer .= $state->process->getIncrementalOutput();
 
-		try {
-			$decoded = json_decode($stdout, true, 512, JSON_THROW_ON_ERROR);
-			assert(is_array($decoded));
-		} catch (JsonException $e) {
+		$marker = SubprocessEventProtocol::EventMarker;
+		$markerLen = strlen($marker);
+
+		while (($nlPos = strpos($state->unparsedBuffer, "\n")) !== false) {
+			$line = substr($state->unparsedBuffer, 0, $nlPos);
+			$state->unparsedBuffer = substr($state->unparsedBuffer, $nlPos + 1);
+
+			if ($line === '') {
+				continue;
+			}
+
+			if (strpos($line, $marker) !== 0) {
+				$state->unexpectedStdout .= $line . "\n";
+
+				continue;
+			}
+
+			$json = substr($line, $markerLen);
+			try {
+				$event = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
+			} catch (JsonException $e) {
+				// Malformed framework event — treat the whole line as unexpected output
+				$state->unexpectedStdout .= $line . "\n";
+
+				continue;
+			}
+
+			assert(is_array($event));
+
+			$type = $event['type'] ?? null;
+			if ($type === SubprocessEventProtocol::TypeStarted) {
+				if (!$state->startedDispatched) {
+					$info = $this->buildJobInfo($event['info'], $state->schedule);
+					$state->startedInfo = $info;
+					if ($onJobEvent !== null) {
+						$onJobEvent($state->id, $state->schedule, $info->getRunSecond(), $info);
+					}
+
+					$state->startedDispatched = true;
+				}
+			} elseif ($type === SubprocessEventProtocol::TypeFinished) {
+				$state->finishedEvent = $event;
+			} elseif ($type === SubprocessEventProtocol::TypeFailure) {
+				$state->failureEvent = $event;
+			}
+		}
+	}
+
+	private function tryCollectJobSummary(SubprocessExecutionState $state): ?JobSummary
+	{
+		$stderr = trim($state->process->getErrorOutput());
+		if ($stderr !== '') {
+			$this->logUnexpectedStderr($state->process, $state->id, $stderr);
+		}
+
+		if ($state->finishedEvent === null) {
 			return null;
 		}
 
-		$unexpectedStdout = $decoded['stdout'];
-		if ($unexpectedStdout !== '') {
-			$this->logUnexpectedStdout($execution, $jobId, $unexpectedStdout);
+		return $this->createSummary($state->finishedEvent, $state->schedule);
+	}
+
+	private function logUnexpectedOutputIfAny(SubprocessExecutionState $state): void
+	{
+		$captured = '';
+		if ($state->finishedEvent !== null && isset($state->finishedEvent['stdout'])) {
+			$captured = (string) $state->finishedEvent['stdout'];
 		}
 
-		if ($stderr !== '') {
-			$this->logUnexpectedStderr($execution, $jobId, $stderr);
+		$combined = $state->unexpectedStdout . $captured;
+		if ($combined !== '') {
+			$this->logUnexpectedStdout($state->process, $state->id, $combined);
 		}
+	}
 
-		return $this->createSummary($decoded, $jobSchedule);
+	/**
+	 * Builds a synthetic JobSummary reusing the JobInfo from the subprocess's
+	 * `started` event. Used when the subprocess exited without emitting `finished`
+	 * (maintenance-killed or crashed) — reusing the JobInfo preserves the
+	 * `executionId` pairing between beforeJob and afterJob user callbacks.
+	 */
+	private function createJobSummaryFromStartedInfo(
+		JobInfo $startedInfo,
+		JobSchedule $jobSchedule,
+		JobResultState $state
+	): JobSummary
+	{
+		$timezone = $jobSchedule->getTimeZone();
+		$now = $timezone !== null
+			? $this->clock->now()->setTimezone($timezone)
+			: $this->clock->now();
+
+		$result = new JobResult($jobSchedule->getExpression(), $now, $state);
+
+		return new JobSummary($startedInfo, $result);
+	}
+
+	/**
+	 * @param array<mixed> $rawInfo
+	 */
+	private function buildJobInfo(array $rawInfo, JobSchedule $jobSchedule): JobInfo
+	{
+		return new JobInfo(
+			$rawInfo['id'],
+			$rawInfo['name'],
+			$rawInfo['expression'],
+			$rawInfo['repeatAfterSeconds'],
+			$rawInfo['runSecond'],
+			DateTimeImmutable::createFromFormat('U.u', $rawInfo['start'][0])
+				->setTimezone(new DateTimeZone($rawInfo['start'][1])),
+			$jobSchedule->getTimeZone(),
+			$rawInfo['forcedRun'],
+		);
 	}
 
 	/**
@@ -294,17 +452,7 @@ final class ProcessJobExecutor implements JobExecutor
 	private function createSummary(array $raw, JobSchedule $jobSchedule): JobSummary
 	{
 		return new JobSummary(
-			new JobInfo(
-				$raw['info']['id'],
-				$raw['info']['name'],
-				$raw['info']['expression'],
-				$raw['info']['repeatAfterSeconds'],
-				$raw['info']['runSecond'],
-				DateTimeImmutable::createFromFormat('U.u', $raw['info']['start'][0])
-					->setTimezone(new DateTimeZone($raw['info']['start'][1])),
-				$jobSchedule->getTimeZone(),
-				$raw['info']['forcedRun'],
-			),
+			$this->buildJobInfo($raw['info'], $jobSchedule),
 			new JobResult(
 				$jobSchedule->getExpression(),
 				DateTimeImmutable::createFromFormat('U.u', $raw['result']['end'][0])
@@ -324,6 +472,23 @@ final class ProcessJobExecutor implements JobExecutor
 			->with('Exit code', (string) $execution->getExitCode())
 			->with('stdout', $output)
 			->with('stderr', $errorOutput);
+
+		return JobProcessFailure::create()
+			->withMessage($message);
+	}
+
+	/**
+	 * @param array<mixed> $failureEvent
+	 */
+	private function createUnhandledJobFailure(Process $execution, array $failureEvent): JobProcessFailure
+	{
+		$class = isset($failureEvent['class']) ? (string) $failureEvent['class'] : 'Throwable';
+		$text = isset($failureEvent['message']) ? (string) $failureEvent['message'] : '';
+
+		$message = Message::create()
+			->withContext("Running job via command {$execution->getCommandLine()}")
+			->withProblem("Job threw an unhandled $class: $text")
+			->with('Tip', 'Register an error handler on the scheduler to handle job failures gracefully.');
 
 		return JobProcessFailure::create()
 			->withMessage($message);
