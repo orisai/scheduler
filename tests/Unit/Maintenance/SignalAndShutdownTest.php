@@ -20,9 +20,7 @@ use Orisai\Scheduler\Status\JobResultState;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Tester\CommandTester;
 use Tests\Orisai\Scheduler\Doubles\DelayedMaintenanceChecker;
-use Tests\Orisai\Scheduler\Doubles\FileExistsMaintenanceChecker;
 use Tests\Orisai\Scheduler\Doubles\TestLogger;
-use function file_put_contents;
 use function function_exists;
 use function fwrite;
 use function getmypid;
@@ -31,7 +29,6 @@ use function putenv;
 use function sleep;
 use function sys_get_temp_dir;
 use function uniqid;
-use function unlink;
 use const DIRECTORY_SEPARATOR;
 use const SIGTERM;
 use const STDERR;
@@ -41,10 +38,9 @@ final class SignalAndShutdownTest extends TestCase
 
 	public function testRunCommandSignalHandlerRegistered(): void
 	{
-		$maintenanceFile = sys_get_temp_dir() . '/maintenance-test-' . uniqid();
-		file_put_contents($maintenanceFile, '');
-
-		$checker = new FileExistsMaintenanceChecker($maintenanceFile);
+		// `DelayedMaintenanceChecker(0)` returns true on the first isMaintenance() call —
+		// no filesystem dependency (avoids stat-cache / fs race flakiness on WSL2 / CI).
+		$checker = new DelayedMaintenanceChecker(0);
 		$dir = sys_get_temp_dir() . '/scheduler-test-' . uniqid();
 		$registry = new FileRunRegistry($dir);
 		$manager = new MaintenanceManager($checker);
@@ -65,8 +61,6 @@ final class SignalAndShutdownTest extends TestCase
 		$tester->execute([]);
 
 		self::assertSame(2, $tester->getStatusCode());
-
-		unlink($maintenanceFile);
 	}
 
 	public function testRunCommandSignalHandlerNotRegisteredWithoutMaintenanceManager(): void
