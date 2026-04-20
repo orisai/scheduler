@@ -1188,7 +1188,10 @@ final class AppMaintenanceChecker implements MaintenanceChecker
 	public function isMaintenance(): bool
 	{
 		// TODO - implement maintenance check
-		return file_exists(__DIR__ . '/maintenance.running');
+		$path = __DIR__ . '/maintenance.running';
+		clearstatcache(true, $path); // Prevents stale results
+
+		return file_exists($path);
 	}
 
 }
