@@ -599,7 +599,7 @@ class ManagedScheduler implements Scheduler
 			}
 		} finally {
 			$lock->release();
-			// Minute lock NOT released — stays in store until 30s TTL expires.
+			// Minute lock NOT released — stays in store until TTL expires.
 			// Stored to prevent GC and released at end of run via releaseMinuteLocks().
 			if ($minuteLock !== null) {
 				$this->minuteLocks[] = [$minuteLock, (float) $this->clock->now()->format('U.u')];
