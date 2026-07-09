@@ -26,7 +26,6 @@ use Orisai\Scheduler\Status\JobInfo;
 use Orisai\Scheduler\Status\JobResult;
 use Orisai\Scheduler\Status\JobResultState;
 use Orisai\Scheduler\Status\JobSummary;
-use Orisai\Scheduler\Status\PlannedJobInfo;
 use Orisai\Scheduler\Status\RunInfo;
 use Orisai\Scheduler\Status\RunParameters;
 use Orisai\Scheduler\Status\RunSummary;
@@ -70,20 +69,7 @@ class ManagedScheduler implements Scheduler
 	/** @var list<array{LockInterface, float}> */
 	private array $minuteLocks = [];
 
-	/** @var list<Closure(JobInfo, JobResult): void> */
-	private array $lockedJobCallbacks = [];
-
-	/** @var list<Closure(JobInfo): void> */
-	private array $beforeJobCallbacks = [];
-
-	/** @var list<Closure(JobInfo, JobResult): void> */
-	private array $afterJobCallbacks = [];
-
-	/** @var list<Closure(RunInfo): void> */
-	private array $beforeRunCallbacks = [];
-
-	/** @var list<Closure(RunSummary): void> */
-	private array $afterRunCallbacks = [];
+	private SchedulerCallbacks $callbacks;
 
 	/**
 	 * @param Closure(Throwable, JobInfo, JobResult): (void)|null $errorHandler
@@ -106,6 +92,7 @@ class ManagedScheduler implements Scheduler
 		$this->clock = ClockAdapterFactory::create($clock ?? new SystemClock());
 		$this->logger = $logger ?? new NullLogger();
 		$this->maintenanceSummaryFactory = new MaintenanceJobSummaryFactory($this->clock);
+		$this->callbacks = new SchedulerCallbacks();
 
 		$this->executor = $executor ?? new BasicJobExecutor(
 			$this->clock,
@@ -270,7 +257,7 @@ class ManagedScheduler implements Scheduler
 			if ($this->maintenanceManager !== null && $this->maintenanceManager->isMaintenance()) {
 				$generator = $this->createMaintenanceRunSummary($runStart, $jobSchedules);
 
-				yield from $this->wrapGeneratorWithJobCallbacks($generator);
+				yield from $this->callbacks->wrapGenerator($generator);
 
 				return $generator->getReturn();
 			}
@@ -280,13 +267,17 @@ class ManagedScheduler implements Scheduler
 			$generator = $this->executor->runJobs(
 				$this->groupJobSchedulesBySecond($jobSchedules),
 				$runStart,
-				$this->getBeforeRunCallback($runStart, $jobSchedules),
-				$this->getAfterRunCallback(),
+				fn () => $this->callbacks->fireBeforeRun($runStart, $jobSchedules),
+				fn (RunSummary $runSummary) => $this->callbacks->fireAfterRun($runSummary),
 				$shutdownCheck,
-				$this->getOnJobEventCallback(),
+				// Called by ProcessJobExecutor when the subprocess emits a `started` event.
+				// Fires parent's beforeJobCallbacks with the JobInfo from the subprocess.
+				fn ($id, JobSchedule $jobSchedule, int $runSecond, JobInfo $info) => $this->callbacks->fireJobStarted(
+					$info,
+				),
 			);
 
-			yield from $this->wrapGeneratorWithJobCallbacks($generator);
+			yield from $this->callbacks->wrapGenerator($generator);
 
 			return $generator->getReturn();
 		} finally {
@@ -340,8 +331,7 @@ class ManagedScheduler implements Scheduler
 	 */
 	private function createMaintenanceRunSummary(DateTimeImmutable $runStart, array $jobSchedules): Generator
 	{
-		$beforeRunCb = $this->getBeforeRunCallback($runStart, $jobSchedules);
-		$beforeRunCb();
+		$this->callbacks->fireBeforeRun($runStart, $jobSchedules);
 
 		$jobSummaries = [];
 		foreach ($jobSchedules as $id => $jobSchedule) {
@@ -350,95 +340,9 @@ class ManagedScheduler implements Scheduler
 
 		$runSummary = new RunSummary($runStart, $this->clock->now(), $jobSummaries, true);
 
-		foreach ($this->afterRunCallbacks as $cb) {
-			$cb($runSummary);
-		}
+		$this->callbacks->fireAfterRun($runSummary);
 
 		return $runSummary;
-	}
-
-	/**
-	 * @param array<int|string, JobSchedule> $jobSchedules
-	 * @return Closure(): void
-	 */
-	private function getBeforeRunCallback(DateTimeImmutable $runStart, array $jobSchedules): Closure
-	{
-		return function () use ($runStart, $jobSchedules): void {
-			if ($this->beforeRunCallbacks === []) {
-				return;
-			}
-
-			$jobInfos = [];
-			foreach ($jobSchedules as $id => $jobSchedule) {
-				$job = $jobSchedule->getJob();
-				$timezone = $jobSchedule->getTimeZone();
-				$jobStart = $timezone !== null
-					? $runStart->setTimezone($timezone)
-					: $runStart;
-				$jobInfos[] = new PlannedJobInfo(
-					$id,
-					$job->getName(),
-					$jobSchedule->getExpression()->getExpression(),
-					$jobSchedule->getRepeatAfterSeconds(),
-					$jobStart,
-					$timezone,
-				);
-			}
-
-			$info = new RunInfo($runStart, $jobInfos);
-
-			foreach ($this->beforeRunCallbacks as $cb) {
-				$cb($info);
-			}
-		};
-	}
-
-	/**
-	 * @return Closure(RunSummary): void
-	 */
-	private function getAfterRunCallback(): Closure
-	{
-		return function (RunSummary $runSummary): void {
-			foreach ($this->afterRunCallbacks as $cb) {
-				$cb($runSummary);
-			}
-		};
-	}
-
-	/**
-	 * Called by ProcessJobExecutor when the subprocess emits a "started" event.
-	 * Fires parent's beforeJobCallbacks with the JobInfo from the subprocess.
-	 *
-	 * @return Closure(int|string, JobSchedule, int<0, max>, JobInfo): void
-	 */
-	private function getOnJobEventCallback(): Closure
-	{
-		return function ($id, JobSchedule $jobSchedule, int $runSecond, JobInfo $info): void {
-			foreach ($this->beforeJobCallbacks as $cb) {
-				$cb($info);
-			}
-		};
-	}
-
-	/**
-	 * @param Generator<int, JobSummary, void, RunSummary> $generator
-	 * @return Generator<int, JobSummary, void, void>
-	 */
-	private function wrapGeneratorWithJobCallbacks(Generator $generator): Generator
-	{
-		foreach ($generator as $summary) {
-			if ($summary->getResult()->getState() === JobResultState::lock()) {
-				foreach ($this->lockedJobCallbacks as $cb) {
-					$cb($summary->getInfo(), $summary->getResult());
-				}
-			}
-
-			foreach ($this->afterJobCallbacks as $cb) {
-				$cb($summary->getInfo(), $summary->getResult());
-			}
-
-			yield $summary;
-		}
 	}
 
 	public function run(): RunSummary
@@ -502,13 +406,7 @@ class ManagedScheduler implements Scheduler
 				$result = new JobResult($expression, $info->getStart(), JobResultState::lock());
 
 				if ($fireAfterJobCallbacks) {
-					foreach ($this->lockedJobCallbacks as $cb) {
-						$cb($info, $result);
-					}
-
-					foreach ($this->afterJobCallbacks as $cb) {
-						$cb($info, $result);
-					}
+					$this->callbacks->fireJobFinished($info, $result);
 				}
 
 				if ($onJobFinished !== null) {
@@ -533,13 +431,7 @@ class ManagedScheduler implements Scheduler
 			$result = new JobResult($expression, $info->getStart(), JobResultState::lock());
 
 			if ($fireAfterJobCallbacks) {
-				foreach ($this->lockedJobCallbacks as $cb) {
-					$cb($info, $result);
-				}
-
-				foreach ($this->afterJobCallbacks as $cb) {
-					$cb($info, $result);
-				}
+				$this->callbacks->fireJobFinished($info, $result);
 			}
 
 			if ($onJobFinished !== null) {
@@ -555,9 +447,7 @@ class ManagedScheduler implements Scheduler
 		$throwable = null;
 		try {
 			if ($fireBeforeJobCallbacks) {
-				foreach ($this->beforeJobCallbacks as $cb) {
-					$cb($info);
-				}
+				$this->callbacks->fireJobStarted($info);
 			}
 
 			if ($onJobStarted !== null) {
@@ -585,9 +475,7 @@ class ManagedScheduler implements Scheduler
 			);
 
 			if ($fireAfterJobCallbacks) {
-				foreach ($this->afterJobCallbacks as $cb) {
-					$cb($info, $result);
-				}
+				$this->callbacks->fireJobFinished($info, $result);
 			}
 
 			if ($onJobFinished !== null) {
@@ -631,7 +519,7 @@ class ManagedScheduler implements Scheduler
 	 */
 	public function addLockedJobCallback(Closure $callback): void
 	{
-		$this->lockedJobCallbacks[] = $callback;
+		$this->callbacks->addLockedJob($callback);
 	}
 
 	/**
@@ -640,7 +528,7 @@ class ManagedScheduler implements Scheduler
 	 */
 	public function addBeforeJobCallback(Closure $callback): void
 	{
-		$this->beforeJobCallbacks[] = $callback;
+		$this->callbacks->addBeforeJob($callback);
 	}
 
 	/**
@@ -649,7 +537,7 @@ class ManagedScheduler implements Scheduler
 	 */
 	public function addAfterJobCallback(Closure $callback): void
 	{
-		$this->afterJobCallbacks[] = $callback;
+		$this->callbacks->addAfterJob($callback);
 	}
 
 	/**
@@ -658,7 +546,7 @@ class ManagedScheduler implements Scheduler
 	 */
 	public function addBeforeRunCallback(Closure $callback): void
 	{
-		$this->beforeRunCallbacks[] = $callback;
+		$this->callbacks->addBeforeRun($callback);
 	}
 
 	/**
@@ -667,7 +555,7 @@ class ManagedScheduler implements Scheduler
 	 */
 	public function addAfterRunCallback(Closure $callback): void
 	{
-		$this->afterRunCallbacks[] = $callback;
+		$this->callbacks->addAfterRun($callback);
 	}
 
 }
