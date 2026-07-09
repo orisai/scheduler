@@ -93,7 +93,7 @@ final class RunJobCommand extends BaseRunCommand
 			ob_end_clean();
 
 			// In --events mode, the subprocess already emitted the `finished` event via the
-			// afterJobEmitter inside runInternal. Emit a `failure` event so the parent knows
+			// onFinished emitter passed to runJob(). Emit a `failure` event so the parent knows
 			// the job's throwable was not handled by an errorHandler and can propagate a
 			// RunFailure — then exit cleanly so the parent treats the subprocess as succeeded
 			// at reporting (rather than a crashed subprocess).

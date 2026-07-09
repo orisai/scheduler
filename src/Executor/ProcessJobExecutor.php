@@ -76,6 +76,44 @@ final class ProcessJobExecutor implements JobExecutor
 		?Closure $onJobEvent = null
 	): Generator
 	{
+		$phpCommand = $this->resolvePhpCommand();
+
+		$beforeRunCallback();
+
+		$state = new ProcessRunState($jobSchedulesBySecond, $runStart);
+
+		while ($state->jobExecutions !== [] || $state->jobSchedulesBySecond !== []) {
+			yield from $this->detectShutdown($state, $shutdownCheck);
+
+			$killed = yield from $this->forceKillAfterGrace($state, $shutdownCheck, $onJobEvent);
+			if ($killed) {
+				break;
+			}
+
+			$this->startDueJobs($state, $phpCommand);
+
+			yield from $this->reapFinishedProcesses($state, $shutdownCheck, $onJobEvent);
+
+			// Nothing to do, wait
+			$this->clock->sleep(0, 1);
+		}
+
+		$summary = new RunSummary($runStart, $this->clock->now(), $state->jobSummaries, $state->maintenanceActive);
+
+		$afterRunCallback($summary);
+
+		if ($state->suppressedExceptions !== []) {
+			throw RunFailure::create($summary, $state->suppressedExceptions);
+		}
+
+		return $summary;
+	}
+
+	/**
+	 * @return list<string>
+	 */
+	private function resolvePhpCommand(): array
+	{
 		$finder = new PhpExecutableFinder();
 		$binary = $finder->find(false);
 		// @codeCoverageIgnoreStart
@@ -85,222 +123,250 @@ final class ProcessJobExecutor implements JobExecutor
 		}
 
 		// @codeCoverageIgnoreEnd
-		$phpCommand = array_merge([$binary], $finder->findArguments());
+		return array_merge([$binary], $finder->findArguments());
+	}
 
-		$beforeRunCallback();
+	/**
+	 * @return Generator<int, JobSummary, void, void>
+	 */
+	private function detectShutdown(ProcessRunState $state, ?ShutdownCheck $shutdownCheck): Generator
+	{
+		if ($shutdownCheck === null || $state->shutdownDetectedAt !== null) {
+			return;
+		}
 
-		/** @var array<int, SubprocessExecutionState> $jobExecutions */
-		$jobExecutions = [];
-		$jobSummaries = [];
-		$suppressedExceptions = [];
-		$maintenanceActive = false;
+		// Refresh registry (throttled to every 30 seconds)
+		$now = (float) $this->clock->now()->format('U.u');
+		if ($now - $state->lastRefreshAt >= 30.0) {
+			$state->lastRefreshAt = $now;
+			$shutdownCheck->refresh();
+		}
 
-		$shutdownDetectedAt = null;
-		$lastShutdownCheckAt = 0.0;
-		$lastRefreshAt = 0.0;
+		// Check for shutdown (throttled to every 1 second)
+		$now = (float) $this->clock->now()->format('U.u');
+		if ($now - $state->lastShutdownCheckAt >= 1.0) {
+			$state->lastShutdownCheckAt = $now;
 
-		$lastExecutedSecond = -1;
-		while ($jobExecutions !== [] || $jobSchedulesBySecond !== []) {
-			// Refresh registry (throttled to every 30 seconds)
-			if ($shutdownCheck !== null && $shutdownDetectedAt === null) {
-				$now = (float) $this->clock->now()->format('U.u');
-				if ($now - $lastRefreshAt >= 30.0) {
-					$lastRefreshAt = $now;
-					$shutdownCheck->refresh();
-				}
-			}
+			if ($shutdownCheck->shouldShutdown()) {
+				$state->shutdownDetectedAt = $now;
+				$state->maintenanceActive = true;
 
-			// Check for shutdown (throttled to every 1 second)
-			if ($shutdownCheck !== null && $shutdownDetectedAt === null) {
-				$now = (float) $this->clock->now()->format('U.u');
-				if ($now - $lastShutdownCheckAt >= 1.0) {
-					$lastShutdownCheckAt = $now;
-
-					if ($shutdownCheck->shouldShutdown()) {
-						$shutdownDetectedAt = $now;
-						$maintenanceActive = true;
-
-						// Create maintenance summaries for jobs not yet started
-						foreach ($jobSchedulesBySecond as $second => $schedules) {
-							foreach ($schedules as $id => $jobSchedule) {
-								yield $jobSummaries[] = $this->maintenanceSummaryFactory->create(
-									$id,
-									$jobSchedule,
-									$second,
-									$runStart,
-								);
-							}
-						}
-
-						$jobSchedulesBySecond = [];
+				// Create maintenance summaries for jobs not yet started
+				foreach ($state->jobSchedulesBySecond as $second => $schedules) {
+					foreach ($schedules as $id => $jobSchedule) {
+						yield $state->jobSummaries[] = $this->maintenanceSummaryFactory->create(
+							$id,
+							$jobSchedule,
+							$second,
+							$state->runStart,
+						);
 					}
 				}
+
+				$state->jobSchedulesBySecond = [];
+			}
+		}
+	}
+
+	/**
+	 * @param (Closure(int|string, JobSchedule, int<0, max>, JobInfo): void)|null $onJobEvent
+	 * @return Generator<int, JobSummary, void, bool>
+	 */
+	private function forceKillAfterGrace(
+		ProcessRunState $state,
+		?ShutdownCheck $shutdownCheck,
+		?Closure $onJobEvent
+	): Generator
+	{
+		if ($state->shutdownDetectedAt === null || $shutdownCheck === null || $state->jobExecutions === []) {
+			return false;
+		}
+
+		$elapsed = (float) $this->clock->now()->format('U.u') - $state->shutdownDetectedAt;
+		if ($elapsed < $shutdownCheck->getGracePeriodSeconds()) {
+			return false;
+		}
+
+		foreach ($state->jobExecutions as $i => $execution) {
+			if ($execution->process->isRunning()) {
+				$execution->process->stop(10);
 			}
 
-			// Force-kill remaining processes after grace period
-			if ($shutdownDetectedAt !== null && $shutdownCheck !== null && $jobExecutions !== []) {
-				$elapsed = (float) $this->clock->now()->format('U.u') - $shutdownDetectedAt;
-				if ($elapsed >= $shutdownCheck->getGracePeriodSeconds()) {
-					foreach ($jobExecutions as $i => $state) {
-						if ($state->process->isRunning()) {
-							$state->process->stop(10);
-						}
+			// Final drain of subprocess output after stop()
+			$this->pollSubprocess($execution, $onJobEvent);
 
-						// Final drain of subprocess output after stop()
-						$this->pollSubprocess($state, $onJobEvent);
+			unset($state->jobExecutions[$i]);
 
-						unset($jobExecutions[$i]);
-
-						$summary = $this->tryCollectJobSummary($state);
-						if ($summary === null) {
-							// Subprocess was killed before emitting `finished`. Reuse the
-							// JobInfo from `started` (if received) to preserve executionId
-							// pairing with the already-fired beforeJob callback.
-							$summary = $state->startedInfo !== null
-								? $this->createJobSummaryFromStartedInfo(
-									$state->startedInfo,
-									$state->schedule,
-									JobResultState::maintenance(),
-								)
-								: $this->maintenanceSummaryFactory->create(
-									$state->id,
-									$state->schedule,
-									0,
-									$runStart,
-								);
-						}
-
-						$this->logUnexpectedOutputIfAny($state);
-
-						yield $jobSummaries[] = $summary;
-					}
-
-					break;
-				}
-			}
-
-			// If we have scheduled jobs and are at right second, execute them
-			if ($jobSchedulesBySecond !== []) {
-				$shouldRunSecond = $this->clock->now()->getTimestamp() - $runStart->getTimestamp();
-
-				while ($lastExecutedSecond < $shouldRunSecond) {
-					$currentSecond = $lastExecutedSecond + 1;
-					if (isset($jobSchedulesBySecond[$currentSecond])) {
-						$jobExecutions = $this->startJobs(
-							$phpCommand,
-							$jobSchedulesBySecond[$currentSecond],
-							$jobExecutions,
-							new RunParameters($currentSecond, false),
-						);
-						unset($jobSchedulesBySecond[$currentSecond]);
-					}
-
-					$lastExecutedSecond = $currentSecond;
-				}
-			}
-
-			// Check running jobs
-			foreach ($jobExecutions as $i => $state) {
-				// Poll subprocess for new framework events (dispatches `started`)
-				$this->pollSubprocess($state, $onJobEvent);
-
-				if ($state->process->isRunning()) {
-					continue;
-				}
-
-				// Subprocess exited — drain any remaining output (finished event may
-				// arrive right before exit and not be visible until after isRunning() flipped).
-				$this->pollSubprocess($state, $onJobEvent);
-
-				unset($jobExecutions[$i]);
-
-				$summary = $this->tryCollectJobSummary($state);
-				if ($summary === null) {
-					// Check shutdown directly - SIGINT may have killed the subprocess before
-					// the throttled shutdown check had a chance to set $shutdownDetectedAt
-					if ($shutdownCheck !== null && $shutdownCheck->shouldShutdown()) {
-						// Reuse startedInfo if received (preserves executionId pairing).
-						$summary = $state->startedInfo !== null
-							? $this->createJobSummaryFromStartedInfo(
-								$state->startedInfo,
-								$state->schedule,
-								JobResultState::maintenance(),
-							)
-							: $this->maintenanceSummaryFactory->create(
-								$state->id,
-								$state->schedule,
-								0,
-								$runStart,
-							);
-						$maintenanceActive = true;
-					} elseif ($state->startedInfo !== null) {
-						// Subprocess crashed after `started` but before `finished`. beforeJob
-						// was already fired for this job — yield a synthetic fail summary so
-						// afterJob fires and the pairing invariant holds. Also surface the
-						// subprocess-level failure via RunFailure.
-						$summary = $this->createJobSummaryFromStartedInfo(
-							$state->startedInfo,
-							$state->schedule,
-							JobResultState::fail(),
-						);
-						$suppressedExceptions[] = $this->createSubprocessFail(
-							$state->process,
-							trim($state->process->getOutput()),
-							trim($state->process->getErrorOutput()),
-						);
-					} else {
-						// Subprocess died before emitting any event. beforeJob never fired
-						// either, so skipping yield keeps the invariant intact.
-						$suppressedExceptions[] = $this->createSubprocessFail(
-							$state->process,
-							trim($state->process->getOutput()),
-							trim($state->process->getErrorOutput()),
-						);
-
-						continue;
-					}
-				} elseif ($state->failureEvent !== null) {
-					// Job threw in the subprocess and had no errorHandler — surface it as a
-					// suppressed exception so runPromise throws RunFailure (parity with
-					// BasicJobExecutor behavior, parity with pre-events-protocol behavior).
-					$suppressedExceptions[] = $this->createUnhandledJobFailure(
-						$state->process,
-						$state->failureEvent,
+			$summary = $this->tryCollectJobSummary($execution);
+			if ($summary === null) {
+				// Subprocess was killed before emitting `finished`. Reuse the
+				// JobInfo from `started` (if received) to preserve executionId
+				// pairing with the already-fired beforeJob callback.
+				$summary = $execution->startedInfo !== null
+					? $this->createJobSummaryFromStartedInfo(
+						$execution->startedInfo,
+						$execution->schedule,
+						JobResultState::maintenance(),
+					)
+					: $this->maintenanceSummaryFactory->create(
+						$execution->id,
+						$execution->schedule,
+						0,
+						$state->runStart,
 					);
-				}
-
-				$this->logUnexpectedOutputIfAny($state);
-
-				yield $jobSummaries[] = $summary;
 			}
 
-			// Nothing to do, wait
-			$this->clock->sleep(0, 1);
+			$this->logUnexpectedOutputIfAny($execution);
+
+			yield $state->jobSummaries[] = $summary;
 		}
 
-		$summary = new RunSummary($runStart, $this->clock->now(), $jobSummaries, $maintenanceActive);
+		return true;
+	}
 
-		$afterRunCallback($summary);
-
-		if ($suppressedExceptions !== []) {
-			throw RunFailure::create($summary, $suppressedExceptions);
+	/**
+	 * @param list<string> $phpCommand
+	 */
+	private function startDueJobs(ProcessRunState $state, array $phpCommand): void
+	{
+		if ($state->jobSchedulesBySecond === []) {
+			return;
 		}
 
-		return $summary;
+		$shouldRunSecond = $this->clock->now()->getTimestamp() - $state->runStart->getTimestamp();
+
+		while ($state->lastExecutedSecond < $shouldRunSecond) {
+			$currentSecond = $state->lastExecutedSecond + 1;
+			if (isset($state->jobSchedulesBySecond[$currentSecond])) {
+				$this->startJobs(
+					$phpCommand,
+					$state->jobSchedulesBySecond[$currentSecond],
+					$state,
+					new RunParameters($currentSecond, false),
+				);
+				unset($state->jobSchedulesBySecond[$currentSecond]);
+			}
+
+			$state->lastExecutedSecond = $currentSecond;
+		}
+	}
+
+	/**
+	 * @param (Closure(int|string, JobSchedule, int<0, max>, JobInfo): void)|null $onJobEvent
+	 * @return Generator<int, JobSummary, void, void>
+	 */
+	private function reapFinishedProcesses(
+		ProcessRunState $state,
+		?ShutdownCheck $shutdownCheck,
+		?Closure $onJobEvent
+	): Generator
+	{
+		foreach ($state->jobExecutions as $i => $execution) {
+			// Poll subprocess for new framework events (dispatches `started`)
+			$this->pollSubprocess($execution, $onJobEvent);
+
+			if ($execution->process->isRunning()) {
+				continue;
+			}
+
+			// Subprocess exited — drain any remaining output (finished event may
+			// arrive right before exit and not be visible until after isRunning() flipped).
+			$this->pollSubprocess($execution, $onJobEvent);
+
+			unset($state->jobExecutions[$i]);
+
+			$summary = $this->classifyExitedProcess($execution, $state, $shutdownCheck);
+			if ($summary === null) {
+				continue;
+			}
+
+			$this->logUnexpectedOutputIfAny($execution);
+
+			yield $state->jobSummaries[] = $summary;
+		}
+	}
+
+	private function classifyExitedProcess(
+		SubprocessExecutionState $execution,
+		ProcessRunState $state,
+		?ShutdownCheck $shutdownCheck
+	): ?JobSummary
+	{
+		$summary = $this->tryCollectJobSummary($execution);
+
+		if ($summary !== null) {
+			if ($execution->failureEvent !== null) {
+				// Job threw in the subprocess and had no errorHandler — surface it as a
+				// suppressed exception so runPromise throws RunFailure (parity with
+				// BasicJobExecutor behavior, parity with pre-events-protocol behavior).
+				$state->suppressedExceptions[] = $this->createUnhandledJobFailure(
+					$execution->process,
+					$execution->failureEvent,
+				);
+			}
+
+			return $summary;
+		}
+
+		// Check shutdown directly - SIGINT may have killed the subprocess before
+		// the throttled shutdown check had a chance to set $shutdownDetectedAt
+		if ($shutdownCheck !== null && $shutdownCheck->shouldShutdown()) {
+			$state->maintenanceActive = true;
+
+			// Reuse startedInfo if received (preserves executionId pairing).
+			return $execution->startedInfo !== null
+				? $this->createJobSummaryFromStartedInfo(
+					$execution->startedInfo,
+					$execution->schedule,
+					JobResultState::maintenance(),
+				)
+				: $this->maintenanceSummaryFactory->create(
+					$execution->id,
+					$execution->schedule,
+					0,
+					$state->runStart,
+				);
+		}
+
+		if ($execution->startedInfo !== null) {
+			// Subprocess crashed after `started` but before `finished`. beforeJob
+			// was already fired for this job — yield a synthetic fail summary so
+			// afterJob fires and the pairing invariant holds. Also surface the
+			// subprocess-level failure via RunFailure.
+			$state->suppressedExceptions[] = $this->createSubprocessFail(
+				$execution->process,
+				trim($execution->process->getOutput()),
+				trim($execution->process->getErrorOutput()),
+			);
+
+			return $this->createJobSummaryFromStartedInfo(
+				$execution->startedInfo,
+				$execution->schedule,
+				JobResultState::fail(),
+			);
+		}
+
+		// Subprocess died before emitting any event. beforeJob never fired
+		// either, so skipping yield keeps the invariant intact.
+		$state->suppressedExceptions[] = $this->createSubprocessFail(
+			$execution->process,
+			trim($execution->process->getOutput()),
+			trim($execution->process->getErrorOutput()),
+		);
+
+		return null;
 	}
 
 	/**
 	 * @param list<string> $phpCommand
 	 * @param array<int|string, JobSchedule> $jobSchedules
-	 * @param array<int, SubprocessExecutionState> $jobExecutions
-	 * @return array<int, SubprocessExecutionState>
 	 */
 	private function startJobs(
 		array $phpCommand,
 		array $jobSchedules,
-		array $jobExecutions,
+		ProcessRunState $state,
 		RunParameters $parameters
-	): array
+	): void
 	{
 		foreach ($jobSchedules as $id => $jobSchedule) {
 			$execution = new Process(
@@ -315,10 +381,8 @@ final class ProcessJobExecutor implements JobExecutor
 			);
 			$execution->start();
 
-			$jobExecutions[] = new SubprocessExecutionState($execution, $jobSchedule, $id);
+			$state->jobExecutions[] = new SubprocessExecutionState($execution, $jobSchedule, $id);
 		}
-
-		return $jobExecutions;
 	}
 
 	/**
