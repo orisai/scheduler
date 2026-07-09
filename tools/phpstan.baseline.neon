@@ -434,3 +434,15 @@ parameters:
 			identifier: argument.type
 			count: 1
 			path: ../tests/Unit/Status/PlannedJobInfoTest.php
+
+		-
+			rawMessage: 'Parameter #3 $expression of class Orisai\Scheduler\Status\JobInfo constructor expects string, string|null given.'
+			identifier: argument.type
+			count: 1
+			path: ../src/Executor/JobRunner.php
+
+		-
+			rawMessage: 'Method Tests\Orisai\Scheduler\Unit\Executor\JobRunnerTest::createSchedule() has parameter $callback with no signature specified for callable.'
+			identifier: missingType.callable
+			count: 1
+			path: ../tests/Unit/Executor/JobRunnerTest.php
