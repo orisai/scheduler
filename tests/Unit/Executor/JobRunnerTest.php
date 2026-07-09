@@ -188,4 +188,63 @@ final class JobRunnerTest extends TestCase
 		self::assertTrue($external->acquire());
 	}
 
+	public function testReleaseExpiredMinuteLocksNotYetExpired(): void
+	{
+		$lockFactory = new LockFactory(new InMemoryStore());
+		// Non-zero start is required - with a zero-valued createdAt, `now - createdAt`
+		// and `now + createdAt` are indistinguishable.
+		$clock = new FrozenClock(1);
+		$runner = new JobRunner($lockFactory, $clock, new NullLogger(), null);
+
+		$schedule = $this->createSchedule();
+		$runner->run('id', $schedule, new RunParameters(0, false));
+
+		$external = $lockFactory->createLock('Orisai.Scheduler.Job.Minute/id/197001010000', 60.0, false);
+
+		$clock->sleep(59);
+		$runner->releaseExpiredMinuteLocks();
+		self::assertFalse($external->acquire());
+
+		$clock->sleep(1);
+		$runner->releaseExpiredMinuteLocks();
+		self::assertTrue($external->acquire());
+	}
+
+	public function testJobLockFailureReleasesMinuteLock(): void
+	{
+		$lockFactory = new LockFactory(new InMemoryStore());
+		$clock = new FrozenClock(0);
+		$runner = new JobRunner($lockFactory, $clock, new NullLogger(), null);
+
+		$externalJobLock = $lockFactory->createLock('Orisai.Scheduler.Job/id');
+		self::assertTrue($externalJobLock->acquire());
+
+		$schedule = $this->createSchedule();
+
+		[$summary, $throwable] = $runner->run('id', $schedule, new RunParameters(0, false));
+
+		self::assertSame(JobResultState::lock(), $summary->getResult()->getState());
+		self::assertNull($throwable);
+
+		$externalMinuteLock = $lockFactory->createLock('Orisai.Scheduler.Job.Minute/id/197001010000', 60.0, false);
+		self::assertTrue($externalMinuteLock->acquire());
+	}
+
+	public function testMinuteLockIsNotAutoReleasedOnRunnerDestruction(): void
+	{
+		$lockFactory = new LockFactory(new InMemoryStore());
+		$clock = new FrozenClock(0);
+		$runner = new JobRunner($lockFactory, $clock, new NullLogger(), null);
+
+		$schedule = $this->createSchedule();
+		$runner->run('id', $schedule, new RunParameters(0, false));
+
+		// Not yet expired - lock stays retained in $runner->minuteLocks
+		$runner->releaseExpiredMinuteLocks();
+		unset($runner);
+
+		$external = $lockFactory->createLock('Orisai.Scheduler.Job.Minute/id/197001010000', 60.0, false);
+		self::assertFalse($external->acquire());
+	}
+
 }
