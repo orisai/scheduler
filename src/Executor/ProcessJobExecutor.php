@@ -15,7 +15,7 @@ use Orisai\Exceptions\Message;
 use Orisai\Scheduler\Exception\JobProcessFailure;
 use Orisai\Scheduler\Exception\RunFailure;
 use Orisai\Scheduler\Job\JobSchedule;
-use Orisai\Scheduler\Maintenance\CreatesMaintenanceJobSummary;
+use Orisai\Scheduler\Maintenance\MaintenanceJobSummaryFactory;
 use Orisai\Scheduler\Status\JobInfo;
 use Orisai\Scheduler\Status\JobResult;
 use Orisai\Scheduler\Status\JobResultState;
@@ -44,11 +44,11 @@ use const JSON_THROW_ON_ERROR;
 final class ProcessJobExecutor implements JobExecutor
 {
 
-	use CreatesMaintenanceJobSummary;
-
 	private Clock $clock;
 
 	private LoggerInterface $logger;
+
+	private MaintenanceJobSummaryFactory $maintenanceSummaryFactory;
 
 	private string $script = 'bin/console';
 
@@ -58,6 +58,7 @@ final class ProcessJobExecutor implements JobExecutor
 	{
 		$this->clock = ClockAdapterFactory::create($clock ?? new SystemClock());
 		$this->logger = $logger ?? new NullLogger();
+		$this->maintenanceSummaryFactory = new MaintenanceJobSummaryFactory($this->clock);
 	}
 
 	public function setExecutable(string $script, string $command = 'scheduler:run-job'): void
@@ -122,7 +123,7 @@ final class ProcessJobExecutor implements JobExecutor
 						// Create maintenance summaries for jobs not yet started
 						foreach ($jobSchedulesBySecond as $second => $schedules) {
 							foreach ($schedules as $id => $jobSchedule) {
-								yield $jobSummaries[] = $this->createMaintenanceJobSummary(
+								yield $jobSummaries[] = $this->maintenanceSummaryFactory->create(
 									$id,
 									$jobSchedule,
 									$second,
@@ -161,7 +162,7 @@ final class ProcessJobExecutor implements JobExecutor
 									$state->schedule,
 									JobResultState::maintenance(),
 								)
-								: $this->createMaintenanceJobSummary(
+								: $this->maintenanceSummaryFactory->create(
 									$state->id,
 									$state->schedule,
 									0,
@@ -225,7 +226,7 @@ final class ProcessJobExecutor implements JobExecutor
 								$state->schedule,
 								JobResultState::maintenance(),
 							)
-							: $this->createMaintenanceJobSummary(
+							: $this->maintenanceSummaryFactory->create(
 								$state->id,
 								$state->schedule,
 								0,

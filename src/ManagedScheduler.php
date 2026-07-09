@@ -17,7 +17,7 @@ use Orisai\Scheduler\Executor\JobExecutor;
 use Orisai\Scheduler\Executor\ShutdownCheck;
 use Orisai\Scheduler\Job\JobLock;
 use Orisai\Scheduler\Job\JobSchedule;
-use Orisai\Scheduler\Maintenance\CreatesMaintenanceJobSummary;
+use Orisai\Scheduler\Maintenance\MaintenanceJobSummaryFactory;
 use Orisai\Scheduler\Maintenance\MaintenanceManager;
 use Orisai\Scheduler\Manager\JobManager;
 use Orisai\Scheduler\RunRegistry\RunRegistry;
@@ -46,8 +46,6 @@ use function time;
 class ManagedScheduler implements Scheduler
 {
 
-	use CreatesMaintenanceJobSummary;
-
 	private const MinuteLockTtl = 60.0;
 
 	private JobManager $jobManager;
@@ -62,6 +60,8 @@ class ManagedScheduler implements Scheduler
 	private Clock $clock;
 
 	private LoggerInterface $logger;
+
+	private MaintenanceJobSummaryFactory $maintenanceSummaryFactory;
 
 	private ?MaintenanceManager $maintenanceManager;
 
@@ -105,6 +105,7 @@ class ManagedScheduler implements Scheduler
 		$this->lockFactory = $lockFactory ?? new LockFactory(new InMemoryStore());
 		$this->clock = ClockAdapterFactory::create($clock ?? new SystemClock());
 		$this->logger = $logger ?? new NullLogger();
+		$this->maintenanceSummaryFactory = new MaintenanceJobSummaryFactory($this->clock);
 
 		$this->executor = $executor ?? new BasicJobExecutor(
 			$this->clock,
@@ -187,7 +188,7 @@ class ManagedScheduler implements Scheduler
 		// active, return a synthetic `maintenance`-state summary so forced callers still
 		// get a JobSummary (matching the conditional return type).
 		if (!$isSubprocess && $this->maintenanceManager !== null && $this->maintenanceManager->isMaintenance()) {
-			return $this->createMaintenanceJobSummary(
+			return $this->maintenanceSummaryFactory->create(
 				$id,
 				$jobSchedule,
 				$parameters->getSecond(),
@@ -344,7 +345,7 @@ class ManagedScheduler implements Scheduler
 
 		$jobSummaries = [];
 		foreach ($jobSchedules as $id => $jobSchedule) {
-			yield $jobSummaries[] = $this->createMaintenanceJobSummary($id, $jobSchedule, 0, $runStart);
+			yield $jobSummaries[] = $this->maintenanceSummaryFactory->create($id, $jobSchedule, 0, $runStart);
 		}
 
 		$runSummary = new RunSummary($runStart, $this->clock->now(), $jobSummaries, true);

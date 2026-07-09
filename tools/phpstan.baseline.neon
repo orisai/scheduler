@@ -40,28 +40,11 @@ parameters:
 			path: ../src/Command/RunJobCommand.php
 
 		-
-			rawMessage: 'Parameter #3 $expression of class Orisai\Scheduler\Status\JobInfo constructor expects string, string|null given.'
-			identifier: argument.type
-			count: 1
-			path: ../src/Executor/BasicJobExecutor.php
-
-		-
 			rawMessage: 'Cannot call method setTimezone() on DateTimeImmutable|false.'
 			identifier: method.nonObject
 			count: 2
 			path: ../src/Executor/ProcessJobExecutor.php
 
-		-
-			rawMessage: 'Parameter #3 $expression of class Orisai\Scheduler\Status\JobInfo constructor expects string, string|null given.'
-			identifier: argument.type
-			count: 1
-			path: ../src/Executor/ProcessJobExecutor.php
-
-		-
-			rawMessage: 'Parameter #3 $runSecond of method Orisai\Scheduler\Executor\ProcessJobExecutor::createMaintenanceJobSummary() expects int<0, max>, int given.'
-			identifier: argument.type
-			count: 1
-			path: ../src/Executor/ProcessJobExecutor.php
 
 		-
 			rawMessage: 'Parameter #3 $subject of function str_replace expects array<string>|string, string|false given.'
@@ -72,7 +55,19 @@ parameters:
 		-
 			rawMessage: 'Parameter #3 $expression of class Orisai\Scheduler\Status\JobInfo constructor expects string, string|null given.'
 			identifier: argument.type
-			count: 2
+			count: 1
+			path: ../src/Maintenance/MaintenanceJobSummaryFactory.php
+
+		-
+			rawMessage: 'Parameter #3 $runSecond of method Orisai\Scheduler\Maintenance\MaintenanceJobSummaryFactory::create() expects int<0, max>, int given.'
+			identifier: argument.type
+			count: 1
+			path: ../src/Executor/ProcessJobExecutor.php
+
+		-
+			rawMessage: 'Parameter #3 $expression of class Orisai\Scheduler\Status\JobInfo constructor expects string, string|null given.'
+			identifier: argument.type
+			count: 1
 			path: ../src/ManagedScheduler.php
 
 		-

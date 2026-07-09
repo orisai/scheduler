@@ -8,7 +8,7 @@ use Generator;
 use Orisai\Clock\Clock;
 use Orisai\Scheduler\Exception\RunFailure;
 use Orisai\Scheduler\Job\JobSchedule;
-use Orisai\Scheduler\Maintenance\CreatesMaintenanceJobSummary;
+use Orisai\Scheduler\Maintenance\MaintenanceJobSummaryFactory;
 use Orisai\Scheduler\Status\JobSummary;
 use Orisai\Scheduler\Status\RunSummary;
 use Throwable;
@@ -21,9 +21,9 @@ use function max;
 final class BasicJobExecutor implements JobExecutor
 {
 
-	use CreatesMaintenanceJobSummary;
-
 	private Clock $clock;
+
+	private MaintenanceJobSummaryFactory $maintenanceSummaryFactory;
 
 	/** @var Closure(string|int, JobSchedule, int<0, max>): array{JobSummary, Throwable|null} */
 	private Closure $runCb;
@@ -34,6 +34,7 @@ final class BasicJobExecutor implements JobExecutor
 	public function __construct(Clock $clock, Closure $runCb)
 	{
 		$this->clock = $clock;
+		$this->maintenanceSummaryFactory = new MaintenanceJobSummaryFactory($clock);
 		$this->runCb = $runCb;
 	}
 
@@ -68,7 +69,7 @@ final class BasicJobExecutor implements JobExecutor
 				}
 
 				if ($skipRemaining) {
-					yield $jobSummaries[] = $this->createMaintenanceJobSummary(
+					yield $jobSummaries[] = $this->maintenanceSummaryFactory->create(
 						$id,
 						$jobSchedule,
 						$second,
