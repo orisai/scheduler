@@ -4,7 +4,6 @@ namespace Orisai\Scheduler;
 
 use Closure;
 use DateTimeImmutable;
-use DateTimeZone;
 use Generator;
 use Orisai\Clock\Adapter\ClockAdapterFactory;
 use Orisai\Clock\Clock;
@@ -14,8 +13,8 @@ use Orisai\Exceptions\Message;
 use Orisai\Scheduler\Exception\JobFailure;
 use Orisai\Scheduler\Executor\BasicJobExecutor;
 use Orisai\Scheduler\Executor\JobExecutor;
+use Orisai\Scheduler\Executor\JobRunner;
 use Orisai\Scheduler\Executor\ShutdownCheck;
-use Orisai\Scheduler\Job\JobLock;
 use Orisai\Scheduler\Job\JobSchedule;
 use Orisai\Scheduler\Maintenance\MaintenanceJobSummaryFactory;
 use Orisai\Scheduler\Maintenance\MaintenanceManager;
@@ -24,7 +23,6 @@ use Orisai\Scheduler\RunRegistry\RunRegistry;
 use Orisai\Scheduler\Status\ActivityStatus;
 use Orisai\Scheduler\Status\JobInfo;
 use Orisai\Scheduler\Status\JobResult;
-use Orisai\Scheduler\Status\JobResultState;
 use Orisai\Scheduler\Status\JobSummary;
 use Orisai\Scheduler\Status\RunInfo;
 use Orisai\Scheduler\Status\RunParameters;
@@ -33,7 +31,6 @@ use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 use Symfony\Component\Lock\LockFactory;
-use Symfony\Component\Lock\LockInterface;
 use Symfony\Component\Lock\Store\InMemoryStore;
 use Throwable;
 use function bin2hex;
@@ -45,20 +42,11 @@ use function time;
 class ManagedScheduler implements Scheduler
 {
 
-	private const MinuteLockTtl = 60.0;
-
 	private JobManager $jobManager;
-
-	/** @var Closure(Throwable, JobInfo, JobResult): (void)|null */
-	private ?Closure $errorHandler;
-
-	private LockFactory $lockFactory;
 
 	private JobExecutor $executor;
 
 	private Clock $clock;
-
-	private LoggerInterface $logger;
 
 	private MaintenanceJobSummaryFactory $maintenanceSummaryFactory;
 
@@ -66,10 +54,9 @@ class ManagedScheduler implements Scheduler
 
 	private ?RunRegistry $runRegistry;
 
-	/** @var list<array{LockInterface, float}> */
-	private array $minuteLocks = [];
-
 	private SchedulerCallbacks $callbacks;
+
+	private JobRunner $jobRunner;
 
 	/**
 	 * @param Closure(Throwable, JobInfo, JobResult): (void)|null $errorHandler
@@ -87,23 +74,18 @@ class ManagedScheduler implements Scheduler
 	)
 	{
 		$this->jobManager = $jobManager;
-		$this->errorHandler = $errorHandler;
-		$this->lockFactory = $lockFactory ?? new LockFactory(new InMemoryStore());
 		$this->clock = ClockAdapterFactory::create($clock ?? new SystemClock());
-		$this->logger = $logger ?? new NullLogger();
 		$this->maintenanceSummaryFactory = new MaintenanceJobSummaryFactory($this->clock);
 		$this->callbacks = new SchedulerCallbacks();
 
-		$this->executor = $executor ?? new BasicJobExecutor(
+		$this->jobRunner = new JobRunner(
+			$lockFactory ?? new LockFactory(new InMemoryStore()),
 			$this->clock,
-			fn ($id, JobSchedule $jobSchedule, int $runSecond): array => $this->runInternal(
-				$id,
-				$jobSchedule,
-				new RunParameters($runSecond, false),
-				true,
-				false,
-			),
+			$logger ?? new NullLogger(),
+			$errorHandler,
 		);
+
+		$this->executor = $executor ?? new BasicJobExecutor($this->clock, $this->jobRunner);
 
 		$this->maintenanceManager = $maintenanceManager;
 		$this->runRegistry = $runRegistry;
@@ -135,11 +117,11 @@ class ManagedScheduler implements Scheduler
 		?Closure $onJobFinished = null
 	): ?JobSummary
 	{
-		$this->releaseMinuteLocks();
+		$this->jobRunner->releaseExpiredMinuteLocks();
 
 		$jobSchedule = $this->jobManager->getJobSchedule($id);
 		// Explicit RunParameters signals subprocess context — parent's runPromise() handles
-		// all callback firing, so runInternal must suppress to prevent double-firing.
+		// all callback firing, so only the caller's emitters are passed as hooks.
 		// Subprocesses also trust the parent's earlier maintenance check rather than
 		// re-checking (which would surface a narrow mid-spawn race as a RunFailure).
 		$isSubprocess = $parameters !== null;
@@ -183,20 +165,38 @@ class ManagedScheduler implements Scheduler
 			);
 		}
 
-		$fireCallbacks = !$isSubprocess;
+		if ($isSubprocess) {
+			// Parent's runPromise() fires registered callbacks — only the caller's
+			// emitters run in the subprocess.
+			$onStarted = $onJobStarted;
+			$onFinished = $onJobFinished;
+		} else {
+			$onStarted = function (JobInfo $info) use ($onJobStarted): void {
+				$this->callbacks->fireJobStarted($info);
+
+				if ($onJobStarted !== null) {
+					$onJobStarted($info);
+				}
+			};
+			$onFinished = function (JobInfo $info, JobResult $result) use ($onJobFinished): void {
+				$this->callbacks->fireJobFinished($info, $result);
+
+				if ($onJobFinished !== null) {
+					$onJobFinished($info, $result);
+				}
+			};
+		}
 
 		try {
-			[$summary, $throwable] = $this->runInternal(
+			[$summary, $throwable] = $this->jobRunner->run(
 				$id,
 				$jobSchedule,
 				$parameters,
-				$fireCallbacks,
-				$fireCallbacks,
-				$onJobStarted,
-				$onJobFinished,
+				$onStarted,
+				$onFinished,
 			);
 		} finally {
-			$this->releaseMinuteLocks();
+			$this->jobRunner->releaseExpiredMinuteLocks();
 		}
 
 		if ($throwable !== null) {
@@ -230,7 +230,7 @@ class ManagedScheduler implements Scheduler
 
 	public function runPromise(): Generator
 	{
-		$this->releaseMinuteLocks();
+		$this->jobRunner->releaseExpiredMinuteLocks();
 
 		$runStart = $this->clock->now();
 		$runId = time() . '-' . bin2hex(random_bytes(3));
@@ -270,8 +270,9 @@ class ManagedScheduler implements Scheduler
 				fn () => $this->callbacks->fireBeforeRun($runStart, $jobSchedules),
 				fn (RunSummary $runSummary) => $this->callbacks->fireAfterRun($runSummary),
 				$shutdownCheck,
-				// Called by ProcessJobExecutor when the subprocess emits a `started` event.
-				// Fires parent's beforeJobCallbacks with the JobInfo from the subprocess.
+				// Called by executors when a job starts — ProcessJobExecutor via the subprocess
+				// `started` event, BasicJobExecutor via JobRunner's onStarted hook. Fires
+				// beforeJobCallbacks with the reported JobInfo.
 				fn ($id, JobSchedule $jobSchedule, int $runSecond, JobInfo $info) => $this->callbacks->fireJobStarted(
 					$info,
 				),
@@ -285,24 +286,8 @@ class ManagedScheduler implements Scheduler
 				$this->runRegistry->deregister($runId);
 			}
 
-			$this->releaseMinuteLocks();
+			$this->jobRunner->releaseExpiredMinuteLocks();
 		}
-	}
-
-	private function releaseMinuteLocks(): void
-	{
-		$now = (float) $this->clock->now()->format('U.u');
-		$remaining = [];
-
-		foreach ($this->minuteLocks as [$lock, $createdAt]) {
-			if ($now - $createdAt >= self::MinuteLockTtl) {
-				$lock->release();
-			} else {
-				$remaining[] = [$lock, $createdAt];
-			}
-		}
-
-		$this->minuteLocks = $remaining;
 	}
 
 	private function createShutdownCheck(string $runId): ?ShutdownCheck
@@ -352,163 +337,6 @@ class ManagedScheduler implements Scheduler
 		iterator_to_array($generator);
 
 		return $generator->getReturn();
-	}
-
-	/**
-	 * @param string|int $id
-	 * @param (Closure(JobInfo): void)|null $onJobStarted
-	 * @param (Closure(JobInfo, JobResult): void)|null $onJobFinished
-	 * @return array{JobSummary, Throwable|null}
-	 */
-	private function runInternal(
-		$id,
-		JobSchedule $jobSchedule,
-		RunParameters $runParameters,
-		bool $fireBeforeJobCallbacks = true,
-		bool $fireAfterJobCallbacks = true,
-		?Closure $onJobStarted = null,
-		?Closure $onJobFinished = null
-	): array
-	{
-		$job = $jobSchedule->getJob();
-		$expression = $jobSchedule->getExpression();
-
-		$info = new JobInfo(
-			$id,
-			$job->getName(),
-			$expression->getExpression(),
-			$jobSchedule->getRepeatAfterSeconds(),
-			$runParameters->getSecond(),
-			$this->getCurrentTime($jobSchedule),
-			$jobSchedule->getTimeZone(),
-			$runParameters->isManualRun(),
-		);
-
-		$repeatAfterSeconds = $jobSchedule->getRepeatAfterSeconds();
-		$runSecond = $runParameters->getSecond();
-
-		// Minute lock prevents re-execution of the same job for the same clock minute.
-		// The key includes the minute (UTC `YmdHi`) so different minutes never collide —
-		// this lets the worker spawn immediately on startup without the previous minute's
-		// lock blocking the next minute's run.
-		// 60-second TTL with autoRelease=false — covers the whole clock minute and survives
-		// subprocess exit; expires naturally after its minute ends.
-		// Skipped for manual runs — manual execution should always work.
-		$minuteLock = null;
-		if (!$runParameters->isManualRun()) {
-			$minute = $info->getStart()->setTimezone(new DateTimeZone('UTC'))->format('YmdHi');
-			$minuteLockKey = $repeatAfterSeconds > 0
-				? "Orisai.Scheduler.Job.Minute/$id/$minute/$runSecond"
-				: "Orisai.Scheduler.Job.Minute/$id/$minute";
-			$minuteLock = $this->lockFactory->createLock($minuteLockKey, self::MinuteLockTtl, false);
-
-			if (!$minuteLock->acquire()) {
-				$result = new JobResult($expression, $info->getStart(), JobResultState::lock());
-
-				if ($fireAfterJobCallbacks) {
-					$this->callbacks->fireJobFinished($info, $result);
-				}
-
-				if ($onJobFinished !== null) {
-					$onJobFinished($info, $result);
-				}
-
-				return [
-					new JobSummary($info, $result),
-					null,
-				];
-			}
-		}
-
-		// Job lock prevents concurrent execution of the same job.
-		$lock = $this->lockFactory->createLock("Orisai.Scheduler.Job/$id");
-
-		if (!$lock->acquire()) {
-			if ($minuteLock !== null) {
-				$minuteLock->release();
-			}
-
-			$result = new JobResult($expression, $info->getStart(), JobResultState::lock());
-
-			if ($fireAfterJobCallbacks) {
-				$this->callbacks->fireJobFinished($info, $result);
-			}
-
-			if ($onJobFinished !== null) {
-				$onJobFinished($info, $result);
-			}
-
-			return [
-				new JobSummary($info, $result),
-				null,
-			];
-		}
-
-		$throwable = null;
-		try {
-			if ($fireBeforeJobCallbacks) {
-				$this->callbacks->fireJobStarted($info);
-			}
-
-			if ($onJobStarted !== null) {
-				$onJobStarted($info);
-			}
-
-			try {
-				$job->run(new JobLock($lock));
-			} catch (Throwable $throwable) {
-				// Handled bellow
-			}
-
-			$lockExpired = $lock->isExpired();
-			if ($lockExpired) {
-				$this->logger->warning("Lock of job '$id' expired before the job finished.", [
-					'id' => $id,
-				]);
-			}
-
-			$result = new JobResult(
-				$expression,
-				$this->getCurrentTime($jobSchedule),
-				$throwable === null ? JobResultState::done() : JobResultState::fail(),
-				$lockExpired,
-			);
-
-			if ($fireAfterJobCallbacks) {
-				$this->callbacks->fireJobFinished($info, $result);
-			}
-
-			if ($onJobFinished !== null) {
-				$onJobFinished($info, $result);
-			}
-
-			if ($throwable !== null && $this->errorHandler !== null) {
-				($this->errorHandler)($throwable, $info, $result);
-				$throwable = null;
-			}
-		} finally {
-			$lock->release();
-			// Minute lock NOT released — stays in store until TTL expires.
-			// Stored to prevent GC and released at end of run via releaseMinuteLocks().
-			if ($minuteLock !== null) {
-				$this->minuteLocks[] = [$minuteLock, (float) $this->clock->now()->format('U.u')];
-			}
-		}
-
-		return [
-			new JobSummary($info, $result),
-			$throwable,
-		];
-	}
-
-	private function getCurrentTime(JobSchedule $schedule): DateTimeImmutable
-	{
-		$now = $this->clock->now();
-		$timezone = $schedule->getTimeZone();
-
-		return $timezone !== null
-			? $now->setTimezone($timezone)
-			: $now;
 	}
 
 	/**

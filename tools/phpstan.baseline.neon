@@ -40,6 +40,12 @@ parameters:
 			path: ../src/Command/RunJobCommand.php
 
 		-
+			rawMessage: 'Parameter #3 $expression of class Orisai\Scheduler\Status\JobInfo constructor expects string, string|null given.'
+			identifier: argument.type
+			count: 1
+			path: ../src/Executor/JobRunner.php
+
+		-
 			rawMessage: 'Cannot call method setTimezone() on DateTimeImmutable|false.'
 			identifier: method.nonObject
 			count: 2
@@ -62,12 +68,6 @@ parameters:
 			identifier: argument.type
 			count: 1
 			path: ../src/Maintenance/MaintenanceJobSummaryFactory.php
-
-		-
-			rawMessage: 'Parameter #3 $expression of class Orisai\Scheduler\Status\JobInfo constructor expects string, string|null given.'
-			identifier: argument.type
-			count: 1
-			path: ../src/ManagedScheduler.php
 
 		-
 			rawMessage: 'Parameter #3 $expression of class Orisai\Scheduler\Status\PlannedJobInfo constructor expects string, string|null given.'
@@ -113,6 +113,12 @@ parameters:
 			identifier: argument.type
 			count: 4
 			path: ../tests/Unit/Command/StatusCommandTest.php
+
+		-
+			rawMessage: 'Method Tests\Orisai\Scheduler\Unit\Executor\JobRunnerTest::createSchedule() has parameter $callback with no signature specified for callable.'
+			identifier: missingType.callable
+			count: 1
+			path: ../tests/Unit/Executor/JobRunnerTest.php
 
 		-
 			rawMessage: 'Call to static method PHPUnit\Framework\Assert::assertSame() with 2 and 1 will always evaluate to false.'
@@ -434,15 +440,3 @@ parameters:
 			identifier: argument.type
 			count: 1
 			path: ../tests/Unit/Status/PlannedJobInfoTest.php
-
-		-
-			rawMessage: 'Parameter #3 $expression of class Orisai\Scheduler\Status\JobInfo constructor expects string, string|null given.'
-			identifier: argument.type
-			count: 1
-			path: ../src/Executor/JobRunner.php
-
-		-
-			rawMessage: 'Method Tests\Orisai\Scheduler\Unit\Executor\JobRunnerTest::createSchedule() has parameter $callback with no signature specified for callable.'
-			identifier: missingType.callable
-			count: 1
-			path: ../tests/Unit/Executor/JobRunnerTest.php

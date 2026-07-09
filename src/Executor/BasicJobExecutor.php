@@ -7,11 +7,10 @@ use DateTimeImmutable;
 use Generator;
 use Orisai\Clock\Clock;
 use Orisai\Scheduler\Exception\RunFailure;
-use Orisai\Scheduler\Job\JobSchedule;
 use Orisai\Scheduler\Maintenance\MaintenanceJobSummaryFactory;
-use Orisai\Scheduler\Status\JobSummary;
+use Orisai\Scheduler\Status\JobInfo;
+use Orisai\Scheduler\Status\RunParameters;
 use Orisai\Scheduler\Status\RunSummary;
-use Throwable;
 use function array_keys;
 use function max;
 
@@ -23,19 +22,15 @@ final class BasicJobExecutor implements JobExecutor
 
 	private Clock $clock;
 
+	private JobRunner $jobRunner;
+
 	private MaintenanceJobSummaryFactory $maintenanceSummaryFactory;
 
-	/** @var Closure(string|int, JobSchedule, int<0, max>): array{JobSummary, Throwable|null} */
-	private Closure $runCb;
-
-	/**
-	 * @param Closure(string|int, JobSchedule, int<0, max>): array{JobSummary, Throwable|null} $runCb
-	 */
-	public function __construct(Clock $clock, Closure $runCb)
+	public function __construct(Clock $clock, JobRunner $jobRunner)
 	{
 		$this->clock = $clock;
+		$this->jobRunner = $jobRunner;
 		$this->maintenanceSummaryFactory = new MaintenanceJobSummaryFactory($clock);
-		$this->runCb = $runCb;
 	}
 
 	public function runJobs(
@@ -79,7 +74,18 @@ final class BasicJobExecutor implements JobExecutor
 					continue;
 				}
 
-				[$jobSummary, $throwable] = ($this->runCb)($id, $jobSchedule, $second);
+				$onStarted = $onJobEvent === null
+					? null
+					: static function (JobInfo $info) use ($onJobEvent, $id, $jobSchedule, $second): void {
+						$onJobEvent($id, $jobSchedule, $second, $info);
+					};
+
+				[$jobSummary, $throwable] = $this->jobRunner->run(
+					$id,
+					$jobSchedule,
+					new RunParameters($second, false),
+					$onStarted,
+				);
 
 				yield $jobSummaries[] = $jobSummary;
 
