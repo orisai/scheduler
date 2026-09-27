@@ -208,7 +208,7 @@ parameters:
 			path: ../tests/Unit/SchedulerCallbacksTest.php
 
 		-
-			rawMessage: 'Call to static method PHPUnit\Framework\Assert::assertSame() with array{''locked'', ''after''} and array{} will always evaluate to false.'
+			rawMessage: 'Call to static method PHPUnit\Framework\Assert::assertSame() with array{''locked'', ''after''} and *NEVER* will always evaluate to false.'
 			identifier: staticMethod.impossibleType
 			count: 1
 			path: ../tests/Unit/SchedulerCallbacksTest.php
@@ -343,7 +343,7 @@ parameters:
 			path: ../tests/Unit/SimpleSchedulerTest.php
 
 		-
-			rawMessage: 'Call to static method PHPUnit\Framework\Assert::assertSame() with array{''* * * * *''} and array{} will always evaluate to false.'
+			rawMessage: 'Call to static method PHPUnit\Framework\Assert::assertSame() with array{''* * * * *''} and *NEVER* will always evaluate to false.'
 			identifier: staticMethod.impossibleType
 			count: 1
 			path: ../tests/Unit/SimpleSchedulerTest.php
